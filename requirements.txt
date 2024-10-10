@@ -6,3 +6,8 @@ scikit-learn==1.0.2
 selenium==4.1.0
 beautifulsoup4==4.10.0
 matplotlib==3.4.3
+werkzeug==2.0.3
+click==8.0.3
+itsdangerous==2.1.1
+Jinja2==3.0.3
+MarkupSafe==2.0.1
