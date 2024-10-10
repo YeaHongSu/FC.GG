@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="minimum-scale=1, initial-scale=1, maximum-scale=1, width=device-width, shrink-to-fit=cover">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700&family=Montserrat:wght@700&family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='FCGGlogo.PNG') }}" type="image/png">
+    <title>FC.GG - 수수료 계산기</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/cal_style.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm sticky-top">
+        <div class="container d-flex flex-column align-items-center py-3">
+            <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" href="/">FC.GG</a></h1>
+        </div>
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav mx-auto">
+                        <li class="nav-item"><a class="nav-link" href="/wr_imp.html">승률 개선 솔루션</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/player_tier.html">선수 티어</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/calculate.html">수수료 계산기</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- 수수료 계산기 Section -->
+    <div class="container my-5">
+        <h1 class="text-center mb-4">BP 부족할 일 없이 팀을 맞춰볼까요?</h1>
+        <h3 class="text-center mb-4">수수료 계산기를 이용해 보세요!</h3>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h4 class="mb-4">판매 예정 금액 (BP)</h4>
+                <div id="players-container">
+                    <!-- 첫 번째 입력창 -->
+                    <div class="player-row d-flex align-items-center mb-3">
+                        <input type="text" class="form-control me-3 price-input" placeholder="판매 금액 입력" aria-label="판매 금액 입력">
+                        <div class="input-group">
+                            <input type="number" class="form-control" value="1" min="1" max="10" aria-label="선수 수량">
+                            <span class="input-group-text">명</span>
+                        </div>
+                        <div class="input-group ms-3">
+                            <select class="form-select" aria-label="할인 쿠폰">
+                                <option value="0">쿠폰 없음</option>
+                                <option value="0.1">10% 할인</option>
+                                <option value="0.15">15% 할인</option>
+                                <option value="0.2">20% 할인</option>
+                                <option value="0.25">25% 할인</option>
+                                <option value="0.3">30% 할인</option>
+                                <option value="0.35">35% 할인</option>
+                                <option value="0.4">40% 할인</option>
+                                <option value="0.5">50% 할인</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger ms-3 remove-player">-</button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="add-player">입력창 추가</button>
+
+                <!-- 할인 옵션 선택 -->
+                <div class="mt-4">
+                    <h4>할인 옵션</h4>
+                    <p id="result">기본 수수료(40%)</p>
+                    
+                    <div class="form-check form-switch">
+                        <input class="form-check-input toggle" type="checkbox" id="premium_pc">
+                        <label class="form-check-label" for="premium_pc">프리미엄 PC방 (30% 할인)</label>
+                    </div>
+                    
+                    <div class="form-check form-switch">
+                        <input class="form-check-input toggle" type="checkbox" id="top_class">
+                        <label class="form-check-label" for="top_class">TOP CLASS (20% 할인)</label>
+                    </div>
+                </div>
+
+
+                <div class="mt-4">
+                    <button class="btn btn-success w-100" id="calculate_button">수수료 계산하기</button>
+                </div>
+
+                <!-- 결과 표시 -->
+                <div class="card mt-4">
+                    <p id="result_fee" class="text-danger fs-4">최종 수수료: 0 BP</p>
+                    <p id="result_receive" class="text-success fs-4">최종 받는 금액: 0 BP</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Section -->
+    <footer class="mt-auto bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <h2>FC.GG</h2>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col text-center">
+                    <p>© FC.GG All rights reserved; FC ONLINE is a trademark of Nexon & Electronic Arts.</p>
+                    <p>문의 : hsyea203@naver.com / jtk5959@naver.com</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 입력값에서 콤마(,) 추가
+        function formatNumberWithCommas(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        // 콤마 제거
+        function removeCommas(num) {
+            return num.toString().replace(/,/g, '');
+        }
+
+        // 입력 창에서 숫자 입력시 콤마 추가
+        document.querySelectorAll('.price-input').forEach(function(input) {
+            input.addEventListener('input', function(event) {
+                let value = removeCommas(event.target.value);  // 콤마 제거 후
+                if (!isNaN(value) && value.length > 0) {
+                    event.target.value = formatNumberWithCommas(Number(value));  // 숫자로 변환 후 콤마 추가
+                }
+            });
+        });
+
+        // 입력창 추가 기능
+        document.getElementById("add-player").addEventListener("click", function() {
+            var container = document.getElementById("players-container");
+            var newRow = document.createElement("div");
+            newRow.classList.add("player-row", "d-flex", "align-items-center", "mb-3");
+            newRow.innerHTML = `
+                <input type="text" class="form-control me-3 price-input" placeholder="판매 금액 입력" aria-label="판매 금액 입력">
+                <div class="input-group">
+                    <input type="number" class="form-control" value="1" min="1" max="10" aria-label="선수 수량">
+                    <span class="input-group-text">명</span>
+                </div>
+                <div class="input-group ms-3">
+                    <select class="form-select" aria-label="할인 쿠폰">
+                        <option value="0">쿠폰 없음</option>
+                        <option value="0.1">10% 할인</option>
+                        <option value="0.15">15% 할인</option>
+                        <option value="0.2">20% 할인</option>
+                        <option value="0.25">25% 할인</option>
+                        <option value="0.3">30% 할인</option>
+                        <option value="0.35">35% 할인</option>
+                        <option value="0.4">40% 할인</option>
+                        <option value="0.5">50% 할인</option>
+                    </select>
+                </div>
+                <button class="btn btn-danger ms-3 remove-player">-</button>
+            `;
+            container.appendChild(newRow);
+
+            // Remove player row
+            newRow.querySelector(".remove-player").addEventListener("click", function() {
+                newRow.remove();
+            });
+
+            // 새로운 입력 창에도 콤마 추가 기능 적용
+            newRow.querySelector(".price-input").addEventListener('input', function(event) {
+                let value = removeCommas(event.target.value);  // 콤마 제거 후
+                if (!isNaN(value) && value.length > 0) {
+                    event.target.value = formatNumberWithCommas(Number(value));  // 숫자로 변환 후 콤마 추가
+                }
+            });
+        });
+
+        // 수수료 계산
+        document.getElementById("calculate_button").addEventListener("click", function() {
+            var players = document.querySelectorAll(".player-row");
+            var totalFee = 0;
+            var totalReceive = 0;
+            var valid = true; // 입력 검증용 변수
+
+            players.forEach(function(player) {
+                var salePriceInput = player.querySelector("input[type='text']");
+                var salePrice = parseInt(removeCommas(salePriceInput.value)); // 콤마 제거 후 숫자로 변환
+
+                if (isNaN(salePrice) || salePrice <= 0) {
+                    valid = false;
+                    salePriceInput.classList.add("is-invalid");
+                } else {
+                    salePriceInput.classList.remove("is-invalid");
+                    var count = parseInt(player.querySelector(".input-group input").value);
+                    var discount = parseFloat(player.querySelector("select").value);
+
+                    var baseFee = salePrice * 0.4 * count;
+                    var finalFee = baseFee * (1 - discount);
+                    totalFee += Math.floor(finalFee);
+                    totalReceive += (salePrice * count) - Math.floor(finalFee);
+                }
+            });
+
+            if (!valid) {
+                document.getElementById("result_fee").textContent = "판매 금액 입력이 필요합니다!";
+                document.getElementById("result_receive").textContent = "";
+                return;
+            }
+
+            var isPremiumPC = document.getElementById("premium_pc").checked;
+            var isTopClass = document.getElementById("top_class").checked;
+
+            if (isPremiumPC) {
+                totalFee = Math.floor(totalFee * 0.7);
+                totalReceive += Math.floor(totalFee * 0.3);
+            }
+            if (isTopClass) {
+                totalFee = Math.floor(totalFee * 0.8);
+                totalReceive += Math.floor(totalFee * 0.2);
+            }
+
+            document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
+            document.getElementById("result_receive").textContent = "최종 받는 금액: " + totalReceive.toLocaleString() + " BP";
+        });
+    </script>
+</body>
+</html>
