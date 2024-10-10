@@ -1,0 +1,51 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
+    background-color: #fcfcfc;
+}
+
+.logo {
+    width: 150px; /* Adjust logo size as needed */
+    height: auto;
+    margin-bottom: 20px;
+}
+
+h1 {
+    color: #4CAF50;
+}
+
+#search_result, #match_dates {
+    margin-top: 20px;
+}
+
+/* nav 안의 링크들 좌우 간격 넓히기 */
+.navbar-nav .nav-link {
+    font-weight: bold;
+    color: #333 !important;
+    margin: 0 15px; /* 좌우 마진 추가 */
+}
+
+.navbar-nav .nav-link:hover {
+    color: #4CAF50 !important;
+}
+
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .player-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .player-row input, .player-row select {
+        margin-bottom: 10px;
+    }
+
+    button {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
