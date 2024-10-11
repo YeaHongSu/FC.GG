@@ -4,12 +4,10 @@ import pandas as pd
 import numpy as np
 from config import Config
 from flask import flash
-from utils.utils import me, you, avg_data
-from utils.date_utils import calculate_time_difference
+from utils.utils import me, you, avg_data, top_n_argmax, top_n_argmin, calculate_time_difference
 from utils.data_processing import data_list, data_list_cl, data_label, determine_play_style
-from utils.top_n_utils import top_n_argmax, top_n_argmin
 from utils.win_utils import calculate_win_improvement
-from utils.tier import tier_forward
+from tier.tier_info import tier
 
 # Flask 선언
 app = Flask(__name__)
@@ -145,7 +143,7 @@ def result():
         cl_data = np.array(data_list_cl(avg_data()))
 
         # 상위/하위 10개 중요 지표 선정
-        jp_num = 10  # 먼저 10개의 지표를 가져옴
+        jp_num = 20  # 먼저 10개의 지표를 가져옴
         threshold = 0.9  # 극단적인 차이를 제외하기 위한 임계값 설정
 
         # 상위 지표에서 10개 추출 후 임계값 적용한 필터링
@@ -284,8 +282,8 @@ def wr_result():
 # 선수 티어 페이지
 @app.route('/player_tier.html', methods=['GET', 'POST'])
 def player_tier():
-    tier_forward_list = tier_forward()
-    return render_template('player_tier.html', tier_forward_list=tier_forward_list)
+    tier_list = tier
+    return render_template('player_tier.html', tier_forward_list=tier_list)
 
 # 수수료 계산기 페이지
 @app.route('/calculate.html', methods=['GET', 'POST'])
