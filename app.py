@@ -4,10 +4,12 @@ import pandas as pd
 import numpy as np
 from config import Config
 from flask import flash
-from utils.utils import me, you, avg_data, top_n_argmax, top_n_argmin, calculate_time_difference
+from utils.utils import me, you, avg_data
+from utils.date_utils import calculate_time_difference
 from utils.data_processing import data_list, data_list_cl, data_label, determine_play_style
+from utils.top_n_utils import top_n_argmax, top_n_argmin
 from utils.win_utils import calculate_win_improvement
-from tier.tier_info import tier
+from utils.tier import tier_forward
 
 # Flask 선언
 app = Flask(__name__)
@@ -113,17 +115,14 @@ def result():
             data = response.json()
 
             date = calculate_time_difference(data['matchDate'])
-            my_data = me(data, characterName)  # characterName은 ouid입니다
-            your_data = you(data, characterName)
-
-            # 로그 추가로 데이터를 확인
-            # print(f"My data: {my_data['nickname']} vs Your data: {your_data['nickname']}")
-
+            my_data = me(data, character_name)
+            your_data = you(data, character_name)
             imp = data_list(my_data)
             if imp is None:
                 continue
             w_l = my_data['matchDetail']['matchResult']
 
+            # 비정상 게임 3:0으로 처리
             # 비정상 게임 3:0으로 처리
             my_goal_total = my_data['shoot']['goalTotal'] if my_data['shoot']['goalTotal'] is not None else 0
             your_goal_total = your_data['shoot']['goalTotal'] if your_data['shoot']['goalTotal'] is not None else 0
@@ -139,7 +138,6 @@ def result():
             # 중요 정보 저장용
             imp_data.append(imp)
 
-
         # 중요 지표 평균 계산
         my_avg = np.nanmean(imp_data, axis=0)
 
@@ -147,7 +145,7 @@ def result():
         cl_data = np.array(data_list_cl(avg_data()))
 
         # 상위/하위 10개 중요 지표 선정
-        jp_num = 20  # 먼저 10개의 지표를 가져옴
+        jp_num = 10  # 먼저 10개의 지표를 가져옴
         threshold = 0.9  # 극단적인 차이를 제외하기 위한 임계값 설정
 
         # 상위 지표에서 10개 추출 후 임계값 적용한 필터링
@@ -251,7 +249,7 @@ def wr_result():
         my_avg = np.nanmean(imp_data, axis=0)
         cl_data = np.array(data_list_cl(avg_data()))
 
-        jp_num = 10
+        jp_num = 20
         threshold = 0.9
 
         max_diff = (my_avg - cl_data) / cl_data
@@ -286,8 +284,8 @@ def wr_result():
 # 선수 티어 페이지
 @app.route('/player_tier.html', methods=['GET', 'POST'])
 def player_tier():
-    tier_list = tier
-    return render_template('player_tier.html', tier_forward_list=tier_list)
+    tier_forward_list = tier_forward()
+    return render_template('player_tier.html', tier_forward_list=tier_forward_list)
 
 # 수수료 계산기 페이지
 @app.route('/calculate.html', methods=['GET', 'POST'])
@@ -297,4 +295,4 @@ def calculate():
 
 # 포트 설정 및 웹에 띄우기
 if __name__ == '__main__':  
-   app.run('0.0.0.0',port=3000,debug=True)
+   app.run('0.0.0.0',port=5503,debug=True)
