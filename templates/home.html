@@ -135,12 +135,6 @@
                 <div class="notice-container">
                     <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                     <div class="notice-item">
-                        <p id="notice3-title">24/10/12 FC.GG 출시 <span class="notice-date" id="notice3-date"></span></p>
-                        <div id="notice3-content" class="notice-content">
-                            <p>안녕하세요 FC.GG입니다. FC온라인 유저분들을 위해 전적검색, 승률개선, 선수티어제공, 수수료 계산기 서비스를 제작하여 출시하게 되었습니다. 많은 이용 부탁드립니다! 문의는 하단 메일로 언제나 환영입니다.</p>
-                        </div>
-                    </div>
-                    <div class="notice-item">
                         <p id="notice1-title">24/10/06 업데이트 (UI 개편 및 편의성 개선) <span class="notice-date" id="notice1-date"></span></p>
                         <div id="notice1-content" class="notice-content">
                             <p>이번 업데이트에서는 FC.GG의 UI를 전체적으로 개편하고 편의성을 크게 개선하였습니다.</p>
@@ -197,7 +191,6 @@
         // 공지사항 날짜 자동 설정
         document.getElementById("notice1-date").textContent = calculateDaysAgo("2024-10-06");
         document.getElementById("notice2-date").textContent = calculateDaysAgo("2024-09-25");
-        document.getElementById("notice3-date").textContent = calculateDaysAgo("2024-10-12");
 
         // 공지사항 클릭 이벤트 설정
         document.getElementById("notice1-title").addEventListener("click", function() {
@@ -211,15 +204,6 @@
 
         document.getElementById("notice2-title").addEventListener("click", function() {
             const content = document.getElementById("notice2-content");
-            if (content.style.maxHeight) {
-                content.style.maxHeight = null;
-            } else {
-                content.style.maxHeight = content.scrollHeight + "px";
-            }
-        });
-
-        document.getElementById("notice3-title").addEventListener("click", function() {
-            const content = document.getElementById("notice3-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
