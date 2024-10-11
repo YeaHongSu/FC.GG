@@ -232,6 +232,13 @@
             document.getElementById("loading-overlay").style.display = "flex";
         }
 
+        window.addEventListener("pageshow", function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                // 페이지가 캐시로부터 불러와졌을 때, 로딩창을 숨깁니다.
+                document.getElementById("loading-overlay").style.display = "none";
+            }
+        });
+
         // 검색 버튼 클릭 이벤트
         document.getElementById("search_button").addEventListener("click", function() {
             var characterName = document.getElementById("character_name").value;
