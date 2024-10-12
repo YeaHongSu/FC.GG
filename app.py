@@ -116,8 +116,9 @@ def result():
             my_data = me(data, character_name)
             your_data = you(data, character_name)
             imp = data_list(my_data)
-            if imp is None:
-                continue
+            imp2 = data_list(your_data)
+            if imp == None or imp2 == None:
+               continue
             w_l = my_data['matchDetail']['matchResult']
 
             # 비정상 게임 3:0으로 처리
