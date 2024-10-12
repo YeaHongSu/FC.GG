@@ -90,16 +90,15 @@ def determine_play_style(max_data, min_data):
         return "균형 잡힌 플레이어"
 
 
-# zero_division 문제 해결
 def is_zero(a, b):
-    if b == 0 or None:
+    if b is None or b == 0:
         return np.nan
     else:
-        return a/b
+        return a / b
 
 def data_list(data):
     match_data = []
-    if data['matchDetail']['matchEndType'] == 2 or data['matchDetail']['dribble']==None:
+    if data['matchDetail']['matchEndType'] == 2:
         return None
     match_data.append(data['matchDetail']['foul'])
     match_data.append(data['matchDetail']['yellowCards'])
