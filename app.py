@@ -113,14 +113,17 @@ def result():
             data = response.json()
 
             date = calculate_time_difference(data['matchDate'])
-            my_data = me(data, character_name)
-            your_data = you(data, character_name)
+            my_data = me(data, characterName)  # characterName은 ouid입니다
+            your_data = you(data, characterName)
+
+            # 로그 추가로 데이터를 확인
+            # print(f"My data: {my_data['nickname']} vs Your data: {your_data['nickname']}")
+
             imp = data_list(my_data)
             if imp is None:
                 continue
             w_l = my_data['matchDetail']['matchResult']
 
-            # 비정상 게임 3:0으로 처리
             # 비정상 게임 3:0으로 처리
             my_goal_total = my_data['shoot']['goalTotal'] if my_data['shoot']['goalTotal'] is not None else 0
             your_goal_total = your_data['shoot']['goalTotal'] if your_data['shoot']['goalTotal'] is not None else 0
@@ -136,6 +139,7 @@ def result():
             # 중요 정보 저장용
             imp_data.append(imp)
 
+
         # 중요 지표 평균 계산
         my_avg = np.nanmean(imp_data, axis=0)
 
@@ -143,7 +147,7 @@ def result():
         cl_data = np.array(data_list_cl(avg_data()))
 
         # 상위/하위 10개 중요 지표 선정
-        jp_num = 10  # 먼저 10개의 지표를 가져옴
+        jp_num = 20  # 먼저 10개의 지표를 가져옴
         threshold = 0.9  # 극단적인 차이를 제외하기 위한 임계값 설정
 
         # 상위 지표에서 10개 추출 후 임계값 적용한 필터링
@@ -172,7 +176,7 @@ def result():
         # 플레이스타일 결정
         play_style = determine_play_style(max_data, min_data)
 
-        return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, 
+        return render_template('result.html', character_name=character_name, my_data=my_data, match_data=result_list, level_data=level_data, 
                             max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
                             play_style=play_style)
 
@@ -232,8 +236,9 @@ def wr_result():
                 continue
             w_l = my_data['matchDetail']['matchResult']
 
-            my_goal_total = my_data['shoot']['goalTotal']
-            your_goal_total = your_data['shoot']['goalTotal']
+            # 비정상 게임 3:0으로 처리
+            my_goal_total = my_data['shoot']['goalTotal'] if my_data['shoot']['goalTotal'] is not None else 0
+            your_goal_total = your_data['shoot']['goalTotal'] if your_data['shoot']['goalTotal'] is not None else 0
             match_data = {
                 '매치 날짜': date,
                 '결과': w_l,
@@ -247,7 +252,7 @@ def wr_result():
         my_avg = np.nanmean(imp_data, axis=0)
         cl_data = np.array(data_list_cl(avg_data()))
 
-        jp_num = 10
+        jp_num = 20
         threshold = 0.9
 
         max_diff = (my_avg - cl_data) / cl_data
@@ -262,12 +267,13 @@ def wr_result():
         filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
         filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
 
-        max_data = zip(filtered_max_idx, filtered_max_values)
-        min_data = zip(filtered_min_idx, filtered_min_values)
+        # zip을 리스트로 변환하여 여러 번 사용할 수 있게 함
+        max_data = list(zip(filtered_max_idx, filtered_max_values))
+        min_data = list(zip(filtered_min_idx, filtered_min_values))
 
         top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = calculate_win_improvement(imp_data, w_l_data, data_label, character_name)
 
-        return render_template('wr_result.html', my_data=my_data, match_data=result_list, level_data=level_data, 
+        return render_template('wr_result.html', character_name=character_name, my_data=my_data, match_data=result_list, level_data=level_data, 
                                max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
                                top_n=top_n, increase_ratio=increase_ratio, improved_features_text=improved_features_text, 
                                original_win_rate=original_win_rate, modified_win_rate=modified_win_rate, win_rate_improvement=win_rate_improvement)
