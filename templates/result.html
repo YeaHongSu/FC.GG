@@ -246,13 +246,6 @@
             document.getElementById("loading-overlay").style.display = "flex";
         }
 
-        window.addEventListener("pageshow", function(event) {
-            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-                // 페이지가 캐시에서 로드된 경우 로딩창을 숨깁니다.
-                document.getElementById("loading-overlay").style.display = "none";
-            }
-        });
-
         // 승률 개선 솔루션 페이지로 이동
         function goToWinRateResult(nickname) {
             showLoading();  // 로딩창 표시
