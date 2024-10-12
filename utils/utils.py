@@ -5,20 +5,17 @@ import copy
 from datetime import datetime, timedelta
 
 
-def me(match, ouid):
-    # 자신의 ouid와 일치하는 데이터를 반환
-    if match['matchInfo'][0]['ouid'] == ouid:
+def me(match, me):
+    if match['matchInfo'][0]['nickname'] == me:
         return match['matchInfo'][0]
     else:
         return match['matchInfo'][1]
 
-def you(match, ouid):
-    # 자신이 아닌 ouid 데이터를 반환
-    if match['matchInfo'][1]['ouid'] != ouid:
+def you(match, me):
+    if match['matchInfo'][1]['nickname'] != me:
         return match['matchInfo'][1]
     else:
         return match['matchInfo'][0]
-
     
 def avg_data():
     url = f"https://fconline.nexon.com/Datacenter/GetMatchRecord?strDate={datetime.now().strftime('%Y.%m.%d')}&n1Type=50&n4StartRanking=1&n4EndRanking=10000&rd=0.4988530727702105"
