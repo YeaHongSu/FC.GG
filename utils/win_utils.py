@@ -1,4 +1,4 @@
-from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score
@@ -40,44 +40,43 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
     X_train_imputed = imputer.fit_transform(X_train)
     X_test_imputed = imputer.transform(X_test)
 
-    # SVM 모델 정의
-    model = SVC(kernel='linear', random_state=random_state)  # 선형 커널 사용
-    model.fit(X_train_imputed, y_train)
+    # 랜덤 포레스트 모델 정의 (기본 파라미터)
+    rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=random_state)
+    rf.fit(X_train_imputed, y_train)
 
-    y_pred = model.predict(X_test_imputed)
+    y_pred = rf.predict(X_test_imputed)
     accuracy = accuracy_score(y_test, y_pred)
-    print(f"SVM 모델의 정확도: {accuracy * 100:.2f}%")
+    print(f"Random Forest 모델의 정확도: {accuracy * 100:.2f}%")
 
     win_count = sum(1 for result in w_l_data if result == '승')
     original_win_rate = win_count / len(w_l_data)
 
-    # 특성 중요도 계산 (SVM에서는 coef_ 사용)
+    # 상위 N개의 중요한 특성에 대해 승률 개선 계산
     for top_n in range(3, 11):
-        if hasattr(model, 'coef_'):  # 선형 커널일 때만 coef_가 존재
-            importances = np.abs(model.coef_[0])
-            indices = np.argsort(importances)[::-1]
-            top_features_indices = indices[:top_n]
+        importances = np.abs(rf.feature_importances_)
+        indices = np.argsort(importances)[::-1]
+        top_features_indices = indices[:top_n]
 
-            for increase_ratio in np.arange(0.1, 0.7, 0.1):
-                X_test_modified = X_test_imputed.copy()
-                original_feature_values = X_test_imputed.mean(axis=0)
-                modified_feature_values = original_feature_values.copy()
+        for increase_ratio in np.arange(0.1, 0.7, 0.1):
+            X_test_modified = X_test_imputed.copy()
+            original_feature_values = X_test_imputed.mean(axis=0)
+            modified_feature_values = original_feature_values.copy()
 
-                for idx in top_features_indices:
-                    X_test_modified[:, idx] *= (1 + increase_ratio)
-                    modified_feature_values[idx] = original_feature_values[idx] * (1 + increase_ratio)
+            for idx in top_features_indices:
+                X_test_modified[:, idx] *= (1 + increase_ratio)
+                modified_feature_values[idx] = original_feature_values[idx] * (1 + increase_ratio)
 
-                y_pred_modified = model.predict(X_test_modified)
-                modified_win_count = sum(1 for result in y_pred_modified if result == '승')
-                modified_win_rate = modified_win_count / len(y_pred_modified)
-                win_rate_improvement = modified_win_rate - original_win_rate
+            y_pred_modified = rf.predict(X_test_modified)
+            modified_win_count = sum(1 for result in y_pred_modified if result == '승')
+            modified_win_rate = modified_win_count / len(y_pred_modified)
+            win_rate_improvement = modified_win_rate - original_win_rate
 
-                if 0.05 <= win_rate_improvement <= 0.40:
-                    improved_features = [data_label[i] for i in top_features_indices]
-                    improved_features_text = "\n".join([
-                        f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
-                        for feature, i in zip(improved_features, top_features_indices)
-                    ])
-                    return top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement
+            if 0.05 <= win_rate_improvement <= 0.40:
+                improved_features = [data_label[i] for i in top_features_indices]
+                improved_features_text = "\n".join([
+                    f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
+                    for feature, i in zip(improved_features, top_features_indices)
+                ])
+                return top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement
 
     return 0, 0, "", original_win_rate, original_win_rate, 0
