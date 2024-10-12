@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 
 
 def me(match, me):
-    if match['matchInfo'][0]['nickname'] == me:
+    if match['matchInfo'][0]['nickname'].lower() == me.lower():
         return match['matchInfo'][0]
     else:
         return match['matchInfo'][1]
 
 def you(match, me):
-    if match['matchInfo'][1]['nickname'] != me:
+    if match['matchInfo'][1]['nickname'].lower() != me.lower():
         return match['matchInfo'][1]
     else:
         return match['matchInfo'][0]
