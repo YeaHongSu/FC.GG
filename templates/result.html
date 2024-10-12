@@ -121,7 +121,7 @@
                 <h2 class="card-title h4 text-center"><span class="text-success">상위 랭커 대비 나의 지표</span></h2>
                 <div class="card-body">
                     <div class="metrics-box">
-                        <h3 class="h5">상위 {{ jp_num - 5 }}개 지표</h3>
+                        <h3 class="h5">상위 5개 지표</h3>
                         <ul class="list-group list-group-flush mb-3 improved-metrics-list">
                             {% for idx, value in max_data %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -135,7 +135,7 @@
                         </ul>
                     </div>
                     <div class="metrics-box">
-                        <h3 class="h5">하위 {{ jp_num - 5 }}개 지표</h3>
+                        <h3 class="h5">하위 5개 지표</h3>
                         <ul class="list-group list-group-flush deteriorated-metrics-list">
                             {% for idx, value in min_data %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
