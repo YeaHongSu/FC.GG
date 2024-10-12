@@ -293,4 +293,4 @@ def calculate():
 
 # 포트 설정 및 웹에 띄우기
 if __name__ == '__main__':  
-   app.run('0.0.0.0',port=5503,debug=True)
+   app.run('0.0.0.0',port=3000,debug=True)
