@@ -6,16 +6,16 @@ from datetime import datetime, timedelta
 
 
 def me(match, me):
-    if match['matchInfo'][0]['nickname'].lower() == me.lower():
+    if match['matchInfo'][0]['nickname'].lower() == me.lower() or len(match['matchInfo'][:])==1:
         return match['matchInfo'][0]
     else:
         return match['matchInfo'][1]
 
 def you(match, me):
-    if match['matchInfo'][1]['nickname'].lower() != me.lower():
-        return match['matchInfo'][1]
-    else:
+    if match['matchInfo'][0]['nickname'].lower() != me.lower() or len(match['matchInfo'][:])==1:
         return match['matchInfo'][0]
+    else:
+        return match['matchInfo'][1]
     
 def avg_data():
     url = f"https://fconline.nexon.com/Datacenter/GetMatchRecord?strDate={datetime.now().strftime('%Y.%m.%d')}&n1Type=50&n4StartRanking=1&n4EndRanking=10000&rd=0.4988530727702105"
