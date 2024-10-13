@@ -277,14 +277,16 @@ def wr_result():
         flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
         return redirect(url_for('home'))
 
-
-
-
 # 선수 티어 페이지
 @app.route('/player_tier.html', methods=['GET', 'POST'])
 def player_tier():
     tier_list = tier
     return render_template('player_tier.html', tier_forward_list=tier_list)
+
+# 빠칭코 페이지
+@app.route('/random.html', methods=['GET', 'POST'])
+def random():
+    return render_template('random.html')
 
 # 수수료 계산기 페이지
 @app.route('/calculate.html', methods=['GET', 'POST'])
