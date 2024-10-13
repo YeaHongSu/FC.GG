@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="minimum-scale=1, initial-scale=1, maximum-scale=1, width=device-width, shrink-to-fit=cover">
+    <meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+    <meta name="google-adsense-account" content="ca-pub-7970639123590302">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-67J7MBCLN9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-67J7MBCLN9');
+    </script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-KX3HQ7FD');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Noto+Sans+KR:wght@700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="{{ url_for('static', filename='FCGGlogo.PNG') }}" type="image/png">
+    <title>FC.GG - 빠칭코 연습실</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Open Graph Meta Tags for customizing the thumbnail -->
+    <meta property="og:title" content="FC.GG - 전적 검색, 선수 티어, 승률 개선, 수수료 계산기">
+    <meta property="og:description" content="FC온라인 유저를 위한 FC.GG 서비스를 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 수수료 계산기를 이용해 보세요!">
+    <meta property="og:image" content="{{ url_for('static', filename='FCGGlogo.PNG') }}">
+    <meta property="og:url" content="https://port-0-fc-gg-m23konqi92284458.sel4.cloudtype.app/">
+    <meta property="og:type" content="website">
+    <style>
+        /* 기본 카드 스타일 */
+        .songpyeon-matrix {
+            display: grid;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #appa-matrix {
+            grid-template-columns: repeat(7, 70px); /* 7x7 행렬 */
+        }
+
+        #mom-matrix {
+            grid-template-columns: repeat(5, 70px); /* 5x5 행렬 */
+        }
+
+        #baby-matrix {
+            grid-template-columns: repeat(4, 70px); /* 4x4 행렬 */
+        }
+
+        /* 카드 스타일 (정사각형 크기 설정) */
+        .songpyeon-card {
+            width: 70px;
+            height: 70px;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+
+        .songpyeon-card.revealed {
+            transform: rotateY(180deg); /* 카드가 뒤집히는 애니메이션 */
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backface-visibility: hidden;
+        }
+
+        .card-front {
+            background-color: #eee; /* 카드 앞면 색상 */
+            color: #333;
+        }
+
+        .card-back {
+            background-color: #fff; /* 카드 뒷면 색상 */
+            transform: rotateY(180deg);
+            color: #333;
+        }
+
+        .sss { background-color: #FFD700; } /* 금색 (SSS) */
+        .ss { background-color: #C0C0C0; }  /* 은색 (SS) */
+        .s { background-color: #87CEEB; }   /* 파란색 (S) */
+        .a { background-color: #32CD32; }   /* 초록색 (A) */
+        .b { background-color: #FFA500; }   /* 주황색 (B) */
+        .c { background-color: #CD5C5C; }   /* 빨간색 (C) */
+
+        /* 송편 선택 UI 개선 */
+        .songpyeon-selector label {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 20px;
+            padding: 10px 20px;
+            background-color: #f1f1f1;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+
+        .songpyeon-selector input[type="radio"] {
+            display: none;
+        }
+
+        .songpyeon-selector input[type="radio"]:checked + label {
+            background-color: #4CAF50;
+            color: #fff;
+        }
+
+        .songpyeon-container {
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin: 0 auto 30px; /* 좌우 자동 정렬, 아래 여백 */
+            background-color: #f9f9f9;
+            max-width: 600px; /* 좌우 사이즈 제한 */
+        }
+
+
+        .btn-primary {
+            margin-top: 0px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm sticky-top">
+        <div class="container d-flex flex-column align-items-center py-3">
+            <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" href="/">FC.GG</a></h1>
+        </div>
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav mx-auto">
+                        <li class="nav-item"><a class="nav-link" href="/wr_imp.html">승률 개선 솔루션</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/player_tier.html">선수 티어</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/random.html">빠칭코 연습실</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/calculate.html">수수료 계산기</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- 송편 선택 Section -->
+    <div class="container my-5">
+        <h1 class="text-center mb-4">빠칭코 연습으로 손 풀고 실전으로 가볼까요?</h1>
+        <h3 class="text-center mb-4">토끼 가족 송편 가게</h3>
+        <!-- 송편 선택 UI 개선 -->
+        <div class="songpyeon-selector text-center mb-4">
+            <input type="radio" id="appa" name="songpyeon" value="appa" checked>
+            <label for="appa">아빠 토끼 송편</label>
+
+            <input type="radio" id="mom" name="songpyeon" value="mom">
+            <label for="mom">엄마 토끼 송편</label>
+
+            <input type="radio" id="baby" name="songpyeon" value="baby">
+            <label for="baby">아기 토끼 송편</label>
+        </div>
+
+        <!-- 아빠 토끼 송편 (7x7 행렬) -->
+        <div class="songpyeon-container text-center" id="appa-container">
+            <h4>아빠 토끼 송편</h4>
+            <div id="appa-matrix" class="songpyeon-matrix"></div>
+        </div>
+
+        <!-- 엄마 토끼 송편 (5x5 행렬) -->
+        <div class="songpyeon-container text-center" id="mom-container" style="display:none;">
+            <h4>엄마 토끼 송편</h4>
+            <div id="mom-matrix" class="songpyeon-matrix"></div>
+        </div>
+
+        <!-- 아기 토끼 송편 (4x4 행렬) -->
+        <div class="songpyeon-container text-center" id="baby-container" style="display:none;">
+            <h4>아기 토끼 송편</h4>
+            <div id="baby-matrix" class="songpyeon-matrix"></div>
+        </div>
+
+        <!-- 버튼들 -->
+        <div class="button-container mt-4">
+            <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
+            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" target="_blank" class="btn btn-primary btn-lg px-4 py-2">실전으로 가기</a>
+        </div>
+
+    </div>
+
+    <!-- Footer Section -->
+    <footer class="mt-auto bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <h2>FC.GG</h2>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col text-center">
+                    <p>© FC.GG All rights reserved; FC ONLINE is a trademark of Nexon & Electronic Arts.</p>
+                    <p>문의 : hsyea203@naver.com / jtk5959@naver.com</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        const appaConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
+        const momConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'];
+        const babyConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'];
+
+        // Shuffle function
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Create matrix with hidden cards
+        function createMatrix(matrixId, config) {
+            const matrix = document.getElementById(matrixId);
+            matrix.innerHTML = ''; // Clear existing content
+            shuffle(config).forEach(type => {
+                const card = document.createElement('div');
+                card.classList.add('songpyeon-card');
+                
+                const front = document.createElement('div');
+                front.classList.add('card-front');
+                front.innerText = '?'; // 카드 앞면은 가려짐
+                
+                const back = document.createElement('div');
+                back.classList.add('card-back', type);
+                back.innerText = type.toUpperCase(); // 카드 등급 표시
+                
+                card.appendChild(front);
+                card.appendChild(back);
+                
+                card.addEventListener('click', () => {
+                    card.classList.add('revealed'); // 카드가 클릭되면 등급이 표시됨
+                    if (type === 'sss') {
+                        alert("SSS가 나왔습니다! 판을 초기화합니다.");
+                        resetAllBoards();
+                    }
+                });
+                
+                matrix.appendChild(card);
+            });
+        }
+
+        // Reset all boards
+        function resetAllBoards() {
+            createMatrix('appa-matrix', appaConfig);
+            createMatrix('mom-matrix', momConfig);
+            createMatrix('baby-matrix', babyConfig);
+        }
+
+        // Event listener for 송편 선택
+        document.querySelectorAll('input[name="songpyeon"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('appa-container').style.display = 'none';
+                document.getElementById('mom-container').style.display = 'none';
+                document.getElementById('baby-container').style.display = 'none';
+                if (this.value === 'appa') {
+                    document.getElementById('appa-container').style.display = 'block';
+                } else if (this.value === 'mom') {
+                    document.getElementById('mom-container').style.display = 'block';
+                } else if (this.value === 'baby') {
+                    document.getElementById('baby-container').style.display = 'block';
+                }
+            });
+        });
+
+        // Reset button event listener
+        document.getElementById('reset-board').addEventListener('click', resetAllBoards);
+
+        // Initial load
+        resetAllBoards();
+    </script>
+</body>
+</html>
