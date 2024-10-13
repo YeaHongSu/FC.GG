@@ -200,7 +200,10 @@
         <!-- 버튼들 -->
         <div class="button-container mt-4">
             <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
-            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" target="_blank" class="btn btn-primary btn-lg px-4 py-2">실전으로 가기</a>
+            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" 
+               target="_blank" 
+               class="btn btn-primary btn-lg px-4 py-2" 
+               id="real-action-button">실전으로 가기</a>
         </div>
 
     </div>
@@ -291,6 +294,15 @@
                 } else if (this.value === 'baby') {
                     document.getElementById('baby-container').style.display = 'block';
                 }
+            });
+        });
+
+        document.getElementById('real-action-button').addEventListener('click', function() {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': 'realActionButtonClick',
+                'button_text': '실전으로 가기',
+                'page_url': window.location.href
             });
         });
 
