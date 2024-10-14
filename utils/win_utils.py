@@ -71,7 +71,7 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
             modified_win_rate = modified_win_count / len(y_pred_modified)
             win_rate_improvement = modified_win_rate - original_win_rate
 
-            if 0.005 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
+            if 0.05 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
                 improved_features = [data_label[i] for i in top_features_indices]
                 improved_features_text = "\n".join([
                     f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
