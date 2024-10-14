@@ -57,7 +57,7 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
         indices = np.argsort(importances)[::-1]
         top_features_indices = indices[:top_n]
 
-        for increase_ratio in np.arange(0.01, 0.7, 0.005):
+        for increase_ratio in np.arange(0.05, 0.7, 0.005):
             X_test_modified = X_test_imputed.copy()
             original_feature_values = X_test_imputed.mean(axis=0)
             modified_feature_values = original_feature_values.copy()
@@ -71,7 +71,7 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
             modified_win_rate = modified_win_count / len(y_pred_modified)
             win_rate_improvement = modified_win_rate - original_win_rate
 
-            if 0.05 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
+            if 0.01 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
                 improved_features = [data_label[i] for i in top_features_indices]
                 improved_features_text = "\n".join([
                     f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
