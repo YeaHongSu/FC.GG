@@ -13,9 +13,9 @@ def augment_data(X, y, random_state=42):
 
     win_count, lose_count, draw_count = len(win_data), len(lose_data), len(draw_data)
 
-    win_data_resampled = np.array(resample(win_data, replace=True, n_samples=win_count * 2, random_state=random_state)) if win_count > 0 else np.array(win_data)
-    lose_data_resampled = np.array(resample(lose_data, replace=True, n_samples=lose_count * 2, random_state=random_state)) if lose_count > 0 else np.array(lose_data)
-    draw_data_resampled = np.array(resample(draw_data, replace=True, n_samples=draw_count * 2, random_state=random_state)) if draw_count > 0 else np.array(draw_data)
+    win_data_resampled = np.array(resample(win_data, replace=True, n_samples=win_count * 3, random_state=random_state)) if win_count > 0 else np.array(win_data)
+    lose_data_resampled = np.array(resample(lose_data, replace=True, n_samples=lose_count * 3, random_state=random_state)) if lose_count > 0 else np.array(lose_data)
+    draw_data_resampled = np.array(resample(draw_data, replace=True, n_samples=draw_count * 3, random_state=random_state)) if draw_count > 0 else np.array(draw_data)
 
     resampled_data = [win_data_resampled, lose_data_resampled, draw_data_resampled]
     resampled_data = [data for data in resampled_data if len(data) > 0]
@@ -36,12 +36,12 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
     X_train, X_test, y_train, y_test = train_test_split(imp_data, w_l_data, test_size=0.2, random_state=random_state)
 
     # NaN 값 처리
-    imputer = SimpleImputer(strategy='mean')
+    imputer = SimpleImputer(strategy='constant', fill_value=0)
     X_train_imputed = imputer.fit_transform(X_train)
     X_test_imputed = imputer.transform(X_test)
 
     # 랜덤 포레스트 모델 정의 (기본 파라미터)
-    rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=random_state)
+    rf = RandomForestClassifier(n_estimators=5, max_depth=5, bootstrap = False, min_samples_split = 0.15, min_samples_leaf = 0.15, random_state=random_state)
     rf.fit(X_train_imputed, y_train)
 
     y_pred = rf.predict(X_test_imputed)
@@ -57,7 +57,7 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
         indices = np.argsort(importances)[::-1]
         top_features_indices = indices[:top_n]
 
-        for increase_ratio in np.arange(0.1, 0.7, 0.1):
+        for increase_ratio in np.arange(0.01, 0.7, 0.005):
             X_test_modified = X_test_imputed.copy()
             original_feature_values = X_test_imputed.mean(axis=0)
             modified_feature_values = original_feature_values.copy()
@@ -71,7 +71,7 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
             modified_win_rate = modified_win_count / len(y_pred_modified)
             win_rate_improvement = modified_win_rate - original_win_rate
 
-            if 0.05 <= win_rate_improvement <= 0.40:
+            if 0.001 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
                 improved_features = [data_label[i] for i in top_features_indices]
                 improved_features_text = "\n".join([
                     f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
