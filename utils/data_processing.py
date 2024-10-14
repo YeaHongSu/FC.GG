@@ -25,6 +25,7 @@ def determine_play_style(max_data, min_data):
     penalty_specialist_count = 0
     long_shot_master_count = 0
     dribble_master_count = 0
+    card_collector_count = 0  # 옐로우 카드 수집가 카운터
 
     # 공격 지표
     attack_labels = ['평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 골 수', '평균 패널티 안쪽 골 수']
@@ -49,6 +50,9 @@ def determine_play_style(max_data, min_data):
     
     # 드리블 마스터
     dribble_labels = ['평균 드리블 수']
+    
+    # 옐로우 카드 수집가
+    card_labels = ['평균 옐로우 카드 수']
 
     # 상위 지표 분석
     for idx, value in max_data:
@@ -68,9 +72,13 @@ def determine_play_style(max_data, min_data):
             long_shot_master_count += 1
         elif data_label[idx] in dribble_labels:
             dribble_master_count += 1
+        elif data_label[idx] in card_labels:  # 옐로우 카드 수집가 조건
+            card_collector_count += 1
 
     # 플레이 스타일 결정
-    if attack_count >= 3:
+    if card_collector_count >= 1:
+        return "악질 카드 수집가"
+    elif attack_count >= 3:
         return "공격형 플레이어"
     elif defense_count >= 3:
         return "방어형 플레이어"
