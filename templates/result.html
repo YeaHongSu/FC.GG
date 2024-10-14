@@ -280,10 +280,10 @@
         const winRateChart = new Chart(ctx, {
             type: 'doughnut',  // 도넛 차트로 변경
             data: {
-                labels: ['승리', '패배'],
+                labels: ['승리', '무승부', '패배'],  // '무승부'를 추가
                 datasets: [{
-                    data: [matchResults.win, matchResults.lose],
-                    backgroundColor: ['#3b82f6', '#ef4444'],  // 승리: 파란색, 패배: 빨간색
+                    data: [matchResults.win, matchResults.draw, matchResults.lose],  // 'matchResults.draw'를 추가
+                    backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],  // 승리: 파란색, 무승부: 노란색, 패배: 빨간색
                     hoverOffset: 4
                 }]
             },
