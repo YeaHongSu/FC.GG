@@ -253,20 +253,32 @@
         const momConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'];
         const babyConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'];
 
-        // Shuffle function
-        function shuffle(array) {
+        // Shuffle function with B rule for C cards
+        function shuffleWithBRule(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [array[i], array[j]] = [array[j], array[i]];
             }
+
+            // Ensure 'C' cards are followed and preceded by 'B' or higher
+            for (let i = 0; i < array.length; i++) {
+                if (array[i] === 'c') {
+                    if (i > 0 && array[i - 1] === 'c') {
+                        array[i - 1] = 'b'; // Replace the previous card if it's 'c'
+                    }
+                    if (i < array.length - 1 && array[i + 1] === 'c') {
+                        array[i + 1] = 'b'; // Replace the next card if it's 'c'
+                    }
+                }
+            }
             return array;
         }
 
-        // Create matrix with hidden cards
+        // Create matrix with hidden cards ensuring the B rule
         function createMatrix(matrixId, config) {
             const matrix = document.getElementById(matrixId);
             matrix.innerHTML = ''; // Clear existing content
-            shuffle(config).forEach(type => {
+            shuffleWithBRule(config).forEach(type => {
                 const card = document.createElement('div');
                 card.classList.add('songpyeon-card');
                 
@@ -324,6 +336,7 @@
 
         // Initial load
         resetAllBoards();
+
     </script>
 </body>
 </html>
