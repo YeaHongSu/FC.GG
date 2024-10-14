@@ -233,23 +233,35 @@
         const totalGames = matchResults.win + matchResults.draw + matchResults.lose;
         const winRate = (matchResults.win / totalGames * 100).toFixed(2);  // 승률 계산
 
-        // 승률 퍼센트 표시 업데이트
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('winRatePercentage').textContent = `${winRate}%`;
-
+        
             // 승률 메시지 업데이트
             const winRateMessage = document.getElementById('winRateMessage');
-            if (winRate < 50) {
+            if (winRate < 30) {
+                winRateMessage.textContent = "유저님 혹시 패작.. 아니시죠?";
+                winRateMessage.style.color = '#ef4444'; // 빨간색
+            } else if (winRate >= 30 && winRate < 40) {
+                winRateMessage.textContent = "이건 팀의 문제이거나.. 손의 문제일 수도 있어요..!";
+                winRateMessage.style.color = '#ef4444'; // 빨간색
+            } else if (winRate >= 40 && winRate < 50) {
                 winRateMessage.textContent = "승률이 50% 미만입니다.. 이대로 지고만 계실건가요?";
                 winRateMessage.style.color = '#ef4444'; // 빨간색
-            } else if (winRate >= 50 && winRate < 70) {
-                winRateMessage.textContent = "최근 경기력이 좋습니다! 이대로만 하죠!";
+            } else if (winRate >= 50 && winRate < 60) {
+                winRateMessage.textContent = "최근 경기력이 좋습니다! 더 잘해지실 수 있어요!";
                 winRateMessage.style.color = '#ffc107'; // 노란색
+            } else if (winRate >= 60 && winRate < 70) {
+                winRateMessage.textContent = "최근 경기력이 거의 12시인데요?!";
+                winRateMessage.style.color = '#ffc107'; // 노란색
+            } else if (winRate >= 70 && winRate < 80) {
+                winRateMessage.textContent = "완전.. 부캐의 냄새가 나는데요?";
+                winRateMessage.style.color = '#4CAF50'; // 녹색
             } else {
-                winRateMessage.textContent = "해당 티어의 유저가 아니신 것 같은데요?";
+                winRateMessage.textContent = "유저님 혹시.. 프로게이머이신가요?";
                 winRateMessage.style.color = '#4CAF50'; // 녹색
             }
         });
+
 
         // 검색 버튼 클릭 이벤트
         document.getElementById("search_button").addEventListener("click", function(){
