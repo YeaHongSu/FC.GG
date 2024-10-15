@@ -15,6 +15,21 @@ data_label = ['평균 파울 수', '평균 옐로우 카드 수', '평균 드리
                   '평균 차단 시도 수', '평균 차단 성공 수', '평균 차단 성공률',
                   '평균 태클 시도 수', '평균 태클 성공 수', '평균 태클 성공률']
 
+data_label = ['평균 파울 수', '평균 옐로우 카드 수', '평균 드리블 수', '평균 코너킥 수', '평균 오프사이드 수',
+                  '평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 유효 슈팅 수', '슈팅 수 대비 골 수',
+                  '평균 헤딩 슛 수', '평균 헤더 골 수', '헤더 골 성공률',  '헤더 골 비율',
+                  '평균 프리킥 슛 수', '평균 프리킥 골 수', '프리킥 골 성공률', '프리킥 골 비율',
+                  '평균 패널티 안쪽 슛 수', '평균 패널티 안쪽 골 수', '패널티 안쪽 골 성공률', '패널티 안쪽 골 비율',
+                  '평균 패널티 바깥쪽 슛 수', '평균 패널티 바깥쪽 골 수', '패널티 바깥쪽 골 성공률', '패널티 바깥쪽 골 비율',
+                  '평균 패스 시도', '평균 패스 성공', '평균 패스 성공률',
+                  '평균 숏패스 시도 수', '평균 숏패스 성공 수', '평균 숏패스 성공률',
+                  '평균 롱패스 시도 수', '평균 롱패스 성공 수', '평균 롱패스 성공률',
+                  '평균 드라이브땅볼패스 시도 수', '평균 드라이브땅볼패스 성공 수', '평균 드라이브땅볼패스 성공률',
+                  '평균 스루패스 시도 수', '평균 스루패스 성공 수', '평균 스루패스 성공률',
+                  '평균 로빙스루패스 시도 수', '평균 로빙스루패스 성공 수', '평균 로빙스루패스 성공률',
+                  '평균 차단 시도 수', '평균 차단 성공 수', '평균 차단 성공률',
+                  '평균 태클 시도 수', '평균 태클 성공 수', '평균 태클 성공률', '평균 오프사이드 수']
+
 def determine_play_style(max_data, min_data):
     # 각 플레이 스타일별 카운터
     attack_count = 0
@@ -30,6 +45,7 @@ def determine_play_style(max_data, min_data):
     tackler_count = 0  # 태클러
     card_collector_count = 0  # 옐로우 카드 수집가 카운터
     lob_pass_master_count = 0  # 로빙스루패스 마스터
+    offside_count = 0  # 오프사이드 수 카운터
 
     # 공격 지표
     attack_labels = ['평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 골 수', '평균 패널티 안쪽 골 수']
@@ -70,6 +86,9 @@ def determine_play_style(max_data, min_data):
     # 옐로우 카드 수집가
     card_labels = ['평균 옐로우 카드 수']
 
+    # 오프사이드 수 체크
+    offside_labels = ['평균 오프사이드 수']
+
     # 상위 지표 분석
     for idx, value in max_data:
         if data_label[idx] in attack_labels:
@@ -98,9 +117,13 @@ def determine_play_style(max_data, min_data):
             lob_pass_master_count += 1
         elif data_label[idx] in card_labels:
             card_collector_count += 1
+        elif data_label[idx] in offside_labels:
+            offside_count += 1
 
     # 세분화된 플레이 스타일 결정
-    if card_collector_count >= 1:
+    if offside_count >= 1:
+        return "옵사 기준을 모르는 플레이어"
+    elif card_collector_count >= 1:
         return "악질 카드 수집가"
     elif lob_pass_master_count >= 2:
         return "공이 공중에만 떠 있는 플레이어"  # 로빙스루패스 마스터
@@ -123,7 +146,7 @@ def determine_play_style(max_data, min_data):
     elif penalty_specialist_count >= 2 and long_shot_master_count >= 2:
         return "다재다능 공격 플레이어"
     elif tackler_count >= 2:
-        return "A 없으면 게임 못 하는 플레이어"  # 방어와 태클을 동시에 잘하는 선수
+        return "A 없으면 게임 못 하는 플레이어"  # 방어와 태클을 동시에 잘하는 선수
     elif defense_count >= 3:
         return "수비의 신"
     elif attack_count >= 3:
@@ -142,8 +165,6 @@ def determine_play_style(max_data, min_data):
         return "드리블 마스터"
     else:
         return "굴리트급 육각형 플레이어"
-
-
 
 # zero_division 문제 해결
 def is_zero(a, b):
