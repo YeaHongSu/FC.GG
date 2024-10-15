@@ -18,20 +18,32 @@ data_label = ['평균 파울 수', '평균 옐로우 카드 수', '평균 드리
 def determine_play_style(max_data, min_data):
     # 각 플레이 스타일별 카운터
     attack_count = 0
-    defense_count = 0
+    finisher_count = 0  # 마무리형 공격수
+    dribbler_count = 0
     playmaker_count = 0
     setpiece_master_count = 0
     header_specialist_count = 0
     penalty_specialist_count = 0
     long_shot_master_count = 0
-    dribble_master_count = 0
+    defense_count = 0
+    interceptor_count = 0  # 인터셉터 (차단 전문)
+    tackler_count = 0  # 태클러
     card_collector_count = 0  # 옐로우 카드 수집가 카운터
 
     # 공격 지표
     attack_labels = ['평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 골 수', '평균 패널티 안쪽 골 수']
     
+    # 마무리형 공격수 지표 (골을 넣는 데 집중)
+    finisher_labels = ['슈팅 수 대비 골 수', '평균 헤더 골 수', '평균 프리킥 골 수', '평균 패널티 안쪽 골 수']
+    
     # 방어 지표
     defense_labels = ['평균 차단 성공 수', '평균 태클 성공 수', '평균 차단 시도 수', '평균 태클 시도 수']
+    
+    # 인터셉터 (차단에 집중하는 플레이어)
+    interceptor_labels = ['평균 차단 시도 수', '평균 차단 성공 수']
+    
+    # 태클러 (태클에 집중하는 플레이어)
+    tackler_labels = ['평균 태클 시도 수', '평균 태클 성공 수']
     
     # 패스 지표 (플레이메이커)
     pass_labels = ['평균 패스 성공', '평균 숏패스 성공 수', '평균 롱패스 성공 수', '평균 스루패스 성공 수', '평균 로빙스루패스 성공 수']
@@ -58,8 +70,14 @@ def determine_play_style(max_data, min_data):
     for idx, value in max_data:
         if data_label[idx] in attack_labels:
             attack_count += 1
+        elif data_label[idx] in finisher_labels:
+            finisher_count += 1
         elif data_label[idx] in defense_labels:
             defense_count += 1
+        elif data_label[idx] in interceptor_labels:
+            interceptor_count += 1
+        elif data_label[idx] in tackler_labels:
+            tackler_count += 1
         elif data_label[idx] in pass_labels:
             playmaker_count += 1
         elif data_label[idx] in setpiece_labels:
@@ -71,31 +89,50 @@ def determine_play_style(max_data, min_data):
         elif data_label[idx] in long_shot_labels:
             long_shot_master_count += 1
         elif data_label[idx] in dribble_labels:
-            dribble_master_count += 1
-        elif data_label[idx] in card_labels:  # 옐로우 카드 수집가 조건
+            dribbler_count += 1
+        elif data_label[idx] in card_labels:
             card_collector_count += 1
 
-    # 플레이 스타일 결정
+    # 세분화된 플레이 스타일 결정
     if card_collector_count >= 1:
         return "악질 카드 수집가"
-    elif attack_count >= 3:
-        return "공격형 플레이어"
+    elif finisher_count >= 2 and attack_count >= 2:
+        return "공격적인 피니셔"  # 공격과 마무리를 동시에 잘하는 선수
+    elif finisher_count >= 2 and header_specialist_count >= 2:
+        return "헤더 마무리의 신"
+    elif attack_count >= 2 and dribbler_count >= 1:
+        return "공격형 드리블러"  # 공격 능력과 드리블 능력을 동시에 가진 플레이어
+    elif defense_count >= 2 and tackler_count >= 2:
+        return "방어적인 태클러"  # 방어와 태클을 동시에 잘하는 선수
+    elif interceptor_count >= 2 and defense_count >= 2:
+        return "완벽한 차단기"  # 방어형 플레이어이면서 차단에 특화된 선수
+    elif playmaker_count >= 2 and dribbler_count >= 1:
+        return "드리블형 플레이메이커"  # 드리블을 잘하는 패스 전문가
+    elif playmaker_count >= 2 and long_shot_master_count >= 2:
+        return "중거리형 플레이메이커"  # 중거리 슛에 강한 패스 전문가
+    elif setpiece_master_count >= 2 and header_specialist_count >= 2:
+        return "헤더와 프리킥 날먹의 신"
+    elif penalty_specialist_count >= 2 and long_shot_master_count >= 2:
+        return "다재다능 공격 플레이어"
     elif defense_count >= 3:
-        return "방어형 플레이어"
+        return "수비의 신"
+    elif attack_count >= 3:
+        return "공격의 신"
     elif playmaker_count >= 3:
         return "플레이메이커"
     elif setpiece_master_count >= 2:
-        return "프리킥의 마술사"
+        return "프리킥 딸깍의 신"
     elif header_specialist_count >= 2:
-        return "헤더 전문 플레이어"
+        return "헤더 날먹의 신"
     elif penalty_specialist_count >= 2:
-        return "패널티박스 전문가"
+        return "패널티박스에만 사는 플레이어"
     elif long_shot_master_count >= 2:
-        return "중거리 마스터"
-    elif dribble_master_count >= 1:
+        return "중거리 딸각의 신"
+    elif dribbler_count >= 1:
         return "드리블 마스터"
     else:
         return "균형 잡힌 플레이어"
+
 
 # zero_division 문제 해결
 def is_zero(a, b):
