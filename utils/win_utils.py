@@ -28,12 +28,9 @@ def augment_data(X, y, random_state=42):
     else:
         raise ValueError("모든 클래스 데이터의 열 수가 같지 않거나 데이터가 부족합니다.")
 
-# 승률 개선 계산 함수
-def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, random_state=42):
-    imp_data, w_l_data = augment_data(imp_data, w_l_data, random_state=random_state)
-
+def rf_train(original_win_rate, imp_data, w_l_data, data_label, t_s, n_es, max_d, mss, msl, min_inc, max_inc, min_win, max_win):
     # 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(imp_data, w_l_data, test_size=0.2, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(imp_data, w_l_data, test_size=t_s, random_state=42)
 
     # NaN 값 처리
     imputer = SimpleImputer(strategy='constant', fill_value=0)
@@ -41,23 +38,20 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
     X_test_imputed = imputer.transform(X_test)
 
     # 랜덤 포레스트 모델 정의 (기본 파라미터)
-    rf = RandomForestClassifier(n_estimators=5, max_depth=5, bootstrap = False, min_samples_split = 0.15, min_samples_leaf = 0.15, random_state=random_state)
+    rf = RandomForestClassifier(n_estimators=n_es, max_depth=max_d, bootstrap = False, min_samples_split = mss, min_samples_leaf = msl, random_state=42)
     rf.fit(X_train_imputed, y_train)
 
     y_pred = rf.predict(X_test_imputed)
     accuracy = accuracy_score(y_test, y_pred)
     print(f"Random Forest 모델의 정확도: {accuracy * 100:.2f}%")
 
-    win_count = sum(1 for result in w_l_data if result == '승')
-    original_win_rate = win_count / len(w_l_data)
-
     # 상위 N개의 중요한 특성에 대해 승률 개선 계산
-    for top_n in range(3, 11):
+    for top_n in range(2, 11):
         importances = np.abs(rf.feature_importances_)
         indices = np.argsort(importances)[::-1]
         top_features_indices = indices[:top_n]
 
-        for increase_ratio in np.arange(0.05, 0.7, 0.005):
+        for increase_ratio in np.arange(min_inc, max_inc, 0.001):
             X_test_modified = X_test_imputed.copy()
             original_feature_values = X_test_imputed.mean(axis=0)
             modified_feature_values = original_feature_values.copy()
@@ -71,12 +65,28 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, who_is_next, rando
             modified_win_rate = modified_win_count / len(y_pred_modified)
             win_rate_improvement = modified_win_rate - original_win_rate
 
-            if 0.01 <= win_rate_improvement <= 0.60 and modified_win_rate < 1:
+            if min_win <= win_rate_improvement <= max_win and modified_win_rate < 1:
                 improved_features = [data_label[i] for i in top_features_indices]
                 improved_features_text = "\n".join([
                     f"{feature}: {original_feature_values[i]:.2f} -> {modified_feature_values[i]:.2f}"
                     for feature, i in zip(improved_features, top_features_indices)
                 ])
                 return top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement
-
+        
     return 0, 0, "", original_win_rate, original_win_rate, 0
+                
+
+# 승률 개선 계산 함수
+def calculate_win_improvement(imp_data, w_l_data, data_label, random_state=42):
+    imp_data, w_l_data = augment_data(imp_data, w_l_data, random_state=random_state)
+
+    win_count = sum(1 for result in w_l_data if result == '승')
+    original_win_rate = win_count / len(w_l_data)
+
+    if original_win_rate > 0.5:
+        return rf_train(original_win_rate = original_win_rate, imp_data = imp_data, w_l_data = w_l_data, data_label = data_label, 
+        t_s = 0.25, n_es = 7, max_d = 5, mss = 0.17, msl = 0.17, min_inc = 0.03, max_inc = 0.7, min_win = 0.01, max_win = 0.4)
+    elif original_win_rate <= 0.5:
+        return rf_train(original_win_rate = original_win_rate, imp_data = imp_data, w_l_data = w_l_data, data_label = data_label, 
+        t_s= 0.2, n_es = 10, max_d = 5, mss = 0.1, msl = 0.1, min_inc = 0.05, max_inc = 0.7, min_win = 0.01, max_win = 0.6)
+    
