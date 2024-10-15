@@ -212,7 +212,7 @@ def wr_result():
         response = requests.get(urlString, headers=headers)
         matches = response.json()
 
-        if len(matches) == 0:
+        if len(matches) <= 5:
             flash("경기 수가 부족하여 검색이 불가능합니다")
             return redirect(url_for('home'))
 
@@ -225,21 +225,15 @@ def wr_result():
             response = requests.get(urlString, headers=headers)
             data = response.json()
 
-            date = calculate_time_difference(data['matchDate'])
             my_data = me(data, character_name)
-            your_data = you(data, character_name)
             imp = data_list(my_data)
+           
             if imp == None:
                 continue
+               
             w_l = my_data['matchDetail']['matchResult']
-
-            my_goal_total = my_data['shoot']['goalTotal']
-            your_goal_total = your_data['shoot']['goalTotal']
             match_data = {
-                '매치 날짜': date,
-                '결과': w_l,
-                '플레이어 1 vs 플레이어 2': f'{my_data["nickname"]} vs {your_data["nickname"]}',
-                '스코어': f'{my_goal_total}:{your_goal_total}'
+                '결과': w_l
             }
             result_list.append(match_data)
             imp_data.append(imp)
@@ -266,7 +260,7 @@ def wr_result():
         max_data = zip(filtered_max_idx, filtered_max_values)
         min_data = zip(filtered_min_idx, filtered_min_values)
 
-        top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = calculate_win_improvement(imp_data, w_l_data, data_label, character_name)
+        top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = calculate_win_improvement(imp_data, w_l_data, data_label)
 
         return render_template('wr_result.html', my_data=my_data, match_data=result_list, level_data=level_data, 
                                max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
