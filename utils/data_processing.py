@@ -29,6 +29,7 @@ def determine_play_style(max_data, min_data):
     interceptor_count = 0  # 인터셉터 (차단 전문)
     tackler_count = 0  # 태클러
     card_collector_count = 0  # 옐로우 카드 수집가 카운터
+    lob_pass_master_count = 0  # 로빙스루패스 마스터
 
     # 공격 지표
     attack_labels = ['평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 골 수', '평균 패널티 안쪽 골 수']
@@ -63,6 +64,9 @@ def determine_play_style(max_data, min_data):
     # 드리블 마스터
     dribble_labels = ['평균 드리블 수']
     
+    # 로빙스루패스 마스터
+    lob_pass_labels = ['평균 로빙스루패스 시도 수', '평균 로빙스루패스 성공 수', '평균 로빙스루패스 성공률']
+
     # 옐로우 카드 수집가
     card_labels = ['평균 옐로우 카드 수']
 
@@ -90,19 +94,23 @@ def determine_play_style(max_data, min_data):
             long_shot_master_count += 1
         elif data_label[idx] in dribble_labels:
             dribbler_count += 1
+        elif data_label[idx] in lob_pass_labels:
+            lob_pass_master_count += 1
         elif data_label[idx] in card_labels:
             card_collector_count += 1
 
     # 세분화된 플레이 스타일 결정
     if card_collector_count >= 1:
         return "악질 카드 수집가"
-    elif finisher_count >= 2 and attack_count >= 2:
+    elif lob_pass_master_count >= 2:
+        return "공이 공중에만 떠 있는 플레이어"  # 로빙스루패스 마스터
+    elif finisher_count >= 2 and attack_count >= 1:
         return "공격적인 피니셔"  # 공격과 마무리를 동시에 잘하는 선수
     elif finisher_count >= 2 and header_specialist_count >= 2:
         return "헤더 마무리의 신"
     elif attack_count >= 2 and dribbler_count >= 1:
         return "공격형 드리블러"  # 공격 능력과 드리블 능력을 동시에 가진 플레이어
-    elif defense_count >= 2 and tackler_count >= 2:
+    elif defense_count >= 1 and tackler_count >= 2:
         return "방어적인 태클러"  # 방어와 태클을 동시에 잘하는 선수
     elif interceptor_count >= 2 and defense_count >= 2:
         return "완벽한 차단기"  # 방어형 플레이어이면서 차단에 특화된 선수
@@ -114,6 +122,8 @@ def determine_play_style(max_data, min_data):
         return "헤더와 프리킥 날먹의 신"
     elif penalty_specialist_count >= 2 and long_shot_master_count >= 2:
         return "다재다능 공격 플레이어"
+    elif tackler_count >= 2:
+        return "A 없으면 게임 못 하는 플레이어"  # 방어와 태클을 동시에 잘하는 선수
     elif defense_count >= 3:
         return "수비의 신"
     elif attack_count >= 3:
@@ -131,7 +141,8 @@ def determine_play_style(max_data, min_data):
     elif dribbler_count >= 1:
         return "드리블 마스터"
     else:
-        return "균형 잡힌 플레이어"
+        return "굴리트급 육각형 플레이어"
+
 
 
 # zero_division 문제 해결
