@@ -222,3 +222,71 @@ body {
     transform: scale(1.1); /* 크기가 살짝 커지도록 */
     box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.6); /* 그림자가 더 커지고 진해짐 */
 }
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        padding: 0 15px; /* 모바일에서 좌우 여백 추가 */
+    }
+
+    .main-title {
+        font-size: 1.5rem; /* 모바일에서 제목 크기 조정 */
+    }
+
+    .position-container, .mt-4 {
+        max-width: 100%; /* 모바일에서 컨테이너의 최대 너비를 100%로 설정 */
+        padding: 15px; /* 내부 패딩 조정 */
+    }
+
+    .position-title {
+        font-size: 1.5rem; /* 모바일에서 제목 크기 조정 */
+        margin-bottom: 15px; /* 여백 조정 */
+    }
+
+    .nav-tabs .nav-link {
+        font-size: 0.9rem; /* 모바일에서 탭 글씨 크기 줄임 */
+        padding: 8px 15px; /* 탭 패딩 줄임 */
+    }
+
+    .tier-header, .tier-item {
+        grid-template-columns: 1fr 1fr; /* 모바일에서 그리드 열 비율 조정 */
+        gap: 5px; /* 모바일에서 열 간격 줄임 */
+    }
+
+    .tier-icon {
+        width: 60px; /* 아이콘 크기 조정 */
+        height: 30px; /* 아이콘 높이 조정 */
+        line-height: 30px; /* 텍스트 중앙 정렬을 위해 높이와 동일하게 설정 */
+        font-size: 0.9rem; /* 텍스트 크기 조정 */
+    }
+
+    .tier-container {
+        flex-direction: column; /* 모바일에서는 한 줄로 쌓이도록 설정 */
+    }
+
+    .tier-column {
+        font-size: 0.9rem; /* 글씨 크기 줄임 */
+    }
+
+    .search-container {
+        max-width: 100%; /* 검색창 너비를 100%로 설정 */
+        margin-bottom: 15px; /* 여백 줄임 */
+    }
+
+    .dropdown-container {
+        display: block; /* 드롭다운 메뉴를 한 줄에 표시 */
+        margin-bottom: 10px; /* 아래 여백 추가 */
+    }
+
+    .dropdown {
+        margin-left: 0; /* 드롭다운 메뉴의 좌측 여백 제거 */
+    }
+
+    .tier-item {
+        padding: 10px 5px; /* 내부 패딩 줄임 */
+    }
+
+    .tier-column:nth-child(1) {
+        text-align: left; /* 첫 번째 열 텍스트 왼쪽 정렬 */
+    }
+}
