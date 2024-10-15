@@ -213,7 +213,7 @@ def wr_result():
         matches = response.json()
 
         if len(matches) <= 5:
-            flash("경기 수가 부족하여 검색이 불가능합니다")
+            flash("경기 수가 부족하여 검색이 불가능합니다 (최소 5경기가 필요합니다)")
             return redirect(url_for('home'))
 
         result_list = []
