@@ -58,6 +58,12 @@
             width: 3rem;
             height: 3rem;
         }
+        .loading-message {
+            font-size: 1.2rem;
+            color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
+            text-align: center;
+            margin-top: 10px; /* 로딩 스피너와 간격 */
+        }
     </style>
 </head>
 <body>
@@ -65,10 +71,14 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX3HQ7FD"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
-        <!-- 로딩창 -->
+    <!-- 로딩창 -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner-border text-success" role="status">
             <span class="visually-hidden">Loading...</span>
+        </div>
+        <!-- 추가된 텍스트 -->
+        <div class="loading-message mt-3">
+            유저님의 경기들을 분석 중입니다! 잠시만 기다려 주세요!
         </div>
     </div>
     <!-- Header Section -->
