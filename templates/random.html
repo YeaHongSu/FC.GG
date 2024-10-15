@@ -224,7 +224,15 @@
         <!-- 버튼들 -->
         <div class="button-container mt-4">
             <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
-            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" target="_blank" class="btn btn-primary btn-lg px-4 py-2">실전으로 가기</a>
+            
+            <!-- Modify the 실전으로 가기 button to include a GTM event trigger -->
+            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" 
+               target="_blank" 
+               class="btn btn-primary btn-lg px-4 py-2" 
+               id="real-action-button"
+               onclick="trackButtonClick();">
+               실전으로 가기
+            </a>
         </div>
 
     </div>
@@ -301,7 +309,7 @@
                         setTimeout(() => {
                             alert("SSS가 나왔습니다! 판을 초기화합니다.");
                             resetAllBoards();
-                        }, 300); // 500ms 지연 후 알림창 표시
+                        }, 150); // 500ms 지연 후 알림창 표시
                     }
                 });
 
@@ -338,6 +346,18 @@
 
         // Initial load
         resetAllBoards();
+
+        // GTM Event Trigger for the button
+        function trackButtonClick() {
+            window.dataLayer = window.dataLayer || [];
+            dataLayer.push({
+                'event': 'realActionButtonClick',  // Event Name
+                'click_text': '실전으로 가기',      // Button Text
+                'page_url': window.location.href,   // Current Page URL
+                'button_id': 'real-action-button',  // Button ID
+                'event_action': 'realActionButtonClick' // Custom Action
+            });
+        }
 
     </script>
 </body>
