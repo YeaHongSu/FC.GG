@@ -190,3 +190,42 @@ body {
     background-color: #343a40; /* Hover 시 어두운 배경색 */
     color: #fff;
 }
+
+@media (max-width: 768px) {
+    .custom-container {
+        max-width: 100%; /* 모바일에서는 최대 너비를 화면에 맞게 설정 */
+        padding: 0 10px; /* 모바일에서는 여백을 조금 줄임 */
+    }
+
+    .half-width {
+        flex: 1 1 100%; /* 모바일에서는 두 개의 요소가 세로로 쌓이도록 설정 */
+        min-width: 100%; /* 최소 너비를 화면에 맞게 설정 */
+        margin: 5px 0; /* 여백을 조금 줄임 */
+    }
+
+    .match-info-header {
+        flex-direction: column; /* 헤더가 세로로 배치되도록 설정 */
+        padding: 10px 5px; /* 모바일에서는 패딩을 줄임 */
+    }
+
+    .match-info-header span {
+        font-size: 1rem; /* 글씨 크기를 줄임 */
+    }
+
+    .match-row {
+        flex-direction: column; /* 매치 행도 세로로 쌓이도록 설정 */
+        padding: 10px; /* 패딩을 줄여서 모바일에서 공간을 절약 */
+    }
+
+    .match-row span {
+        font-size: 0.9rem; /* 글씨 크기를 줄여서 화면에 잘 맞도록 설정 */
+    }
+
+    .score {
+        font-size: 1.2rem; /* 스코어 글씨 크기를 모바일에 맞게 줄임 */
+    }
+
+    .result {
+        font-size: 1rem; /* 결과 글씨 크기를 줄임 */
+    }
+}
