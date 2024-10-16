@@ -25,9 +25,12 @@
     <!-- End Google Tag Manager -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700&family=Montserrat:wght@700&family=Poppins:wght@700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" href="{{ url_for('static', filename='FCGGlogo.PNG') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='fcgglogo.ico') }}">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/tier_style.css">
+    <!-- Open Graph Meta Tags for customizing the thumbnail -->
+    <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.ico', _external=True) }}">
+    <meta property="og:type" content="website">
     <title>FC.GG - 포지션별 선수 티어 제공 서비스</title>
 </head>
 <body>
