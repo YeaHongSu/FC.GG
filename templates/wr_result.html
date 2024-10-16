@@ -25,12 +25,15 @@
     <!-- End Google Tag Manager -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700&family=Montserrat:wght@700&family=Poppins:wght@700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" href="{{ url_for('static', filename='FCGGlogo.PNG') }}" type="image/png">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>FC.GG - 승률 개선 결과</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/wr_style.css">
+    <link rel="icon" href="{{ url_for('static', filename='fcgglogo.ico') }}">
+    <!-- Open Graph Meta Tags for customizing the thumbnail -->
+    <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.ico', _external=True) }}">
+    <meta property="og:type" content="website">
 </head>
 <body>
     <!-- Google Tag Manager (noscript) -->
