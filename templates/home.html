@@ -142,6 +142,20 @@
                     <h4 class="mb-4 text-start"><span class="text-success">FC온라인</span> 채널 소식</h4>
                     <div class="news-item d-flex align-items-center mb-4">
                         <div class="video-thumbnail-container position-relative me-3">
+                            <a href="https://www.youtube.com/watch?v=e95vHAeFiao" target="_blank">
+                                <img src="https://img.youtube.com/vi/e95vHAeFiao/mqdefault.jpg" alt="YouTube Thumbnail" class="video-thumbnail img-fluid">
+                                <div class="play-button-overlay">
+                                    <i class="fas fa-play-circle play-button-icon"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="video-info">
+                            <p class="video-title mb-1">와 <strong style="color: #ff0000;">"발롱도르 시즌"</strong> 여기 진짜로 나오네요 CU두</p>
+                            <p class="video-date text-muted" id="video3-date"></p>
+                        </div>
+                    </div>
+                    <div class="news-item d-flex align-items-center mb-4">
+                        <div class="video-thumbnail-container position-relative me-3">
                             <a href="https://www.youtube.com/watch?v=m_iA4VX5ees" target="_blank">
                                 <img src="https://img.youtube.com/vi/m_iA4VX5ees/mqdefault.jpg" alt="YouTube Thumbnail" class="video-thumbnail img-fluid">
                                 <div class="play-button-overlay">
@@ -238,9 +252,10 @@
             return diffDays + "일 전";
         }
 
-        // 첫 번째, 두 번째 영상 날짜 자동 설정
+        // 첫 번째, 두 번째, 세 번째 영상 날짜 자동 설정
         document.getElementById("video1-date").textContent = calculateDaysAgo("2024-10-01");
         document.getElementById("video2-date").textContent = calculateDaysAgo("2024-09-26");
+        document.getElementById("video3-date").textContent = calculateDaysAgo("2024-10-10");
 
         // 공지사항 날짜 자동 설정
         document.getElementById("notice1-date").textContent = calculateDaysAgo("2024-10-06");
