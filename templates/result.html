@@ -62,7 +62,7 @@
     <header class="bg-white shadow-sm sticky-top">
         <div class="container d-flex flex-column align-items-center py-3">
             <!-- Title -->
-            <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" id = "search_button" href="/">FC.GG</a></h1> <!-- Poppins 폰트와 display-2 클래스를 사용해 통일 -->
+            <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" href="/">FC.GG</a></h1> <!-- Poppins 폰트와 display-2 클래스를 사용해 통일 -->
             <!-- Menu Toggle Button (Visible on Mobile) -->
         </div>
         <!-- Navigation Bar -->
@@ -278,14 +278,9 @@
 
 
         // 검색 버튼 클릭 이벤트
-        document.getElementById("search_button").addEventListener("click", function() {
+        document.getElementById("search_button").addEventListener("click", function(){
             var characterName = document.getElementById("character_name").value;
-            if (characterName.trim() !== "") {
-                showLoading(); // 로딩창 표시
-                setTimeout(function() {
-                    window.location.href = "/result.html?character_name=" + characterName;
-                }, 100); // 1초 후에 페이지 이동
-            }
+            window.location.href = "/result.html?character_name=" + characterName;
         });
 
         document.getElementById("character_name").addEventListener("keyup", function(event) {
