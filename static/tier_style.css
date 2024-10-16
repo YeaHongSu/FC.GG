@@ -20,7 +20,7 @@ body {
 }
 
 .mt-4 {
-    background-color: #ffffff; /* 상자 배경색 */
+    background-color: #f1f1f1; /* 상자 배경색 */
     border-radius: 10px; /* 모서리 둥글게 */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
     /* padding: 20px; */
