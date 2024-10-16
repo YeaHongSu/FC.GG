@@ -123,8 +123,6 @@ def determine_play_style(max_data, min_data):
     # 세분화된 플레이 스타일 결정
     if offside_count >= 1:
         return "옵사를 사랑하는 플레이어"
-    elif card_collector_count >= 1:
-        return "악질 카드 수집가"
     elif lob_pass_master_count >= 2:
         return "공이 위에만 있는 플레이어"  # 로빙스루패스 마스터
     elif finisher_count >= 2 and attack_count >= 1:
@@ -163,6 +161,8 @@ def determine_play_style(max_data, min_data):
         return "중거리 딸각의 신"
     elif dribbler_count >= 1:
         return "드리블 마스터"
+    elif card_collector_count >= 1:
+        return "악질 카드 수집가"
     else:
         return "굴리트급 육각형 플레이어"
 
