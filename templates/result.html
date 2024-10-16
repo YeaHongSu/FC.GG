@@ -296,7 +296,7 @@
             if (characterName.trim() !== "") {
                 showLoading(); // 로딩창 표시
                 setTimeout(function() {
-                    window.location.href = "/wr_result.html?character_name=" + characterName;
+                    window.location.href = "/result.html?character_name=" + characterName;
                 }, 10); // 1초 후에 페이지 이동
             }
         });
@@ -306,7 +306,7 @@
             showLoading();  // 로딩창 표시
             setTimeout(function() {
                 window.location.href = "/wr_result.html?character_name=" + nickname;
-            }, 1000);  // 1초 후 페이지 이동
+            }, 10);  // 1초 후 페이지 이동
         }
 
         function showLoading() {
