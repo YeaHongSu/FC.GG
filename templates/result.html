@@ -81,7 +81,6 @@
         <div class="container d-flex flex-column align-items-center py-3">
             <!-- Title -->
             <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" href="/">FC.GG</a></h1> <!-- Poppins 폰트와 display-2 클래스를 사용해 통일 -->
-            <!-- Menu Toggle Button (Visible on Mobile) -->
         </div>
         <!-- Navigation Bar -->
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -95,7 +94,6 @@
                         <li class="nav-item"><a class="nav-link" href="/player_tier.html">선수 티어</a></li>
                         <li class="nav-item"><a class="nav-link active" href="/random.html">빠칭코 연습실</a></li>
                         <li class="nav-item"><a class="nav-link" href="/calculate.html">수수료 계산기</a></li>
-                        <!-- Add more menu items if needed -->
                     </ul>
                 </div>
             </div>
@@ -117,13 +115,11 @@
         <!-- Player Info Section -->
         <div class="player-info d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">기본정보</h2>
-
             <div class="d-flex justify-content-between align-items-start">
-                <!-- 폰트 크기를 키우기 위한 스타일 적용 -->
                 <span class="nickname" style="font-size: 3rem; font-weight: bold;"><span class="text-success">{{ my_data.nickname }}</span></span>
 
                 <div class="d-flex flex-column align-items-end">
-                    <div class="d-flex align-items-center"> <!-- 레벨과 티어 이미지를 같은 라인에 두기 위해 추가 -->
+                    <div class="d-flex align-items-center">
                         <span class="tier" style="margin-right: 40px; font-size: 1.5rem;">레벨 : <span class="text-success">{{ level_data.level }}</span></span>
                         {% if level_data.tier_image %}
                         <span class="tier" style="margin-right: 10px; font-size: 1.5rem;">최고 티어 :</span><img src="{{ level_data.tier_image }}" alt="티어 이미지" style="width: 80px; height: auto;">
@@ -135,9 +131,6 @@
             </div>
         </div>
 
-
-                
-        
         <!-- Player Style Section -->
         <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">플레이 스타일</h2>
@@ -146,11 +139,9 @@
 
         <!-- Content Section -->
         <div class="d-flex justify-content-between">
-            <!-- 승률 원형 그래프 Section (왼쪽으로 이동) -->
             <div class="card mb-4 p-4 shadow-sm half-width">
                 <h2 class="card-title h4 text-center">최근 <span class="text-success">{{ match_data|length }}</span>경기 승률</h2>
                 <div class="card-body text-center">
-                    <!-- 총 경기 정보 -->
                     <p>총 {{ match_data|length }}전 {{ match_data | selectattr('결과', 'equalto', '승') | list | length }}승 
                     {{ match_data | selectattr('결과', 'equalto', '무') | list | length }}무 
                     {{ match_data | selectattr('결과', 'equalto', '패') | list | length }}패</p>
@@ -159,10 +150,8 @@
                         <canvas id="winRateChart" class="img-fluid"></canvas>
                         <div class="centered-percentage" id="winRatePercentage"></div>
                     </div>
-                    <!-- 승률 메시지 -->
                     <p class="win-rate-message" id="winRateMessage"></p>
                     
-                    <!-- 승률 개선 솔루션 버튼 추가 -->
                     <div class="improve-btn-container">
                         <p>나의 승률을 높이는 방법은?</p>
                         <a class="btn btn-primary" id="winRateButton" href="javascript:void(0);" onclick="goToWinRateResult('{{my_data.nickname}}')">승률 개선 솔루션</a>
@@ -182,7 +171,7 @@
                                 <span>{{ data_label[idx] }}</span>
                                 <div class="d-flex align-items-center">
                                     <strong class="text-success">{{ "%.2f"|format(value * 100) }}%</strong>
-                                    <span class="ms-2 text-success">&#9650;</span> <!-- 위쪽 화살표 -->
+                                    <span class="ms-2 text-success">&#9650;</span>
                                 </div>
                             </li>
                             {% endfor %}
@@ -196,7 +185,7 @@
                                 <span>{{ data_label[idx] }}</span>
                                 <div class="d-flex align-items-center">
                                     <strong class="text-danger">{{ "%.2f"|format(-value * 100) }}%</strong>
-                                    <span class="ms-2 text-danger">&#9660;</span> <!-- 아래쪽 화살표 -->
+                                    <span class="ms-2 text-danger">&#9660;</span>
                                 </div>
                             </li>
                             {% endfor %}
@@ -210,14 +199,12 @@
         <!-- 매치 정보 Section -->
         <div class="match-info-container">
             <h2 class="card-title h4" style="margin-bottom: 15px;">매치 정보</h2>
-            <!-- Match Info Header -->
             <div class="match-info-header d-flex justify-content-between p-2">
                 <span>매치 날짜</span>
                 <span>결과</span>
                 <span>나 vs 상대</span>
                 <span>스코어</span>
             </div>
-            <!-- Match Rows -->
             <div class="row">
                 {% for match in match_data %}
                 <div class="col-md-12">
@@ -238,13 +225,11 @@
     <footer style="background-color: #343a40;" class="text-white py-4 mt-5">
         <div class="container">
             <div class="row">
-                <!-- FC.GG 로고 중앙 정렬 -->
                 <div class="col-md-12 text-center">
                     <h2>FC.GG</h2>
                 </div>
             </div>
             <div class="row mt-5">
-                <!-- 하단 텍스트도 중앙 정렬 -->
                 <div class="col text-center">
                     <p>© FC.GG All rights reserved; FC ONLINE is a trademark of Nexon & Electronic Arts.</p>
                     <p>문의 : hsyea203@naver.com / jtk5959@naver.com</p>
@@ -267,8 +252,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('winRatePercentage').textContent = `${winRate}%`;
-        
-            // 승률 메시지 업데이트
+
             const winRateMessage = document.getElementById('winRateMessage');
             if (winRate < 30) {
                 winRateMessage.textContent = "유저님 혹시 패작.. 아니시죠?";
@@ -294,7 +278,6 @@
             }
         });
 
-
         // 검색 버튼 클릭 이벤트
         document.getElementById("search_button").addEventListener("click", function(){
             var characterName = document.getElementById("character_name").value;
@@ -302,8 +285,8 @@
         });
 
         document.getElementById("character_name").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {  // 엔터 키를 감지
-                document.getElementById("search_button").click();  // 검색 버튼 클릭 이벤트 트리거
+            if (event.key === "Enter") {  
+                document.getElementById("search_button").click();
             }
         });
 
@@ -326,23 +309,30 @@
             }, 1000);  // 1초 후 페이지 이동
         }
 
+        function showLoading() {
+            var loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';  // 로딩창 표시
+            }
+        }
+
         const ctx = document.getElementById('winRateChart').getContext('2d');
         const winRateChart = new Chart(ctx, {
-            type: 'doughnut',  // 도넛 차트로 변경
+            type: 'doughnut',
             data: {
-                labels: ['승리', '무승부', '패배'],  // '무승부'를 추가
+                labels: ['승리', '무승부', '패배'],
                 datasets: [{
-                    data: [matchResults.win, matchResults.draw, matchResults.lose],  // 'matchResults.draw'를 추가
-                    backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],  // 승리: 파란색, 무승부: 노란색, 패배: 빨간색
+                    data: [matchResults.win, matchResults.draw, matchResults.lose],
+                    backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],
                     hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
-                cutout: '70%',  // 도넛 차트의 가운데 부분 크기
+                cutout: '70%',
                 plugins: {
                     legend: {
-                        display: false  // 범례 숨기기
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
@@ -364,12 +354,5 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Menu Toggle Button Click Event -->
-    <script>
-        document.getElementById("menu-toggle").addEventListener("click", function(){
-            var menu = document.getElementById("navbarNav");
-            menu.classList.toggle("show");
-        });
-    </script>
 </body>
 </html>
