@@ -8,6 +8,7 @@ from utils.utils import me, you, avg_data, top_n_argmax, top_n_argmin, calculate
 from utils.data_processing import data_list, data_list_cl, data_label, determine_play_style
 from utils.win_utils import calculate_win_improvement
 from tier.tier_info import tier
+from concurrent.futures import ThreadPoolExecutor
 
 # Flask 선언
 app = Flask(__name__)
@@ -103,15 +104,26 @@ def result():
         if len(matches) == 0:
             flash("경기 수가 부족하여 검색이 불가능합니다")
             return render_template('home.html')
+        
+        # 매치 데이터를 병렬로 가져오기 위한 함수 정의
+        def fetch_match_data(match_id):
+            urlString = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={match_id}"
+            response = requests.get(urlString, headers=headers)
+            return response.json()
+
+        # ThreadPoolExecutor를 사용해 API 요청 병렬 처리
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            match_data_list = list(executor.map(fetch_match_data, matches))
 
         result_list = []
         imp_data = []
 
-        for i in matches:
-            urlString = "https://open.api.nexon.com/fconline/v1/match-detail?matchid=" + i
-            response = requests.get(urlString, headers=headers)
-            data = response.json()
-
+        # for i in matches:
+        #     urlString = "https://open.api.nexon.com/fconline/v1/match-detail?matchid=" + i
+        #     response = requests.get(urlString, headers=headers)
+        #     data = response.json()
+        # 각 매치 데이터 처리
+        for data in match_data_list:
             date = calculate_time_difference(data['matchDate'])
             my_data = me(data, character_name)
             your_data = you(data, character_name)
@@ -215,16 +227,26 @@ def wr_result():
         if len(matches) <= 5:
             flash("경기 수가 부족하여 검색이 불가능합니다 (최소 5경기가 필요합니다)")
             return redirect(url_for('home'))
+           
+        # 매치 데이터를 병렬로 가져오기 위한 함수 정의
+        def fetch_match_data(match_id):
+            urlString = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={match_id}"
+            response = requests.get(urlString, headers=headers)
+            return response.json()
 
+        # ThreadPoolExecutor를 사용해 API 요청 병렬 처리
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            match_data_list = list(executor.map(fetch_match_data, matches))
+           
         result_list = []
         imp_data = []
         w_l_data = []
 
-        for i in matches:
-            urlString = "https://open.api.nexon.com/fconline/v1/match-detail?matchid=" + i
-            response = requests.get(urlString, headers=headers)
-            data = response.json()
-
+        # for i in matches:
+        #     urlString = "https://open.api.nexon.com/fconline/v1/match-detail?matchid=" + i
+        #     response = requests.get(urlString, headers=headers)
+        #     data = response.json()
+        for data in match_data_list:
             my_data = me(data, character_name)
             imp = data_list(my_data)
            
