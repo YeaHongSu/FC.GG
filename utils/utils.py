@@ -5,17 +5,32 @@ import copy
 from datetime import datetime, timedelta
 
 
+# def me(match, me):
+#     if match['matchInfo'][0]['nickname'].lower() == me.lower() or len(match['matchInfo'][:])==1:
+#         return match['matchInfo'][0]
+#     else:
+#         return match['matchInfo'][1]
+
+# def you(match, me):
+#     if match['matchInfo'][0]['nickname'].lower() != me.lower() or len(match['matchInfo'][:])==1:
+#         return match['matchInfo'][0]
+#     else:
+#         return match['matchInfo'][1]
+
 def me(match, me):
-    if match['matchInfo'][0]['nickname'].lower() == me.lower() or len(match['matchInfo'][:])==1:
+    me = me.replace(" ", "")  # 입력받은 닉네임에서 띄어쓰기 제거
+    if match['matchInfo'][0]['nickname'].replace(" ", "").lower() == me.lower() or len(match['matchInfo'][:]) == 1:
         return match['matchInfo'][0]
     else:
         return match['matchInfo'][1]
 
 def you(match, me):
-    if match['matchInfo'][0]['nickname'].lower() != me.lower() or len(match['matchInfo'][:])==1:
+    me = me.replace(" ", "")  # 입력받은 닉네임에서 띄어쓰기 제거
+    if match['matchInfo'][0]['nickname'].replace(" ", "").lower() != me.lower() or len(match['matchInfo'][:]) == 1:
         return match['matchInfo'][0]
     else:
         return match['matchInfo'][1]
+
     
 # def avg_data():
 #     url = f"https://fconline.nexon.com/Datacenter/GetMatchRecord?strDate={datetime.now().strftime('%Y.%m.%d')}&n1Type=50&n4StartRanking=1&n4EndRanking=10000&rd=0.4988530727702105"
