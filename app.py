@@ -33,6 +33,9 @@ def result():
             flash("닉네임이 존재하지 않아 검색이 불가능합니다.")
             return render_template('home.html')
 
+        # 닉네임에서 띄어쓰기 제거
+        character_name = character_name.replace(" ", "")
+
         # API key 설정
         headers = {"x-nxopen-api-key" : f"{app.config['API_KEY']}"}
         
@@ -207,6 +210,9 @@ def wr_result():
         if not character_name:
             flash("닉네임이 존재하지 않아 검색이 불가능합니다.")
             return redirect(url_for('home'))
+
+        # 닉네임에서 띄어쓰기 제거
+        character_name = character_name.replace(" ", "")
 
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         urlString = "https://open.api.nexon.com/fconline/v1/id?nickname=" + character_name
