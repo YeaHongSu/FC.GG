@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<!-- created with Free Online Sitemap Generator www.xml-sitemaps.com -->
+
+
+<url>
+  <loc>https://www.fcgg.kr/</loc>
+  <lastmod>2024-10-19T08:35:32+00:00</lastmod>
+  <priority>1.00</priority>
+</url>
+<url>
+  <loc>https://www.fcgg.kr/wr_imp.html</loc>
+  <lastmod>2024-10-19T08:35:32+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://www.fcgg.kr/player_tier.html</loc>
+  <lastmod>2024-10-19T08:35:32+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://www.fcgg.kr/random.html</loc>
+  <lastmod>2024-10-19T08:35:32+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://www.fcgg.kr/calculate.html</loc>
+  <lastmod>2024-10-19T08:35:32+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+
+
+</urlset>
