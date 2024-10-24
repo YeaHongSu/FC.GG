@@ -51,16 +51,8 @@
             margin-bottom: 20px;
         }
 
-        #appa-matrix {
+        #appa-matrix, #mom-matrix {
             grid-template-columns: repeat(7, 70px); /* 7x7 행렬 */
-        }
-
-        #mom-matrix {
-            grid-template-columns: repeat(5, 70px); /* 5x5 행렬 */
-        }
-
-        #baby-matrix {
-            grid-template-columns: repeat(4, 70px); /* 4x4 행렬 */
         }
 
         /* SSS 카드 효과 */
@@ -166,6 +158,25 @@
             justify-content: center;
             gap: 20px;
         }
+
+        /* 힌트 div 스타일 */
+        .hint-container {
+            background-color: #F9F9F9;
+            border: 1px solid #E0E0E0;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px auto;
+            max-width: 400px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .hint-tip {
+            font-size: 12px;
+            color: #888;
+        }
+
     </style>
 </head>
 <body>
@@ -183,7 +194,7 @@
                     <ul class="navbar-nav mx-auto">
                         <li class="nav-item"><a class="nav-link" href="/wr_imp.html">승률 개선 솔루션</a></li>
                         <li class="nav-item"><a class="nav-link" href="/player_tier.html">선수 티어</a></li>
-                        <li class="nav-item"><a class="nav-link active" href="/random.html">빠칭코 연습실</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/random.html">빠칭코 연습실 new</a></li>
                         <li class="nav-item"><a class="nav-link active" href="/calculate.html">수수료 계산기</a></li>
                     </ul>
                 </div>
@@ -194,35 +205,26 @@
     <!-- 송편 선택 Section -->
     <div class="container my-5">
         <h1 class="text-center mb-4">빠칭코 연습으로 손 풀고 실전으로 가볼까요?</h1>
-        <h3 class="text-center mb-4">토끼 가족 송편 가게</h3>
+        <h3 class="text-center mb-4">나혼자만 SSS : Decision</h3>
         <!-- 송편 선택 UI 개선 -->
         <div class="songpyeon-selector text-center mb-4">
             <input type="radio" id="appa" name="songpyeon" value="appa" checked>
-            <label for="appa">아빠 토끼 송편</label>
+            <label for="appa">일반게임</label>
 
             <input type="radio" id="mom" name="songpyeon" value="mom">
-            <label for="mom">엄마 토끼 송편</label>
-
-            <input type="radio" id="baby" name="songpyeon" value="baby">
-            <label for="baby">아기 토끼 송편</label>
+            <label for="mom">스폐셜게임</label>
         </div>
 
         <!-- 아빠 토끼 송편 (7x7 행렬) -->
         <div class="songpyeon-container text-center" id="appa-container">
-            <h4>아빠 토끼 송편</h4>
+            <h4>일반 게임</h4>
             <div id="appa-matrix" class="songpyeon-matrix"></div>
         </div>
 
-        <!-- 엄마 토끼 송편 (5x5 행렬) -->
+        <!-- 엄마 토끼 송편 (7x7 행렬) -->
         <div class="songpyeon-container text-center" id="mom-container" style="display:none;">
-            <h4>엄마 토끼 송편</h4>
+            <h4>스폐셜 게임</h4>
             <div id="mom-matrix" class="songpyeon-matrix"></div>
-        </div>
-
-        <!-- 아기 토끼 송편 (4x4 행렬) -->
-        <div class="songpyeon-container text-center" id="baby-container" style="display:none;">
-            <h4>아기 토끼 송편</h4>
-            <div id="baby-matrix" class="songpyeon-matrix"></div>
         </div>
 
         <!-- 버튼들 -->
@@ -230,7 +232,7 @@
             <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
             
             <!-- Modify the 실전으로 가기 button to include a GTM event trigger -->
-            <a href="https://shop.fconline.nexon.com/Events/240829/TheThreeRabbit" 
+            <a href="https://shop.fconline.nexon.com/Events/241024/TheOnlySSS" 
                target="_blank" 
                class="btn btn-primary btn-lg px-4 py-2" 
                id="real-action-button"
@@ -263,16 +265,27 @@
 
     <!-- JavaScript -->
     <script>
-        const appaConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
-        const momConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'];
-        const babyConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'];
+        const appaConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
+        const momConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
 
-        // Shuffle function with B rule for C cards
+        // Shuffle function with B rule for C cards and limiting card count
         function shuffleWithBRule(array) {
+            let counts = { sss: 0, ss: 0, s: 0, a: 0, b: 0, c: 0 };
+            const maxCounts = { sss: 1, ss: 2, s: 6, a: 10, b: 18, c: 12 };
+
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [array[i], array[j]] = [array[j], array[i]];
             }
+
+            // Check and ensure the card count does not exceed max limits
+            array = array.filter(type => {
+                if (counts[type] < maxCounts[type]) {
+                    counts[type]++;
+                    return true;
+                }
+                return false;
+            });
 
             // Ensure 'C' cards are followed and preceded by 'B' or higher
             for (let i = 0; i < array.length; i++) {
@@ -326,7 +339,6 @@
         function resetAllBoards() {
             createMatrix('appa-matrix', appaConfig);
             createMatrix('mom-matrix', momConfig);
-            createMatrix('baby-matrix', babyConfig);
         }
 
         // Event listener for 송편 선택
@@ -334,13 +346,10 @@
             radio.addEventListener('change', function() {
                 document.getElementById('appa-container').style.display = 'none';
                 document.getElementById('mom-container').style.display = 'none';
-                document.getElementById('baby-container').style.display = 'none';
                 if (this.value === 'appa') {
                     document.getElementById('appa-container').style.display = 'block';
                 } else if (this.value === 'mom') {
                     document.getElementById('mom-container').style.display = 'block';
-                } else if (this.value === 'baby') {
-                    document.getElementById('baby-container').style.display = 'block';
                 }
             });
         });
