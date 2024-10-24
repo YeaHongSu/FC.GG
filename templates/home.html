@@ -134,6 +134,90 @@
                 <div id="match_dates"></div>
             </div>
         </div>
+
+        <!-- FC 온라인 채널 소식과 FC.GG 공지사항을 가운데로 배치하고, 좌우 간격을 줄임 -->
+        <div class="row justify-content-center gap-3"> <!-- justify-content-center와 gap-3으로 간격 조정 -->
+            <!-- 왼쪽: FC 온라인 채널 소식 -->
+            <div class="col-md-5 d-flex flex-column">
+                <div class="video-container">
+                    <h4 class="mb-4 text-start"><span class="text-success">FC온라인</span> 채널 소식</h4>
+                    <div class="news-item d-flex align-items-center mb-4">
+                        <div class="video-thumbnail-container position-relative me-3">
+                            <a href="https://www.youtube.com/watch?v=-jEPgPq3Jt8" target="_blank">
+                                <img src="https://img.youtube.com/vi/-jEPgPq3Jt8/mqdefault.jpg" alt="YouTube Thumbnail" class="video-thumbnail img-fluid">
+                                <div class="play-button-overlay">
+                                    <i class="fas fa-play-circle play-button-icon"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="video-info">
+                            <p class="video-title mb-1">GM네로의 하프타임 66화 (<strong style="color: #ff0000;">발롱도르</strong> 시즌 출시)</p>
+                            <p class="video-date text-muted" id="video3-date"></p>
+                        </div>
+                    </div>
+                    <div class="news-item d-flex align-items-center mb-4">
+                        <div class="video-thumbnail-container position-relative me-3">
+                            <a href="https://www.youtube.com/watch?v=m_iA4VX5ees" target="_blank">
+                                <img src="https://img.youtube.com/vi/m_iA4VX5ees/mqdefault.jpg" alt="YouTube Thumbnail" class="video-thumbnail img-fluid">
+                                <div class="play-button-overlay">
+                                    <i class="fas fa-play-circle play-button-icon"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="video-info">
+                            <p class="video-title mb-1">창과 방패 아이콘 매치 with 스틸시리즈 EP.2</p>
+                            <p class="video-date text-muted" id="video1-date"></p>
+                        </div>
+                    </div>
+
+                    <div class="news-item d-flex align-items-center mb-4">
+                        <div class="video-thumbnail-container position-relative me-3">
+                            <a href="https://www.youtube.com/watch?v=_dlImYHWgKs" target="_blank">
+                                <img src="https://img.youtube.com/vi/_dlImYHWgKs/mqdefault.jpg" alt="YouTube Thumbnail" class="video-thumbnail img-fluid">
+                                <div class="play-button-overlay">
+                                    <i class="fas fa-play-circle play-button-icon"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="video-info">
+                            <p class="video-title mb-1">GM네로의 하프타임 65화</p>
+                            <p class="video-date text-muted" id="video2-date"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽: FC.GG 공지사항 -->
+            <div class="col-md-5 d-flex flex-column">
+                <div class="notice-container">
+                    <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
+                    <div class="notice-item">
+                        <p id="notice4-title">24/10/13 업데이트 (빠칭코 연습실) <span class="notice-date" id="notice4-date"></span></p>
+                        <div id="notice4-content" class="notice-content">
+                            <p>이번 업데이트에서는 FC온라인 유저분들이 빠칭코를 연습할 수 있게 환경을 조성하였습니다.</p>
+                        </div>
+                    </div>
+                    <div class="notice-item">
+                        <p id="notice3-title">24/10/12 FC.GG 출시 <span class="notice-date" id="notice3-date"></span></p>
+                        <div id="notice3-content" class="notice-content">
+                            <p>안녕하세요 FC.GG입니다. FC온라인 유저분들을 위해 전적검색, 승률개선, 선수티어제공, 수수료 계산기 서비스를 제작하여 출시하게 되었습니다. 많은 이용 부탁드립니다! 문의는 하단 메일로 언제나 환영입니다.</p>
+                        </div>
+                    </div>
+                    <div class="notice-item">
+                        <p id="notice1-title">24/10/06 업데이트 (UI 개편 및 편의성 개선) <span class="notice-date" id="notice1-date"></span></p>
+                        <div id="notice1-content" class="notice-content">
+                            <p>이번 업데이트에서는 FC.GG의 UI를 전체적으로 개편하고 편의성을 크게 개선하였습니다.</p>
+                        </div>
+                    </div>
+                    <div class="notice-item">
+                        <p id="notice2-title">24/09/25 신규 기능 추가 (선수 티어 제공) <span class="notice-date" id="notice2-date"></span></p>
+                        <div id="notice2-content" class="notice-content">
+                            <p>이번 업데이트에서 포지션별 선수 티어에 대한 정보를 추가하여 사용자 경험을 개선하였습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer Section -->
@@ -160,29 +244,89 @@
     <script src="https://kit.fontawesome.com/a076d05399.js"></script>
 
     <script>
-         // 로딩창 보이기 함수
-        function showLoading() {
-            document.getElementById("loading-overlay").style.display = "flex";
+        // 날짜 자동 계산 함수
+        function calculateDaysAgo(uploadDate) {
+            const now = new Date();
+            const uploaded = new Date(uploadDate);
+            const diffTime = Math.abs(now - uploaded);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            return diffDays + "일 전";
         }
 
-        // 검색 버튼 클릭 이벤트
-        document.getElementById("search_button").addEventListener("click", function() {
-            var characterName = document.getElementById("character_name").value.trim();
-            if (characterName !== "") {
-                showLoading(); // 로딩창 표시
-                setTimeout(function() {
-                    // 페이지 이동을 정상적으로 하기 위해 window.location.href를 사용
-                    window.location.href = "/result.html?character_name=" + encodeURIComponent(characterName);
-                }, 1000); // 1초 후에 페이지 이동
+        // 첫 번째, 두 번째, 세 번째 영상 날짜 자동 설정
+        document.getElementById("video1-date").textContent = calculateDaysAgo("2024-10-01");
+        document.getElementById("video2-date").textContent = calculateDaysAgo("2024-09-26");
+        document.getElementById("video3-date").textContent = calculateDaysAgo("2024-10-17");
+
+        // 공지사항 날짜 자동 설정
+        document.getElementById("notice1-date").textContent = calculateDaysAgo("2024-10-06");
+        document.getElementById("notice2-date").textContent = calculateDaysAgo("2024-09-25");
+        document.getElementById("notice3-date").textContent = calculateDaysAgo("2024-10-12");
+        document.getElementById("notice4-date").textContent = calculateDaysAgo("2024-10-13");
+
+        // 공지사항 클릭 이벤트 설정
+        document.getElementById("notice1-title").addEventListener("click", function() {
+            const content = document.getElementById("notice1-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
             } else {
-                alert("닉네임을 입력하세요!"); // 검색창에 값이 없으면 경고
+                content.style.maxHeight = content.scrollHeight + "px";
             }
         });
 
-        // 엔터 키를 눌렀을 때 검색 버튼 클릭 이벤트 트리거
+        document.getElementById("notice2-title").addEventListener("click", function() {
+            const content = document.getElementById("notice2-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("notice3-title").addEventListener("click", function() {
+            const content = document.getElementById("notice3-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("notice4-title").addEventListener("click", function() {
+            const content = document.getElementById("notice4-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        // 로딩창 보이기 함수
+        function showLoading() {
+            document.getElementById("loading-overlay").style.display = "flex";
+        }
+        window.addEventListener("pageshow", function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                // 페이지가 캐시로부터 불러와졌을 때, 로딩창을 숨깁니다.
+                document.getElementById("loading-overlay").style.display = "none";
+            }
+        });
+
+
+        // 검색 버튼 클릭 이벤트
+        document.getElementById("search_button").addEventListener("click", function() {
+            var characterName = document.getElementById("character_name").value;
+            if (characterName.trim() !== "") {
+                showLoading(); // 로딩창 표시
+                setTimeout(function() {
+                    window.location.href = "/result.html?character_name=" + characterName;
+                }, 10); // 1초 후에 페이지 이동
+            }
+        });
+
         document.getElementById("character_name").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {
-                document.getElementById("search_button").click();
+            if (event.key === "Enter") {  // 엔터 키를 감지
+                document.getElementById("search_button").click();  // 검색 버튼 클릭 이벤트 트리거
             }
         });
     </script>
