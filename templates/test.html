@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="minimum-scale=1, initial-scale=1, maximum-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover">
+    <meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+    <meta name="google-adsense-account" content="ca-pub-7970639123590302">
+    <meta name="robots" content="max-snippet:50, max-image-preview:large" />
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-67J7MBCLN9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-67J7MBCLN9');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
+     crossorigin="anonymous"></script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-KX3HQ7FD');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Noto+Sans+KR:wght@700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="{{ url_for('static', filename='fcgglogo.ico') }}">
+    <title>FC.GG - FC온라인 전적 검색, 선수 티어, 승률 개선, 빠칭코 연습실, 수수료 계산기</title>
+    <link rel="stylesheet" href="/static/home_style.css">
+    
+    <!-- Open Graph Meta Tags for customizing the thumbnail -->
+    <meta property="og:title" content="FC.GG - FC온라인 전적 검색, 선수 티어, 승률 개선, 빠칭코 연습실, 수수료 계산기">
+    <meta property="og:description" content="FC온라인 유저를 위한 FC.GG 서비스들을 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 빠칭코 연습실, 수수료 계산기를 이용해 보세요!">
+    <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
+    <meta property="og:url" content="https://www.fcgg.kr">
+    <meta property="og:type" content="website">
+
+    
+    <style>
+        /* 로딩 애니메이션 스타일 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .loading-message {
+            font-size: 1.2rem;
+            color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
+            text-align: center;
+            margin-top: 10px; /* 로딩 스피너와 간격 */
+        }
+    </style>
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX3HQ7FD"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- 로딩창 -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <!-- 추가된 텍스트 -->
+        <div class="loading-message mt-3">
+            유저님의 경기들을 분석 중입니다! 잠시만 기다려 주세요!
+        </div>
+    </div>
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm sticky-top">
+        <div class="container d-flex flex-column align-items-center py-3">
+            <h1 class="display-2 text-center main-title" style="font-family: 'Poppins', sans-serif;"><a class="nav-link" href="/">FC.GG</a></h1>
+        </div>
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav mx-auto">
+                        <li class="nav-item"><a class="nav-link" href="/wr_imp.html">승률 개선 솔루션</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/player_tier.html">선수 티어</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="/random.html">빠칭코 연습실</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/calculate.html">수수료 계산기</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Flash 경고창 -->
+    <div class="container mt-3 d-flex justify-content-center">
+        <div class="col-md-6">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        {{ messages[0] }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- Main Content Section -->
+    <main class="container my-4">
+        <h1 class="text-center mb-4">FC온라인 유저를 위한 사이트</h1>
+        <h3 class="text-center mb-4">자신의 닉네임을 검색해 보세요!</h3>
+        <!-- 검색창 -->
+        <div class="container mt-2 d-flex justify-content-center mb-5"> <!-- mb-5로 간격을 늘림 -->
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="border-top-right-radius: 0; border-bottom-right-radius: 0; height: 44px; font-size: 1.0rem;">
+                    <button class="btn btn-success rounded-end-pill" id="search_button" style="border-top-left-radius: 0; border-bottom-left-radius: 0; height: 44px; font-size: 1.0rem;">검색</button>
+                </div>
+                <div id="search_result"></div>
+                <div id="match_dates"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="mt-auto bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <!-- FC.GG 로고 중앙 정렬 -->
+                <div class="col-md-12 text-center">
+                    <h2>FC.GG</h2>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <!-- 하단 텍스트도 중앙 정렬 -->
+                <div class="col text-center">
+                    <p>© FC.GG All rights reserved; FC ONLINE is a trademark of Nexon & Electronic Arts.</p>
+                    <p>문의 : hsyea203@naver.com / jtk5959@naver.com</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS and Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+
+    <script>
+         // 로딩창 보이기 함수
+        function showLoading() {
+            document.getElementById("loading-overlay").style.display = "flex";
+        }
+
+        // 검색 버튼 클릭 이벤트
+        document.getElementById("search_button").addEventListener("click", function() {
+            var characterName = document.getElementById("character_name").value.trim();
+            if (characterName !== "") {
+                showLoading(); // 로딩창 표시
+                setTimeout(function() {
+                    // 페이지 이동을 정상적으로 하기 위해 window.location.href를 사용
+                    window.location.href = "/result.html?character_name=" + encodeURIComponent(characterName);
+                }, 1000); // 1초 후에 페이지 이동
+            } else {
+                alert("닉네임을 입력하세요!"); // 검색창에 값이 없으면 경고
+            }
+        });
+
+        // 엔터 키를 눌렀을 때 검색 버튼 클릭 이벤트 트리거
+        document.getElementById("character_name").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                document.getElementById("search_button").click();
+            }
+        });
+    </script>
+</body>
+</html>
