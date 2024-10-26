@@ -18,7 +18,7 @@ data_label = ['평균 파울 수', '평균 옐로우 카드 수', '평균 드리
 def determine_play_style(max_data, min_data):
     # 각 플레이 스타일별 카운터
     attack_count = 0
-    finisher_count = 0  # 마무리형 공격수
+    finisher_count = 0
     dribbler_count = 0
     playmaker_count = 0
     setpiece_master_count = 0
@@ -26,52 +26,28 @@ def determine_play_style(max_data, min_data):
     penalty_specialist_count = 0
     long_shot_master_count = 0
     defense_count = 0
-    interceptor_count = 0  # 인터셉터 (차단 전문)
-    tackler_count = 0  # 태클러
-    card_collector_count = 0  # 옐로우 카드 수집가 카운터
-    lob_pass_master_count = 0  # 로빙스루패스 마스터
-    offside_count = 0  # 오프사이드 수 카운터
+    interceptor_count = 0
+    tackler_count = 0
+    card_collector_count = 0
+    lob_pass_master_count = 0
+    drive_pass_master_count = 0  # 드라이브 패스 마스터
+    offside_count = 0
 
-    # 공격 지표
+    # 지표 정의
     attack_labels = ['평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 골 수', '평균 패널티 안쪽 골 수']
-    
-    # 마무리형 공격수 지표 (골을 넣는 데 집중)
     finisher_labels = ['슈팅 수 대비 골 수', '평균 헤더 골 수', '평균 프리킥 골 수', '평균 패널티 안쪽 골 수']
-    
-    # 방어 지표
     defense_labels = ['평균 차단 성공 수', '평균 태클 성공 수', '평균 차단 시도 수', '평균 태클 시도 수']
-    
-    # 인터셉터 (차단에 집중하는 플레이어)
     interceptor_labels = ['평균 차단 시도 수', '평균 차단 성공 수']
-    
-    # 태클러 (태클에 집중하는 플레이어)
     tackler_labels = ['평균 태클 시도 수', '평균 태클 성공 수']
-    
-    # 패스 지표 (플레이메이커)
     pass_labels = ['평균 패스 성공', '평균 숏패스 성공 수', '평균 롱패스 성공 수', '평균 스루패스 성공 수', '평균 로빙스루패스 성공 수']
-    
-    # 프리킥의 마술사
     setpiece_labels = ['평균 코너킥 수', '평균 프리킥 골 수', '프리킥 골 성공률', '프리킥 골 비율']
-    
-    # 헤더 전문 플레이어
     header_labels = ['평균 헤딩 슛 수', '평균 헤더 골 수', '헤더 골 성공률', '헤더 골 비율']
-    
-    # 패널티 전문가
     penalty_labels = ['평균 패널티 안쪽 슛 수', '평균 패널티 안쪽 골 수', '패널티 안쪽 골 성공률', '패널티 안쪽 골 비율']
-    
-    # 중거리 마스터 (패널티 바깥쪽 슛 및 골)
     long_shot_labels = ['평균 패널티 바깥쪽 슛 수', '평균 패널티 바깥쪽 골 수', '패널티 바깥쪽 골 성공률', '패널티 바깥쪽 골 비율']
-    
-    # 드리블 마스터
     dribble_labels = ['평균 드리블 수']
-    
-    # 로빙스루패스 마스터
     lob_pass_labels = ['평균 로빙스루패스 시도 수', '평균 로빙스루패스 성공 수', '평균 로빙스루패스 성공률']
-
-    # 옐로우 카드 수집가
+    drive_labels = ['평균 드라이브땅볼패스 시도 수', '평균 드라이브땅볼패스 성공 수', '평균 드라이브땅볼패스 성공률']
     card_labels = ['평균 옐로우 카드 수']
-
-    # 오프사이드 수 체크
     offside_labels = ['평균 오프사이드 수']
 
     # 상위 지표 분석
@@ -100,44 +76,46 @@ def determine_play_style(max_data, min_data):
             dribbler_count += 1
         elif data_label[idx] in lob_pass_labels:
             lob_pass_master_count += 1
+        elif data_label[idx] in drive_labels:
+            drive_pass_master_count += 1
         elif data_label[idx] in card_labels:
             card_collector_count += 1
         elif data_label[idx] in offside_labels:
             offside_count += 1
 
     # 세분화된 플레이 스타일 결정
-    if offside_count >= 1:
+    if drive_pass_master_count >= 2:
+        return "잔디와 한 몸인 땅볼 마스터"  # 드라이브 패스 마스터
+    elif offside_count >= 1:
         return "옵사를 사랑하는 플레이어"
     elif lob_pass_master_count >= 2:
-        return "공이 위에만 있는 플레이어"  # 로빙스루패스 마스터
-    elif finisher_count >= 2 and attack_count >= 1:
+        return "공이 공중에만 있는 플레이어"  # 로빙스루패스 마스터
+    elif finisher_count >= 1 and attack_count >= 1:
         return "공격적인 피니셔"  # 공격과 마무리를 동시에 잘하는 선수
-    elif finisher_count >= 2 and header_specialist_count >= 2:
+    elif finisher_count >= 1 and header_specialist_count >= 1:
         return "헤더 마무리의 신"
-    elif attack_count >= 2 and dribbler_count >= 1:
+    elif attack_count >= 1 and dribbler_count >= 1:
         return "공격형 드리블러"  # 공격 능력과 드리블 능력을 동시에 가진 플레이어
-    elif defense_count >= 1 and tackler_count >= 2:
+    elif defense_count >= 1 and tackler_count >= 1:
         return "방어적인 태클러"  # 방어와 태클을 동시에 잘하는 선수
-    elif interceptor_count >= 2 and defense_count >= 2:
+    elif interceptor_count >= 1 and defense_count >= 1:
         return "완벽한 차단기"  # 방어형 플레이어이면서 차단에 특화된 선수
-    elif playmaker_count >= 2 and dribbler_count >= 1:
+    elif playmaker_count >= 1 and dribbler_count >= 1:
         return "드리블형 플레이메이커"  # 드리블을 잘하는 패스 전문가
-    elif playmaker_count >= 2 and long_shot_master_count >= 2:
+    elif playmaker_count >= 1 and long_shot_master_count >= 1:
         return "중거리형 플레이메이커"  # 중거리 슛에 강한 패스 전문가
-    elif setpiece_master_count >= 2 and header_specialist_count >= 2:
+    elif setpiece_master_count >= 1 and header_specialist_count >= 1:
         return "헤더와 프리킥 날먹의 신"
-    elif penalty_specialist_count >= 2 and long_shot_master_count >= 2:
+    elif penalty_specialist_count >= 1 and long_shot_master_count >= 1:
         return "다재다능 공격 플레이어"
     elif tackler_count >= 2:
         return "A 없으면 게임 못 하는 플레이어"  # 방어와 태클을 동시에 잘하는 선수
-    elif defense_count >= 3:
+    elif defense_count >= 2:
         return "수비의 신"
-    elif attack_count >= 3:
+    elif attack_count >= 2:
         return "공격의 신"
-    elif playmaker_count >= 3:
+    elif playmaker_count >= 2:
         return "플레이메이커"
-    elif setpiece_master_count >= 2:
-        return "프리킥 딸깍의 신"
     elif header_specialist_count >= 2:
         return "헤더 날먹의 신"
     elif penalty_specialist_count >= 2:
@@ -148,6 +126,8 @@ def determine_play_style(max_data, min_data):
         return "드리블 마스터"
     elif card_collector_count >= 1:
         return "악질 카드 수집가"
+    elif setpiece_master_count >= 2:
+        return "프리킥 딸깍의 신"
     else:
         return "굴리트급 육각형 플레이어"
 
