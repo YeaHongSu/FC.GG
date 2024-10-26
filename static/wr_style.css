@@ -3,10 +3,12 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-x: auto; /* 가로 스크롤 허용 */
 }
 
 .custom-container {
-    max-width: 920px; /* 화면 크기에 맞춘 최대 너비 */
+    max-width: 1024px; /* 고정된 너비 설정 */
+    width: 1024px;
     margin: 0 auto;
 }
 
@@ -26,19 +28,14 @@ body {
     margin: 0 auto 20px auto;
 }
 
-.improve-card, .meta-card {
-    width: 48%;
-}
-
-.inner-card {
-    width: 48%;
+.improve-card, .meta-card, .inner-card {
+    width: 48%; /* 고정된 너비 설정 */
 }
 
 .d-flex-custom {
     display: flex;
     justify-content: space-between;
     gap: 2%;
-    flex-wrap: wrap;
 }
 
 .chart-container {
@@ -48,7 +45,7 @@ body {
     margin-top: 20px;
 }
 
-.chart-section {
+.chart-section, .arrow-section {
     width: 40%;
     text-align: center;
     position: relative;
@@ -57,17 +54,6 @@ body {
 .chart-section canvas {
     width: 100% !important;
     height: auto !important;
-}
-
-
-.arrow-section {
-    width: 10%;
-    text-align: center;
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
 }
 
 .video-container {
@@ -79,13 +65,12 @@ body {
 iframe {
     width: 360px;
     height: 203px;
-    max-width: 100%;
     border-radius: 8px;
 }
 
 .improvement-box .text-success {
-    font-size: 1.5rem; /* 화살표 크기를 키움 */
-    font-weight: bold; /* 화살표 두께를 두껍게 */
+    font-size: 1.5rem;
+    font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -95,29 +80,17 @@ iframe {
 
 .improvement-box .arrow-section {
     text-align: center;
-    font-size: 1.5rem; /* 화살표 크기를 크게 설정 */
-    font-weight: bold; /* 두껍게 설정 */
-    padding: 5px 0; /* 위아래로 여백 추가 */
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 5px 0;
 }
 
-
-/* Enhanced look for improved metrics */
 .improved-metrics-list li {
-    border-left: 5px solid #4CAF50; /* Green border for emphasis */
-}
-
-.deteriorated-metrics-list li {
-    border-left: 5px solid #ef4444; /* Red border for emphasis */
-}
-
-.improvement-metrics-list li {
     border-left: 5px solid #4CAF50;
 }
 
-.win-rate-summary h4 {
-    margin-top: 10px;
-    font-weight: bold;
-    color: #2e7d32;
+.deteriorated-metrics-list li {
+    border-left: 5px solid #ef4444;
 }
 
 .metrics-box {
@@ -159,37 +132,23 @@ iframe {
     border-radius: 10px;
 }
 
-/* 화면 비율 유지 */
-@media (min-width: 768px) {
+/* 고정 레이아웃 설정: 반응형 요소 제거 */
+@media (max-width: 1024px) {
     .custom-container {
-        width: 80%;  /* 화면 크기에 비율 맞춤 */
-    }
-}
-
-@media (max-width: 768px) {
-    .custom-container {
-        width: 95%; /* 작은 화면에서의 비율 유지 */
+        width: 1024px; /* 고정된 너비 설정 */
+        margin: 0 auto;
     }
 
     .d-flex-custom {
-        flex-direction: column; /* 작은 화면에서 수직 정렬 */
-        align-items: center;
+        flex-direction: row; /* PC와 동일한 레이아웃 유지 */
+        justify-content: space-between;
     }
 
     .chart-section, .arrow-section {
-        width: 100%; /* 작은 화면에서 너비 100% */
+        width: 40%;
     }
 
     .improve-card, .meta-card, .inner-card {
-        width: 100%; /* 작은 화면에서 카드 너비 100% */
-    }
-
-    .chart-section canvas {
-        width: 80%;
-        height: auto;
-    }
-
-    iframe {
-        width: 100%; /* iframe 너비 자동 조정 */
+        width: 48%; /* 고정된 카드 너비 설정 */
     }
 }
