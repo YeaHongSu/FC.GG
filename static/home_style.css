@@ -2,29 +2,27 @@ body {
     font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    overflow-x: auto; /* 가로 스크롤 허용 */
+    min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
 }
 main {
-    flex: 1;
+    flex: 1; /* 푸터가 항상 아래에 위치하도록 공간 확보 */
 }
 .main-title {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Poppins', sans-serif; /* 제목에 Poppins 폰트 적용 */
 }
-
 /* FC 온라인 채널 소식 */
 .video-container, .notice-container {
-    background-color: #f8f9fa;
+    background-color: #f8f9fa; /* FC.GG 공지사항과 같은 배경색으로 통일 */
     padding: 15px;
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    width: 500px; /* 고정된 너비 설정 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 박스에 그림자 추가 */
+    width: 100%; /* 두 박스가 같은 너비를 유지하도록 설정 */
 }
 
-/* 썸네일 크기를 고정하여 통일 */
+/* 썸네일 크기를 통일 및 좌우로 늘리기 */
 .video-thumbnail-container {
-    width: 500px;
-    height: 120px;
+    width: 500px; /* 좌우로 늘린 고정 크기 */
+    height: 120px; /* 고정 크기 */
     position: relative;
     margin-right: 15px;
 }
@@ -32,14 +30,14 @@ main {
 .video-thumbnail {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: cover; /* 썸네일의 비율을 유지하면서 크기 맞춤 */
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 썸네일 그림자 */
 }
 
 /* 영상 정보 */
 .video-info {
-    width: 100%;
+    width: 100%; /* 고정된 너비 설정 */
 }
 
 .news-item {
@@ -54,17 +52,17 @@ main {
     padding: 15px;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    width: 500px; /* 고정된 너비 설정 */
 }
 
 /* 공지사항 제목 */
 .notice-title {
-    color: #007bff;
+    color: #007bff; /* 파란색 설정 */
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* 제목과 날짜를 양 끝에 배치 */
     align-items: center;
-    cursor: pointer;
+    cursor: pointer; /* 클릭할 수 있도록 커서 모양 변경 */
 }
+
 
 /* 공지사항 내용 */
 .notice-content {
@@ -78,8 +76,12 @@ main {
     transition: max-height 0.3s ease-out;
 }
 
+.notice-date {
+    color: #6c757d; /* 날짜 색상을 회색으로 설정 */
+}
+
 .notice-content.open {
-    max-height: 200px;
+    max-height: 200px; /* 펼쳐졌을 때의 최대 높이 설정 */
 }
 
 .notice-date {
@@ -90,19 +92,17 @@ main {
 /* 좌우 균형을 맞추기 위한 조정 */
 .d-flex {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* 두 박스를 좌우로 배치 */
     align-items: flex-start;
-    gap: 20px;
+    gap: 20px; /* 박스 사이 간격 */
 }
 
-/* 메인 컨텐츠 중앙 정렬 및 고정 너비 */
+/* 전체적인 중앙 정렬 */
 main.container {
     max-width: 1100px;
-    width: 1100px; /* 고정된 너비 설정 */
     margin: 0 auto;
 }
 
-/* 푸터 고정 스타일 */
 footer {
     background-color: #343a40;
 }
