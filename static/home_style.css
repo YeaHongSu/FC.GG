@@ -86,6 +86,4 @@ main.container {
 
 footer {
     background-color: #343a40;
-    width: 1024px; /* 푸터 고정 너비 */
-    margin: 0 auto;
 }
