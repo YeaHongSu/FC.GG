@@ -4,16 +4,24 @@ body {
     flex-direction: column;
     min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
     overflow-x: auto; /* 가로 스크롤 허용 */
+    align-items: center; /* 콘텐츠를 중앙 정렬 */
 }
 
-main.container {
+main.container, header.container {
     max-width: 1024px; /* 고정 너비 설정 */
     width: 1024px; /* 모든 화면에서 고정된 너비 사용 */
     margin: 0 auto;
 }
 
-.header, .footer, .video-container, .notice-container, .d-flex {
+.header, .video-container, .notice-container, .d-flex {
     width: 100%; /* 모든 요소의 너비를 고정 */
+}
+
+header.bg-white {
+    width: 100%; /* 화면 전체 너비로 확장 */
+    text-align: center; /* 로고 중앙 정렬 */
+    padding: 20px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .video-container, .notice-container {
@@ -86,6 +94,9 @@ main.container {
 
 footer {
     background-color: #343a40;
-    width: 1024px; /* 푸터 고정 너비 */
-    margin: 0 auto;
+    width: 100%; /* 푸터가 화면 전체 너비에 맞게 확장되도록 설정 */
+    text-align: center; /* 텍스트 중앙 정렬 */
+    padding: 20px 0; /* 푸터에 패딩 추가 */
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: auto;
 }
