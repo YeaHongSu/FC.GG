@@ -273,9 +273,9 @@
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
 
-        // FC 충전하기 버튼 클릭 시 3000FC씩 충전
+        // FC 충전하기 버튼 클릭 시 10000FC씩 충전
         document.getElementById('charge-fc').addEventListener('click', function() {
-            fcBalance += 3000;
+            fcBalance += 10000;
             updateFCBalance();
         });
 
