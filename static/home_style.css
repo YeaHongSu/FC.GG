@@ -3,26 +3,30 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
-}
-main {
-    flex: 1; /* 푸터가 항상 아래에 위치하도록 공간 확보 */
-}
-.main-title {
-    font-family: 'Poppins', sans-serif; /* 제목에 Poppins 폰트 적용 */
-}
-/* FC 온라인 채널 소식 */
-.video-container, .notice-container {
-    background-color: #f8f9fa; /* FC.GG 공지사항과 같은 배경색으로 통일 */
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 박스에 그림자 추가 */
-    width: 100%; /* 두 박스가 같은 너비를 유지하도록 설정 */
+    overflow-x: auto; /* 가로 스크롤 허용 */
 }
 
-/* 썸네일 크기를 통일 및 좌우로 늘리기 */
+main.container {
+    max-width: 1024px; /* 고정 너비 설정 */
+    width: 1024px; /* 모든 화면에서 고정된 너비 사용 */
+    margin: 0 auto;
+}
+
+.header, .footer, .video-container, .notice-container, .d-flex {
+    width: 100%; /* 모든 요소의 너비를 고정 */
+}
+
+.video-container, .notice-container {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 500px; /* 고정된 너비 설정 */
+}
+
 .video-thumbnail-container {
-    width: 500px; /* 좌우로 늘린 고정 크기 */
-    height: 120px; /* 고정 크기 */
+    width: 500px;
+    height: 120px;
     position: relative;
     margin-right: 15px;
 }
@@ -30,14 +34,13 @@ main {
 .video-thumbnail {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* 썸네일의 비율을 유지하면서 크기 맞춤 */
+    object-fit: cover;
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 썸네일 그림자 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* 영상 정보 */
 .video-info {
-    width: 100%; /* 고정된 너비 설정 */
+    width: 100%;
 }
 
 .news-item {
@@ -46,25 +49,14 @@ main {
     align-items: center;
 }
 
-/* 공지사항 박스 */
-.notice-container {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* 공지사항 제목 */
 .notice-title {
-    color: #007bff; /* 파란색 설정 */
+    color: #007bff;
     display: flex;
-    justify-content: space-between; /* 제목과 날짜를 양 끝에 배치 */
+    justify-content: space-between;
     align-items: center;
-    cursor: pointer; /* 클릭할 수 있도록 커서 모양 변경 */
+    cursor: pointer;
 }
 
-
-/* 공지사항 내용 */
 .notice-content {
     font-size: 0.9rem;
     color: #333;
@@ -76,12 +68,8 @@ main {
     transition: max-height 0.3s ease-out;
 }
 
-.notice-date {
-    color: #6c757d; /* 날짜 색상을 회색으로 설정 */
-}
-
 .notice-content.open {
-    max-height: 200px; /* 펼쳐졌을 때의 최대 높이 설정 */
+    max-height: 200px;
 }
 
 .notice-date {
@@ -89,20 +77,15 @@ main {
     color: #6c757d;
 }
 
-/* 좌우 균형을 맞추기 위한 조정 */
 .d-flex {
     display: flex;
-    justify-content: space-between; /* 두 박스를 좌우로 배치 */
+    justify-content: space-between;
     align-items: flex-start;
-    gap: 20px; /* 박스 사이 간격 */
-}
-
-/* 전체적인 중앙 정렬 */
-main.container {
-    max-width: 1100px;
-    margin: 0 auto;
+    gap: 20px;
 }
 
 footer {
     background-color: #343a40;
+    width: 1024px; /* 푸터 고정 너비 */
+    margin: 0 auto;
 }
