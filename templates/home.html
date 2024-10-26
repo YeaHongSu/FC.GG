@@ -43,55 +43,6 @@
 
     
         <style>
-        /* 고정된 레이아웃을 유지하고 반응형을 제한하는 스타일 */
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #fcfcfc;
-            overflow-x: auto; /* 가로 스크롤을 허용 */
-        }
-        
-        .container {
-            max-width: 1024px; /* 고정 너비 */
-            margin: 0 auto;
-        }
-
-        .logo {
-            width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            color: #4CAF50;
-        }
-
-        .navbar-nav .nav-link {
-            font-weight: bold;
-            color: #333 !important;
-            margin: 0 15px;
-        }
-
-        .navbar-nav .nav-link:hover {
-            color: #4CAF50 !important;
-        }
-
-        /* 고정된 레이아웃을 유지하기 위해 반응형 스타일 제거 */
-        .player-row {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .player-row input, .player-row select {
-            margin-bottom: 0;
-        }
-
-        button {
-            width: auto;
-            margin-top: 0;
-        }
-
         /* 로딩 애니메이션 스타일 */
         .loading-overlay {
             position: fixed;
@@ -106,17 +57,15 @@
             z-index: 9999;
             display: none;
         }
-        
         .spinner-border {
             width: 3rem;
             height: 3rem;
         }
-
         .loading-message {
             font-size: 1.2rem;
-            color: #28a745;
+            color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
             text-align: center;
-            margin-top: 10px;
+            margin-top: 10px; /* 로딩 스피너와 간격 */
         }
     </style>
 </head>
