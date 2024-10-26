@@ -1,5 +1,25 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: auto; /* 가로 스크롤 허용 */
+}
 
-/* 제목 스타일 */
+main {
+    flex: 1;
+}
+
+.main-title {
+    font-family: 'Poppins', sans-serif;
+}
+
+.container {
+    max-width: 1024px; /* 고정 너비 설정 */
+    width: 1024px;
+    margin: 0 auto;
+}
+
 h4 {
     color: #2c3e50;
     font-family: 'Montserrat', sans-serif;
@@ -7,8 +27,7 @@ h4 {
     margin-bottom: 20px;
 }
 
-/* 입력 필드 스타일 */
-input[type="number"], select, .input-group-text {
+input[type="number"], select, .input-group-text, input[type="text"], .form-control, .form-select {
     border: 2px solid #ddd;
     border-radius: 5px;
     padding: 10px;
@@ -16,34 +35,12 @@ input[type="number"], select, .input-group-text {
     height: 44px;
 }
 
-input[type="number"]:focus, select:focus {
+input[type="number"]:focus, select:focus, input[type="text"]:focus {
     border-color: #4CAF50;
     outline: none;
     box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
 }
 
-/* 입력 필드 스타일 */
-input[type="text"], select, .input-group-text {
-    border: 2px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    font-size: 16px;
-    height: 44px;
-}
-
-input[type="text"]:focus, select:focus {
-    border-color: #4CAF50;
-    outline: none;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
-}
-
-.input-group .form-control, .input-group .input-group-text, .input-group .form-select {
-    border: 2px solid #ddd;
-    border-radius: 5px;
-    height: 44px;
-}
-
-/* 버튼 스타일 개선 */
 button.btn-primary, button.btn-success, button.btn-danger {
     padding: 10px 20px;
     font-size: 16px;
@@ -67,11 +64,10 @@ button.btn-danger:hover {
     background-color: #c0392b;
 }
 
-/* Toggle switch for checkbox */
 .form-check {
-    display: flex; /* Flexbox로 수평 정렬 */
-    align-items: center; /* 가운데 정렬 */
-    margin-bottom: 10px; /* 각 옵션 간의 간격 */
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
 .form-check-input.toggle {
@@ -80,12 +76,11 @@ button.btn-danger:hover {
     background-color: #ccc;
     position: relative;
     appearance: none;
-    -webkit-appearance: none;
     border-radius: 50px;
     outline: none;
     cursor: pointer;
     transition: background-color 0.3s;
-    margin-right: 10px; /* 텍스트와 간격 */
+    margin-right: 10px;
 }
 
 .form-check-input.toggle:checked {
@@ -108,14 +103,12 @@ button.btn-danger:hover {
     transform: translateX(26px);
 }
 
-/* Check label styles */
 .form-check-label {
     font-size: 16px;
     color: #2c3e50;
     cursor: pointer;
 }
 
-/* 결과 카드 스타일 */
 .card {
     background-color: #fff;
     border: 2px solid #ddd;
@@ -128,7 +121,6 @@ button.btn-danger:hover {
     margin: 0;
 }
 
-/* 결과 텍스트 스타일 */
 #result_fee {
     font-weight: bold;
     color: #e74c3c;
@@ -139,29 +131,30 @@ button.btn-danger:hover {
     color: #4CAF50;
 }
 
-/* 모바일 최적화 */
-@media (max-width: 768px) {
-    .container {
-        padding: 15px;
-    }
-
-    .player-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .player-row input, .player-row select {
-        margin-bottom: 10px;
-    }
-
-    button {
-        width: 100%;
-        margin-top: 10px;
-    }
-}
-
-/* 결과 텍스트 스타일 */
 #result {
     font-weight: bold;
     color: black;
+}
+
+/* 고정 레이아웃 설정: 반응형 요소 제거 */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 1024px;
+        width: 1024px;
+        margin: 0 auto;
+    }
+
+    .player-row {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .player-row input, .player-row select {
+        margin-bottom: 0;
+    }
+
+    button {
+        width: auto;
+        margin-top: 0;
+    }
 }
