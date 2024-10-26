@@ -1,10 +1,11 @@
 body {
     font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
     background-color: #fcfcfc;
+    overflow-x: auto; /* 가로 스크롤을 추가하여 고정된 레이아웃이 잘리더라도 볼 수 있도록 설정 */
 }
 
 .logo {
-    width: 150px; /* Adjust logo size as needed */
+    width: 150px; /* 로고 크기 조정 */
     height: auto;
     margin-bottom: 20px;
 }
@@ -28,24 +29,39 @@ h1 {
     color: #4CAF50 !important;
 }
 
+/* 전체 레이아웃을 고정 크기로 설정 */
+.container {
+    max-width: 1024px; /* 모든 화면에서 고정된 너비 사용 */
+    margin: 0 auto;
+}
 
-/* 모바일 최적화 */
-@media (max-width: 768px) {
+.player-row {
+    display: flex;
+    flex-direction: row; /* PC 스타일 유지 */
+    justify-content: space-between;
+}
+
+.player-row input, .player-row select {
+    margin-bottom: 0; /* 모바일 레이아웃 변경 요소 제거 */
+}
+
+button {
+    width: auto; /* 버튼 크기를 고정 */
+    margin-top: 0; /* 여백 제거 */
+}
+
+/* 모바일에서 고정 레이아웃을 유지하고 반응형 요소 제거 */
+@media (max-width: 1024px) {
     .container {
-        padding: 15px;
+        max-width: 1024px; /* 모바일에서 고정된 너비 사용 */
     }
 
     .player-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .player-row input, .player-row select {
-        margin-bottom: 10px;
+        flex-direction: row; /* PC와 동일한 가로 레이아웃 유지 */
+        align-items: center;
     }
 
     button {
-        width: 100%;
-        margin-top: 10px;
+        width: auto;
     }
 }
