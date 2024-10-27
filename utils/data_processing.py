@@ -91,7 +91,7 @@ def determine_play_style(max_data, min_data):
     elif counters['penalty_specialist'] >= 1 and counters['long_shot_master'] >= 1:
         return "다재다능 공격 플레이어"
     elif counters['tackler'] >= 2:
-        return "A 없으면 게임 못 하는 플레이어"
+        return "태클키 없으면 게임 못 하는 플레이어"
     elif counters['defense'] >= 2:
         return "수비의 신"
     elif counters['attack'] >= 2:
