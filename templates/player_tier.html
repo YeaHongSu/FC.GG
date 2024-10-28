@@ -170,11 +170,19 @@
         // 포지션 버튼 클릭 이벤트 추가
         document.querySelectorAll('.nav-link[data-position-options]').forEach(button => {
             button.addEventListener('click', function() {
+                // 모든 버튼에서 active 클래스 제거
+                document.querySelectorAll('.nav-link[data-position-options]').forEach(btn => btn.classList.remove('active'));
+                
+                // 현재 클릭된 버튼에 active 클래스 추가
+                this.classList.add('active');
+
+                // 포지션 옵션 업데이트
                 const positionOptions = this.getAttribute('data-position-options');
                 updateDropdownOptions(positionOptions);
                 updateTopPlayer(positionOptions.split(',')[0]);
             });
         });
+
 
         // 포지션 드롭다운 초기 설정
         updateDropdownOptions('ST,CF,RW,LW');
