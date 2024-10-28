@@ -234,18 +234,26 @@
         // Chart.js 그래프 생성
         const currentWinRateCtx = document.getElementById('currentWinRateChart').getContext('2d');
         const futureWinRateCtx = document.getElementById('futureWinRateChart').getContext('2d');
-
+        
         // 현재 승률 데이터
-        const currentWinRate = {{ (match_data | selectattr('결과', 'equalto', '승') | list | length) / match_data|length * 100 }};
-
+        const currentWinCount = {{ (match_data | selectattr('결과', 'equalto', '승') | list | length) }};
+        const drawCount = {{ (match_data | selectattr('결과', 'equalto', '무') | list | length) }};
+        const loseCount = {{ (match_data | selectattr('결과', 'equalto', '패') | list | length) }};
+        const totalMatches = currentWinCount + drawCount + loseCount;
+        
+        // 각각의 비율 계산
+        const currentWinRate = (currentWinCount / totalMatches) * 100;
+        const drawRate = (drawCount / totalMatches) * 100;
+        const loseRate = (loseCount / totalMatches) * 100;
+        
         // 현재 승률 차트 생성
         const currentWinRateChart = new Chart(currentWinRateCtx, {
             type: 'doughnut',
             data: {
-                labels: ['승률', '패배'],
+                labels: ['승리', '무승부', '패배'],
                 datasets: [{
-                    data: [currentWinRate, 100 - currentWinRate], // 현재 승률 데이터
-                    backgroundColor: ['#3b82f6', '#ef4444'], // 색상
+                    data: [currentWinRate, drawRate, loseRate], // 현재 승률 데이터
+                    backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'], // 색상
                     hoverOffset: 4
                 }]
             },
@@ -253,6 +261,19 @@
                 cutout: '70%',
                 plugins: {
                     legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                label += context.raw.toFixed(2) + '%';
+                                return label;
+                            }
+                        }
+                    }
                 }
             },
             plugins: [{
@@ -262,30 +283,30 @@
                     const width = chart.width;
                     const height = chart.height;
                     const fontSize = (height / 114).toFixed(2);
-
+        
                     ctx.font = fontSize + "em Noto Sans KR";
                     ctx.textBaseline = "middle";
-
+        
                     const text = currentWinRate.toFixed(2) + "%";
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
-
+        
                     ctx.fillText(text, textX, textY);
                 }
             }]
         });
-
+        
         // 예상 승률 데이터
         const futureWinRate = {{ "%.1f"|format(modified_win_rate * 100) }};
-
+        
         // 예상 승률 차트 생성
         const futureWinRateChart = new Chart(futureWinRateCtx, {
             type: 'doughnut',
             data: {
-                labels: ['예상 승률', '패배'],
+                labels: ['승리', '무승부', '패배'],
                 datasets: [{
-                    data: [futureWinRate, 100 - futureWinRate], // 미션 달성 후 예상 승률 데이터
-                    backgroundColor: ['#3b82f6', '#ef4444'], // 색상
+                    data: [futureWinRate, drawRate, 100 - futureWinRate - drawRate], // 미션 달성 후 예상 승률 데이터
+                    backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'], // 색상
                     hoverOffset: 4
                 }]
             },
@@ -293,6 +314,19 @@
                 cutout: '70%',
                 plugins: {
                     legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                label += context.raw.toFixed(2) + '%';
+                                return label;
+                            }
+                        }
+                    }
                 }
             },
             plugins: [{
@@ -302,18 +336,19 @@
                     const width = chart.width;
                     const height = chart.height;
                     const fontSize = (height / 114).toFixed(2);
-
+        
                     ctx.font = fontSize + "em Noto Sans KR";
                     ctx.textBaseline = "middle";
-
+        
                     const text = futureWinRate.toFixed(2) + "%";
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
-
+        
                     ctx.fillText(text, textX, textY);
                 }
             }]
         });
+        
 
     </script>
 
