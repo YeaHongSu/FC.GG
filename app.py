@@ -270,7 +270,7 @@ def wr_result():
         my_avg = np.nanmean(imp_data, axis=0)
         cl_data = np.array(data_list_cl(avg_data()))
 
-        jp_num = 10
+        jp_num = 20
         threshold = 0.9
 
         max_diff = (my_avg - cl_data) / cl_data
