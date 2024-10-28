@@ -159,7 +159,7 @@ def result():
         cl_data = np.array(data_list_cl(avg_data()))
 
         # 상위/하위 10개 중요 지표 선정
-        jp_num = 10  # 먼저 10개의 지표를 가져옴
+        jp_num = 20  # 먼저 10개의 지표를 가져옴
         threshold = 0.9  # 극단적인 차이를 제외하기 위한 임계값 설정
 
         # 상위 지표에서 10개 추출 후 임계값 적용한 필터링
