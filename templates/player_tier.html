@@ -70,26 +70,12 @@
     <main class="container my-5">
         <h1 class="text-center mb-4">내가 쓰는 선수 티어는 무엇일까?</h1>
         <h3 class="text-center mb-4">랭커 기준 선수 티어를 확인해 보세요!</h3>
-        <div class="search-container">
-            <div class="input-group mb-3">
-                <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="height: 44px; font-size: 1.0rem;">
-                <button class="btn btn-success rounded-end-pill" id="search_button" style="height: 44px; font-size: 1.0rem;">검색</button>
-            </div>
-        </div>
-        <!-- 광고 영역 -->
-        <div class="container my-4 d-flex justify-content-center">
-            <ins class="kakao_ad_area" style="display:none;"
-            data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
-            data-ad-width = "728"
-            data-ad-height = "90"></ins>
-            <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-        </div>
 
         <!-- Position Container with Title -->
-        <div class="position-container">
-            <h2 class="position-title">포지션별 선수 티어</h2>
-
-            <div class="position-tabs-dropdown">
+        <div class="position-container border p-4 rounded">
+            <h2 class="position-title mb-3">포지션별 선수 티어</h2>
+            
+            <div class="d-flex justify-content-between align-items-center">
                 <!-- Position Tabs (Buttons) -->
                 <ul class="nav nav-tabs" id="positionTabs" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -110,6 +96,14 @@
                 <div class="dropdown-container">
                     <select id="positionDropdown" class="form-select dropdown" aria-label="Position selection">
                     </select>
+                </div>
+            </div>
+
+            <!-- 선수 검색 기능 -->
+            <div class="search-container mt-3">
+                <div class="input-group">
+                    <input type="text" id="playerSearchInput" class="form-control" placeholder="선수 이름을 입력하세요" style="font-size: 1.0rem;">
+                    <button class="btn btn-success" id="searchPlayerButton" style="font-size: 1.0rem;">검색</button>
                 </div>
             </div>
         </div>
@@ -133,7 +127,6 @@
                     <p id="top-player-score" class="text-center fw-bold m-0" style="font-size: 1.2rem;"></p>
                 </div>
             </div>
-            
         </div>
 
         <!-- Player Tier List Section -->
@@ -147,7 +140,6 @@
                 <div class="tier-column">출전</div>
             </div>
         </div>
-
     </main>
 
     <!-- Footer Section -->
@@ -175,145 +167,158 @@
     <script>
         const playerTierData = {{ tier_forward_list | tojson }};
         
-        // 검색 버튼 클릭 이벤트
-        document.getElementById("search_button").addEventListener("click", function(){
-            var characterName = document.getElementById("character_name").value;
-            window.location.href = "/result.html?character_name=" + characterName;
-        });
-
-        document.getElementById("character_name").addEventListener("keyup", function(event) {
-            if (event.key === "Enter") {  // 엔터 키를 감지
-                document.getElementById("search_button").click();  // 검색 버튼 클릭 이벤트 트리거
-            }
-        });
-
-        // 포지션 버튼 클릭 이벤트 (탭 클릭 시 드롭다운 옵션 업데이트)
-        document.querySelectorAll('.nav-link').forEach(function(button) {
+        // 포지션 버튼 클릭 이벤트 추가
+        document.querySelectorAll('.nav-link[data-position-options]').forEach(button => {
             button.addEventListener('click', function() {
-                document.querySelectorAll('.nav-link').forEach(function(btn) {
-                    btn.classList.remove('active');
-                });
-                button.classList.add('active');
-
-                // 드롭다운 옵션 업데이트
-                updateDropdownOptions(button.getAttribute('data-position-options'));
-
-                // 첫 번째 옵션으로 티어 리스트 업데이트
-                updateTierList(document.getElementById('positionDropdown').value);
-
-                // 최고 OP 선수 정보 업데이트
-                updateTopPlayer(document.getElementById('positionDropdown').value);
+                const positionOptions = this.getAttribute('data-position-options');
+                updateDropdownOptions(positionOptions);
+                updateTopPlayer(positionOptions.split(',')[0]);
             });
         });
 
-        // 최고 OP 선수 박스를 업데이트하는 함수 (포지션별 제목 추가)
-        function updateTopPlayer(position) {
-            const tiers = playerTierData[position]; // 선택된 포지션의 티어 데이터
+        // 포지션 드롭다운 초기 설정
+        updateDropdownOptions('ST,CF,RW,LW');
+        updateTopPlayer('ST'); // 초기 포지션인 ST로 설정
 
-            // 포지션 이름을 동적으로 추가
-            document.getElementById('position-name').textContent = position;
+        // 선수 검색 기능
+        document.getElementById("searchPlayerButton").addEventListener("click", function() {
+            const playerName = document.getElementById("playerSearchInput").value.trim();
+            const position = document.getElementById("positionDropdown").value;
+            if (playerName) {
+                searchPlayerByName(playerName, position);
+            }
+        });
 
-            if (tiers && tiers['0티어'] && tiers['0티어'].length > 0) {
-                const topPlayer = tiers['0티어'][0]; // 첫 번째 선수 정보
+        // 엔터 키로도 검색 가능하게 설정
+        document.getElementById("playerSearchInput").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                document.getElementById("searchPlayerButton").click();
+            }
+        });
 
-                document.getElementById('top-player-image').src = topPlayer['미니페이스온'];
-                document.getElementById('top-player-name').textContent = topPlayer['선수 이름'];
-                document.getElementById('top-player-season').textContent = `${topPlayer['시즌']}`;
-                document.getElementById('top-player-score').textContent = `FC스코어: ${topPlayer['FC스코어']}`;
+        // 특정 포지션 내에서 선수 이름으로 검색하는 함수
+        function searchPlayerByName(name, position) {
+            const tierListContainer = document.getElementById('tier-list');
+            tierListContainer.innerHTML = `
+                <div class="tier-header">
+                    <div class="tier-column">티어</div>
+                    <div class="tier-column">시즌</div>
+                    <div class="tier-column">선수 이름</div>
+                    <div class="tier-column">FC스코어</div>
+                    <div class="tier-column">출전</div>
+                </div>`; // 열 제목 유지
 
-                document.getElementById('top-player').style.display = 'block'; // OP 박스 표시
-            } else {
-                document.getElementById('top-player').style.display = 'none'; // 데이터가 없으면 OP 박스 숨김
+            const sortedTiers = ['0티어', '1티어', '2티어', '3티어', '4티어', '5티어'];
+            let found = false; // 선수를 찾았는지 여부
+
+            sortedTiers.forEach(tier => {
+                if (playerTierData[position] && playerTierData[position][tier]) {
+                    const players = playerTierData[position][tier];
+                    players.forEach(player => {
+                        if (player['선수 이름'].includes(name)) {
+                            found = true;
+                            const tierItem = document.createElement('div');
+                            tierItem.classList.add('tier-item', `tier-${tier.charAt(0)}`); 
+
+                            const tierIcon = document.createElement('div');
+                            tierIcon.classList.add('tier-icon');
+                            tierIcon.innerText = tier.charAt(0) === '0' ? 'OP' : `${tier.charAt(0)}티어`;
+
+                            const playerDetails = `
+                                <div class="tier-column">${player['시즌']}</div>
+                                <div class="tier-column" style="display: flex; align-items: center; justify-content: center;">
+                                    <img src="${player['미니페이스온']}" alt="미니페이스온" class="img-thumbnail" width="60" style="margin-right: 10px;">
+                                    <span style="display: flex; align-items: center; justify-content: center; font-size: 16px;">${player['선수 이름']}</span>
+                                </div>
+                                <div class="tier-column">${player['FC스코어']}</div>
+                                <div class="tier-column">${player['출전']}</div>`;
+
+                            tierItem.innerHTML = tierIcon.outerHTML + playerDetails;
+                            tierListContainer.appendChild(tierItem);
+                        }
+                    });
+                }
+            });
+
+            if (!found) {
+                tierListContainer.innerHTML += '<p class="text-center mt-3" style="color: #d9534f;">해당 선수가 없습니다.</p>';
             }
         }
 
-        // 드롭다운 옵션 업데이트 함수
         function updateDropdownOptions(options) {
             const dropdown = document.getElementById('positionDropdown');
-            dropdown.innerHTML = ''; // 기존 옵션 제거
+            dropdown.innerHTML = '';
             options.split(',').forEach(function(option) {
                 const newOption = document.createElement('option');
                 newOption.value = option;
                 newOption.text = option;
                 dropdown.appendChild(newOption);
             });
-
-            // 첫 번째 옵션으로 티어 리스트 업데이트
             updateTierList(dropdown.value);
-
-            // 첫 번째 옵션으로 최고의 OP 선수 업데이트
             updateTopPlayer(dropdown.value);
         }
 
-        // 드롭다운 선택 시 선수 티어 리스트 업데이트
         document.getElementById('positionDropdown').addEventListener('change', function() {
             updateTierList(this.value);
-
-            // 드롭다운 변경 시 최고의 OP 선수도 업데이트
             updateTopPlayer(this.value);
         });
 
-        // 선수 티어 리스트 업데이트 함수
+        function updateTopPlayer(position) {
+            const tiers = playerTierData[position];
+            document.getElementById('position-name').textContent = position;
+
+            if (tiers && tiers['0티어'] && tiers['0티어'].length > 0) {
+                const topPlayer = tiers['0티어'][0];
+                document.getElementById('top-player-image').src = topPlayer['미니페이스온'];
+                document.getElementById('top-player-name').textContent = topPlayer['선수 이름'];
+                document.getElementById('top-player-season').textContent = `${topPlayer['시즌']}`;
+                document.getElementById('top-player-score').textContent = `FC스코어: ${topPlayer['FC스코어']}`;
+                document.getElementById('top-player').style.display = 'block';
+            } else {
+                document.getElementById('top-player').style.display = 'none';
+            }
+        }
+
         function updateTierList(position) {
             const tierListContainer = document.getElementById('tier-list');
-            tierListContainer.innerHTML = ''; // 기존 리스트 삭제
-
-            const headers = `
+            tierListContainer.innerHTML = `
                 <div class="tier-header">
-                    <div class="tier-column text-center">티어</div>
-                    <div class="tier-column text-center">시즌</div>
-                    <div class="tier-column text-center">선수 이름</div>
-                    <div class="tier-column text-center">FC스코어</div>
-                    <div class="tier-column text-center">출전</div>
+                    <div class="tier-column">티어</div>
+                    <div class="tier-column">시즌</div>
+                    <div class="tier-column">선수 이름</div>
+                    <div class="tier-column">FC스코어</div>
+                    <div class="tier-column">출전</div>
                 </div>`;
-            tierListContainer.innerHTML = headers;
 
-            const tiers = playerTierData[position]; // 선택된 포지션의 티어 데이터
+            const sortedTiers = ['0티어', '1티어', '2티어', '3티어', '4티어', '5티어'];
+            const tiers = playerTierData[position];
+
             if (tiers) {
-                Object.keys(tiers).forEach(tier => {
-                    tiers[tier].forEach(player => {
-                        // 이 부분에 코드를 넣음
-                        const tierItem = document.createElement('div');
-                        tierItem.classList.add('tier-item', `tier-${tier.charAt(0)}`); // 티어별 클래스 지정
-
-                        const tierIcon = document.createElement('div');
-                        tierIcon.classList.add('tier-icon'); // 티어 아이콘 생성
-                        // 0티어인 경우 OP티어로 표시
-                        if (tier.charAt(0) === '0') {
-                            tierIcon.innerText = 'OP';
-                        } else {
-                            tierIcon.innerText = `${tier.charAt(0)}티어`; // 아이콘에 티어 숫자 넣기
-                        }
-
-                        const playerDetails = `
-                            <div class="tier-column">${player['시즌']}</div>
-                            <div class="tier-column" style="display: flex; align-items: center; justify-content: center;">
-                                <img src="${player['미니페이스온']}" alt="미니페이스온" class="img-thumbnail" width="60" style="margin-right: 10px;">
-                                <span style="display: flex; align-items: center; justify-content: center; font-size: 16px;">${player['선수 이름']}</span>
-                            </div>
-                            <div class="tier-column">${player['FC스코어']}</div>
-                            <div class="tier-column">${player['출전']}</div>`;
-
-                        tierItem.innerHTML = tierIcon.outerHTML + playerDetails;
-                        tierListContainer.appendChild(tierItem);
-                    });
+                sortedTiers.forEach(tier => {
+                    if (tiers[tier]) {
+                        tiers[tier].forEach(player => {
+                            const tierItem = document.createElement('div');
+                            tierItem.classList.add('tier-item', `tier-${tier.charAt(0)}`);
+                            const tierIcon = document.createElement('div');
+                            tierIcon.classList.add('tier-icon');
+                            tierIcon.innerText = tier.charAt(0) === '0' ? 'OP' : `${tier.charAt(0)}티어`;
+                            const playerDetails = `
+                                <div class="tier-column">${player['시즌']}</div>
+                                <div class="tier-column" style="display: flex; align-items: center; justify-content: center;">
+                                    <img src="${player['미니페이스온']}" alt="미니페이스온" class="img-thumbnail" width="60" style="margin-right: 10px;">
+                                    <span style="display: flex; align-items: center; justify-content: center; font-size: 16px;">${player['선수 이름']}</span>
+                                </div>
+                                <div class="tier-column">${player['FC스코어']}</div>
+                                <div class="tier-column">${player['출전']}</div>`;
+                            tierItem.innerHTML = tierIcon.outerHTML + playerDetails;
+                            tierListContainer.appendChild(tierItem);
+                        });
+                    }
                 });
             } else {
                 tierListContainer.innerText = '해당 포지션에 대한 티어 정보가 없습니다.';
             }
         }
-
-        // 초기 드롭다운 옵션 설정 (공격수)
-        updateDropdownOptions('ST,CF,RW,LW');
-
-        // 최초 로드 시 "최고의 OP 선수" 업데이트
-        updateTopPlayer('ST'); // 초기 포지션인 ST로 설정
-
-        // Menu Toggle Button Click Event
-        document.getElementById("menu-toggle").addEventListener("click", function(){
-            var menu = document.getElementById("navbarNav");
-            menu.classList.toggle("show");
-        });
     </script>
 </body>
 </html>
