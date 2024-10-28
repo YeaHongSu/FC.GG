@@ -38,6 +38,88 @@
     <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
     <meta property="og:type" content="website">
     <style>
+        .game-mode-tab {
+            display: flex;
+            margin-left: 10px; /* 오른쪽으로 살짝 이동 */
+            justify-content: flex-start; /* 센터 정렬 */
+            padding: 10px 0;
+            /* border-bottom: 2px solid #ddd;  */
+        }
+
+        .tab-item {
+            margin-right: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            padding-bottom: 8px;
+        }
+
+        .tab-item.active {
+            color: #28a745; /* 활성화된 탭 색상 */
+            border-bottom: 3px solid #28a745; /* 활성화된 탭 하단 강조 */
+        }
+        /* Info 버튼 스타일 */
+        .info-btn {
+            border: none;
+            background-color: #ffb703; /* 밝은 오렌지색 */
+            color: #fff;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 5px;
+            width: 24px; /* 정사각형 크기 설정 */
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px; /* 모서리를 약간 둥글게 */
+            position: relative;
+            top: 3px; /* 아래쪽으로 내림 */
+        }
+
+        .info-btn:hover {
+            background-color: #fb8500; /* 호버 시 더 짙은 오렌지색 */
+            transform: scale(1.2); /* 크기 확대 */
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+        }
+
+        /* Modal 스타일 */
+        .modal {
+            display: none; /* 기본적으로 숨김 */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover, .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
          /* 로딩 애니메이션 스타일 */
         .loading-overlay {
             position: fixed;
@@ -146,7 +228,21 @@
                 </div>
             </div>
         </div>
-
+        <!-- 경기 모드 선택 탭 메뉴 -->
+        <div class="game-mode-tab mb-4">
+            <span class="tab-item active" onclick="selectGameMode('1vs1')">공식경기</span>
+            <!-- <span class="tab-item" onclick="selectGameMode('2vs2')">2vs2 공식경기</span> -->
+            <span class="tab-item" onclick="selectGameMode('friendly')">친선경기</span>
+            <span class="tab-item" onclick="selectGameMode('manager')">감독모드</span>
+            <span><button class="info-btn" onclick="showInfoModal()">?</button></span>
+        </div>
+        <!-- Modal 창 -->
+        <div id="infoModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeInfoModal()">&times;</span>
+                <p>친선경기와 감독모드는 준비 중입니다!</p>
+            </div>
+        </div>
         <!-- Player Style Section -->
         <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">플레이 스타일</h2>
@@ -256,6 +352,32 @@
     
     <!-- Chart.js Script for Win Rate Pie Chart -->
     <script>
+        function showInfoModal() {
+            document.getElementById("infoModal").style.display = "block";
+        }
+
+        function closeInfoModal() {
+            document.getElementById("infoModal").style.display = "none";
+        }
+
+        // Modal 창을 클릭하면 닫히도록 설정
+        window.onclick = function(event) {
+            const modal = document.getElementById("infoModal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+         function selectGameMode(mode) {
+            // 모든 탭의 활성화 클래스를 제거
+            const tabs = document.querySelectorAll('.game-mode-tab .tab-item');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // 선택한 탭에만 활성화 클래스 추가
+            document.querySelector(`.tab-item[onclick="selectGameMode('${mode}')"]`).classList.add('active');
+
+            // 선택된 경기 모드에 따른 데이터를 로드하는 로직을 여기에 추가할 수 있습니다
+            console.log("Selected Game Mode:", mode);
+        }
         // 결과 통계 계산
         const matchResults = {
             win: {{ match_data | selectattr('결과', 'equalto', '승') | list | length }},
