@@ -440,9 +440,11 @@
         if (influencerList.includes(nickname)) {
             titleBox.textContent = "인플루언서";
             titleBox.classList.add("influencer");
+            titleBox.style.display = "inline-block"; // 칭호가 있을 때만 표시
         } else if (proGamerList.includes(nickname)) {
             titleBox.textContent = "프로게이머";
             titleBox.classList.add("pro-gamer");
+            titleBox.style.display = "inline-block"; // 칭호가 있을 때만 표시
         }
         function showInfoModal() {
             document.getElementById("infoModal").style.display = "block";
