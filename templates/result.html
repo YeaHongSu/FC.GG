@@ -146,10 +146,10 @@
         }
         /* 왼쪽 광고 스타일 */
         .ad-left {
-/*             position: fixed; */
-            position: absolute;
+            position: fixed;
+            /* position: absolute; */
             top: 10%;
-/*             left: 40px; /* 중앙쪽으로 이동 */ */
+            left: 40px; /* 중앙쪽으로 이동 */
             top: 30%; /* 아래로 이동 */
             width: 160px;
             height: 600px;
@@ -159,10 +159,10 @@
 
         /* 오른쪽 광고 스타일 */
         .ad-right {
-/*             position: fixed; */
-            position: absolute;
+            position: fixed;
+            /* position: absolute; */
             top: 10%;
-/*             right: 40px; /* 중앙쪽으로 이동 */ */
+            right: 40px; /* 중앙쪽으로 이동 */
             top: 30%; /* 아래로 이동 */
             width: 160px;
             height: 600px;
@@ -182,22 +182,22 @@
 </head>
 <body>
     <!-- 왼쪽 광고 -->
-<!--     <div class="ad-left">
+    <div class="ad-left">
         <ins class="kakao_ad_area" style="display:block;" 
              data-ad-unit="DAN-yNhcyouyq0OP25XV" 
              data-ad-width="160" 
              data-ad-height="600"></ins>
         <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
     </div>
- -->
+
     <!-- 오른쪽 광고 -->
-<!--     <div class="ad-right">
+    <div class="ad-right">
         <ins class="kakao_ad_area" style="display:block;" 
              data-ad-unit="DAN-o8lUifeFCtHAH0Gb" 
              data-ad-width="160" 
              data-ad-height="600"></ins>
         <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-    </div> -->
+    </div>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX3HQ7FD"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -423,7 +423,7 @@
             tabs.forEach(tab => tab.classList.remove('active'));
 
             // 선택한 탭에만 활성화 클래스 추가
-            document.querySelector(.tab-item[onclick="selectGameMode('${mode}')"]).classList.add('active');
+            document.querySelector(`.tab-item[onclick="selectGameMode('${mode}')"]`).classList.add('active');
 
             // 선택된 경기 모드에 따른 데이터를 로드하는 로직을 여기에 추가할 수 있습니다
             console.log("Selected Game Mode:", mode);
@@ -439,7 +439,7 @@
         const winRate = (matchResults.win / totalGames * 100).toFixed(2);  // 승률 계산
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('winRatePercentage').textContent = ${winRate}%;
+            document.getElementById('winRatePercentage').textContent = `${winRate}%`;
 
             const winRateMessage = document.getElementById('winRateMessage');
             if (winRate < 30) {
