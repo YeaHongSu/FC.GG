@@ -423,7 +423,7 @@
             tabs.forEach(tab => tab.classList.remove('active'));
 
             // 선택한 탭에만 활성화 클래스 추가
-            document.querySelector(`.tab-item[onclick="selectGameMode('${mode}')"]`).classList.add('active');
+            document.querySelector(.tab-item[onclick="selectGameMode('${mode}')"]).classList.add('active');
 
             // 선택된 경기 모드에 따른 데이터를 로드하는 로직을 여기에 추가할 수 있습니다
             console.log("Selected Game Mode:", mode);
@@ -439,7 +439,7 @@
         const winRate = (matchResults.win / totalGames * 100).toFixed(2);  // 승률 계산
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('winRatePercentage').textContent = `${winRate}%`;
+            document.getElementById('winRatePercentage').textContent = ${winRate}%;
 
             const winRateMessage = document.getElementById('winRateMessage');
             if (winRate < 30) {
@@ -497,23 +497,12 @@
             }, 10);  // 1초 후 페이지 이동
         }
 
-        // 로딩창 보이기 함수
         function showLoading() {
-            document.getElementById("loading-overlay").style.display = "flex";
-        }
-        
-        // 페이지를 처음 로드할 때만 로딩창을 보이게 함
-        if (!sessionStorage.getItem('loaded')) {
-            showLoading();
-            sessionStorage.setItem('loaded', 'true');
-        }
-        
-        // 뒤로 가기 또는 페이지 캐시로 로딩될 때 로딩창 숨기기
-        window.addEventListener("pageshow", function(event) {
-            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-                document.getElementById("loading-overlay").style.display = "none";
+            var loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';  // 로딩창 표시
             }
-        });
+        }
 
         const ctx = document.getElementById('winRateChart').getContext('2d');
         const winRateChart = new Chart(ctx, {
