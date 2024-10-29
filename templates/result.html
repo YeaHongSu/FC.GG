@@ -497,12 +497,23 @@
             }, 10);  // 1초 후 페이지 이동
         }
 
+        // 로딩창 보이기 함수
         function showLoading() {
-            var loadingOverlay = document.getElementById('loading-overlay');
-            if (loadingOverlay) {
-                loadingOverlay.style.display = 'flex';  // 로딩창 표시
-            }
+            document.getElementById("loading-overlay").style.display = "flex";
         }
+        
+        // 페이지를 처음 로드할 때만 로딩창을 보이게 함
+        if (!sessionStorage.getItem('loaded')) {
+            showLoading();
+            sessionStorage.setItem('loaded', 'true');
+        }
+        
+        // 뒤로 가기 또는 페이지 캐시로 로딩될 때 로딩창 숨기기
+        window.addEventListener("pageshow", function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                document.getElementById("loading-overlay").style.display = "none";
+            }
+        });
 
         const ctx = document.getElementById('winRateChart').getContext('2d');
         const winRateChart = new Chart(ctx, {
