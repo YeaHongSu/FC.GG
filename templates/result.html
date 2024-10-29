@@ -144,10 +144,60 @@
             text-align: center;
             margin-top: 10px; /* 로딩 스피너와 간격 */
         }
+        /* 왼쪽 광고 스타일 */
+        .ad-left {
+            position: fixed;
+            /* position: absolute; */
+            top: 10%;
+            left: 40px; /* 중앙쪽으로 이동 */
+            top: 30%; /* 아래로 이동 */
+            width: 160px;
+            height: 600px;
+            z-index: 1000;
+            display: none; /* 기본적으로 숨김 */
+        }
+
+        /* 오른쪽 광고 스타일 */
+        .ad-right {
+            position: fixed;
+            /* position: absolute; */
+            top: 10%;
+            right: 40px; /* 중앙쪽으로 이동 */
+            top: 30%; /* 아래로 이동 */
+            width: 160px;
+            height: 600px;
+            z-index: 1000;
+            display: none; /* 기본적으로 숨김 */
+        }
+
+        /* 큰 화면에서만 광고 표시 */
+        @media (min-width: 992px) {
+            .ad-left,
+            .ad-right {
+                display: block;
+            }
+        }
     </style>
 
 </head>
 <body>
+    <!-- 왼쪽 광고 -->
+    <div class="ad-left">
+        <ins class="kakao_ad_area" style="display:block;" 
+             data-ad-unit="DAN-yNhcyouyq0OP25XV" 
+             data-ad-width="160" 
+             data-ad-height="600"></ins>
+        <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+    </div>
+
+    <!-- 오른쪽 광고 -->
+    <div class="ad-right">
+        <ins class="kakao_ad_area" style="display:block;" 
+             data-ad-unit="DAN-o8lUifeFCtHAH0Gb" 
+             data-ad-width="160" 
+             data-ad-height="600"></ins>
+        <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+    </div>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX3HQ7FD"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
