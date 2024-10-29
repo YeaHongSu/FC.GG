@@ -177,6 +177,27 @@
                 display: block;
             }
         }
+        .title-box {
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            background-color: #ffeb3b; /* 배경색 */
+            color: #333;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* 인플루언서와 프로게이머에 다른 스타일 적용 */
+        .title-box.influencer {
+            background-color: #FF7A7A; /* 인플루언서 색상을 부드러운 연한 빨강색으로 설정 */
+            color: #fff; /* 텍스트는 흰색으로 */
+        }
+
+        .title-box.pro-gamer {
+            background-color: #ffeb3b; /* 프로게이머 색상을 기존 인플루언서 색상(노란색)으로 설정 */
+            color: #333;
+        }
+
     </style>
 
 </head>
@@ -264,7 +285,10 @@
         <div class="player-info d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">기본정보</h2>
             <div class="d-flex justify-content-between align-items-start">
-                <span class="nickname" style="font-size: 3rem; font-weight: bold;"><span class="text-success">{{ my_data.nickname }}</span></span>
+                <span class="nickname" style="font-size: 3rem; font-weight: bold;">
+                    <span class="text-success">{{ my_data.nickname }}</span>
+                    <span id="title-box" class="title-box ms-2"></span> <!-- 칭호 박스 추가 -->
+                </span>
 
                 <div class="d-flex flex-column align-items-end">
                     <div class="d-flex align-items-center">
@@ -402,6 +426,24 @@
     
     <!-- Chart.js Script for Win Rate Pie Chart -->
     <script>
+        // 칭호 목록
+        const influencerList = ["메시연", "교로텔리", "뀨뀨rr", "호날두", "굴리트", "크라우터", "잉유진", "신림동밀탱크", "방배우", "AF박준효", "빅윈"];
+        const proGamerList = ["GenG박세영", "KT곽준혁", "KT박찬화", "KDF강준호", "KDF최호석"];
+        
+        // 현재 닉네임 가져오기
+        const nickname = "{{ my_data.nickname }}";
+
+        // 칭호 요소 선택
+        const titleBox = document.getElementById("title-box");
+
+        // 닉네임에 따른 칭호 추가
+        if (influencerList.includes(nickname)) {
+            titleBox.textContent = "인플루언서";
+            titleBox.classList.add("influencer");
+        } else if (proGamerList.includes(nickname)) {
+            titleBox.textContent = "프로게이머";
+            titleBox.classList.add("pro-gamer");
+        }
         function showInfoModal() {
             document.getElementById("infoModal").style.display = "block";
         }
