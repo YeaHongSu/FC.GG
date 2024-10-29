@@ -12,11 +12,11 @@ main.container {
     margin: 0 auto;
 }
 
-.header, .footer, .video-container, .notice-container, .d-flex {
+.header, .footer, .video-container, .notice-container, .d-flex, .upcoming-container {
     width: 1024px; /* 모든 요소의 너비를 고정 */
 }
 
-.video-container, .notice-container {
+.video-container, .notice-container, .upcoming-container {
     background-color: #f8f9fa;
     padding: 15px;
     border-radius: 10px;
@@ -49,7 +49,7 @@ main.container {
     align-items: center;
 }
 
-.notice-title {
+.notice-title, .upcoming-title {
     color: #007bff;
     display: flex;
     justify-content: space-between;
@@ -57,7 +57,7 @@ main.container {
     cursor: pointer;
 }
 
-.notice-content {
+.notice-content, .upcoming-content {
     font-size: 0.9rem;
     color: #333;
     padding-left: 10px;
@@ -68,11 +68,11 @@ main.container {
     transition: max-height 0.3s ease-out;
 }
 
-.notice-content.open {
+.notice-content.open, .upcoming-content.open {
     max-height: 200px;
 }
 
-.notice-date {
+.notice-date, .upcoming-date {
     font-size: 0.85rem;
     color: #6c757d;
 }
@@ -86,4 +86,25 @@ main.container {
 
 footer {
     background-color: #343a40;
+}
+
+/* 메인 컨테이너를 flex로 중앙 정렬 */
+.row.justify-content-center {
+    display: flex;
+    justify-content: center; /* 두 박스를 가로 방향 중앙 정렬 */
+    align-items: flex-start; /* 세로 방향으로 정렬 */
+    gap: 20px; /* 두 박스 사이 간격 */
+    flex-wrap: wrap; /* 화면이 좁아지면 세로로 배치되도록 */
+}
+
+
+
+@media (min-width: 700px) {
+    .col-md-5 {
+        max-width: 49%; /* 화면이 넓어질 때 각 박스가 49% 너비로 중앙에 배치 */
+    }
+}
+
+.upcoming-date, .notice-date {
+    float: right; /* 맨 오른쪽으로 정렬 */
 }
