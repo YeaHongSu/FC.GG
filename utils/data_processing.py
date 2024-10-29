@@ -23,6 +23,7 @@ def determine_play_style(max_data, min_data):
         'dribbler': 0,
         'playmaker': 0,
         'setpiece_master': 0,
+        'corner_master' : 0,
         'header_specialist': 0,
         'penalty_specialist': 0,
         'long_shot_master': 0,
@@ -44,7 +45,7 @@ def determine_play_style(max_data, min_data):
         '평균 차단 시도 수': 'interceptor', '평균 차단 성공 수': 'interceptor', '평균 태클 시도 수': 'tackler',
         '평균 태클 성공 수': 'tackler', '평균 패스 성공': 'playmaker', '평균 숏패스 성공 수': 'playmaker',
         '평균 롱패스 성공 수': 'playmaker', '평균 스루패스 성공 수': 'playmaker',
-        '평균 로빙스루패스 성공 수': 'playmaker', '평균 코너킥 수': 'setpiece_master',
+        '평균 로빙스루패스 성공 수': 'playmaker', '평균 코너킥 수': 'corner_master',
         '평균 프리킥 골 수': 'setpiece_master', '프리킥 골 성공률': 'setpiece_master',
         '프리킥 골 비율': 'setpiece_master', '평균 헤딩 슛 수': 'header_specialist',
         '평균 헤더 골 수': 'header_specialist', '헤더 골 성공률': 'header_specialist',
@@ -72,6 +73,8 @@ def determine_play_style(max_data, min_data):
         return "옵사를 사랑하는 플레이어"
     elif counters['lob_pass_master'] >= 2:
         return "공이 공중에만 있는 플레이어"
+    elif counters['corner_master'] >= 1 and counters['header_specialist'] >= 1:
+        return "코너킥 딸깍의 신"
     elif counters['finisher'] >= 1 and counters['attack'] >= 1:
         return "공격적인 피니셔"
     elif counters['finisher'] >= 1 and counters['header_specialist'] >= 1:
