@@ -2,10 +2,10 @@
     font-family: 'Poppins', sans-serif; /* 제목에 Poppins 폰트 적용 */
 }
 body {
-    font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
+    font-family: 'Noto Sans KR', sans-serif;
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
+    min-height: 100vh;
 }
 
 .loading-overlay {
@@ -27,26 +27,26 @@ body {
 }
 
 .custom-container {
-    width: 100%;  /* 화면 크기에 맞추어 조절 */
-    max-width: 900px;  /* 최대 너비 설정 */
-    margin: 0 auto;  /* 중앙 정렬 */
-    padding: 0 15px;  /* 좌우 여백 추가 */
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 15px;
 }
 
 .player-info .nickname {
-    font-family: 'Noto Sans KR', sans-serif; /* 닉네임에 Noto Sans KR 폰트 적용 */
-    font-size: 1.8rem; /* 닉네임 크기 키움 */
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.8rem;
 }
 
 .player-info .level {
-    font-family: 'Noto Sans KR', sans-serif; /* 레벨에도 Noto Sans KR 폰트 적용 */
-    font-size: 1.2rem; /* 레벨 글씨 크기 설정 */
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.2rem;
 }
 
 .half-width {
-    flex: 1;  /* flex로 가변적인 너비 적용 */
-    min-width: 300px;  /* 최소 너비 설정 */
-    margin: 10px;  /* 여백 조정 */
+    flex: 1;
+    min-width: 300px;
+    margin: 10px;
 }
 
 .centered-percentage {
@@ -56,16 +56,16 @@ body {
     transform: translate(-50%, -50%);
     font-size: 2.5rem;
     font-weight: bold;
-    color: #3b82f6; /* 승률 퍼센트 색상 */
+    color: #3b82f6;
 }
 
 .chart-container {
-    display: flex;  /* Flexbox를 사용하여 중앙 정렬 */
-    justify-content: center;  /* 수평 중앙 정렬 */
-    align-items: center;  /* 수직 중앙 정렬 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: relative;
-    width: 100%;  /* 차트가 화면 크기에 맞게 조절되도록 설정 */
-    height: auto;  /* 높이 자동 조절 */
+    width: 100%;
+    height: auto;
 }
 
 .win-rate-message {
@@ -84,56 +84,56 @@ body {
 }
 
 .improve-btn-container .btn-primary {
-    background-color: #4CAF50; /* 버튼 색상 변경 */
+    background-color: #4CAF50;
     border: none;
 }
 
 .improved-metrics-list li, .deteriorated-metrics-list li, .improvement-metrics-list li {
-    background-color: #fff; /* 리스트 배경색 */
-    border: none; /* 리스트 테두리 제거 */
-    margin-bottom: 5px; /* 아래 여백 추가 */
-    padding: 10px 15px; /* 패딩 추가 */
-    border-radius: 8px; /* 둥근 모서리 */
-    display: flex; /* Flexbox 사용 */
-    justify-content: space-between; /* 요소 사이의 공간을 동일하게 분배 */
-    align-items: center; /* 수직 중앙 정렬 */
+    background-color: #fff;
+    border: none;
+    margin-bottom: 5px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .metrics-box {
-    border: 1px solid #ddd; /* 박스 테두리 */
-    border-radius: 8px; /* 둥근 모서리 */
-    padding: 15px; /* 내부 패딩 */
-    background-color: #f9f9f9; /* 박스 배경색 */
-    margin-bottom: 15px; /* 아래 여백 */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    margin-bottom: 15px;
 }
 
 .list-group-item {
-    font-size: 1rem; /* 지표 텍스트 크기 줄임 */
+    font-size: 1rem;
 }
 
 .match-info-container {
-    background-color: #f8f9fa; /* 배경 색상 */
+    background-color: #f8f9fa;
     padding: 20px;
-    border-radius: 10px; /* 모서리 둥글게 */
-    margin-bottom: 30px; /* 아래 간격 */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 약간의 그림자 추가 */
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .d-flex-custom {
     display: flex;
-    justify-content: space-between; /* 요소들을 양쪽 끝에 정렬 */
-    gap: 2%; /* 카드들 사이에 간격 추가 */
-    flex-wrap: wrap; /* 화면 크기에 따라 카드들을 감쌈 */
+    justify-content: space-between;
+    gap: 2%;
+    flex-wrap: wrap;
 }
 
 .match-info-header {
     font-weight: bold;
-    font-size: 1.1rem; /* 글씨 크기 */
-    text-align: center; /* 중앙 정렬 */
+    font-size: 1.1rem;
+    text-align: center;
     display: flex;
-    justify-content: space-between; /* 요소 사이 간격 균등 분배 */
+    justify-content: space-between;
     padding: 15px 10px;
-    background-color: #e9ecef; /* 헤더 배경색 추가 */
+    background-color: #e9ecef;
     border-radius: 8px;
 }
 
@@ -149,83 +149,89 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 10px; /* 매치 행 간격 */
-    padding: 15px; /* 내부 여백 */
-    border-radius: 5px; /* 모서리 둥글게 */
-    transition: background-color 0.3s ease; /* 부드러운 배경 전환 */
-    color: #fff; /* 텍스트 색상 */
-    font-size: 1rem; /* 글씨 크기 */
+    margin-bottom: 10px;
+    padding: 35px 15px; /* 상하 패딩을 20px로 늘려서 높이 증가 */
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    color: #fff;
+    font-size: 1rem;
+    position: relative;
 }
 
 .match-row span {
-    flex: 1; /* 각 열의 너비를 균등하게 */
-    text-align: center; /* 텍스트 중앙 정렬 */
+    flex: 1;
+    text-align: center;
 }
 
 .result {
-    font-size: 1.2rem; /* 결과 글씨 크기 */
+    font-size: 1.2rem;
     font-weight: bold;
 }
 
 .score {
-    font-size: 1.4rem; /* 스코어 글씨 크기 */
+    font-size: 1.4rem;
     font-weight: bold;
     color: #fff;
 }
 
+/* 승무패별 배경 색상과 왼쪽 변 색상 */
 .win {
-    background-color: #2D7BF9; /* 승리 색상 */
+    background-color: #2a4d7d; /* 기존 파란색에서 조금 더 연한 파란색 */
+    border-left: 8px solid #2D7BF9; /* 왼쪽 변 파란색 */
 }
 
 .draw {
-    background-color: #ffc107; /* 무승부 색상 */
+    background-color: #e6b800; /* 기존 노란색에서 조금 더 연한 노란색 */
+    border-left: 8px solid #ffc107; /* 왼쪽 변 노란색 */
 }
 
 .lose {
-    background-color: #f44336; /* 패배 색상 */
+    background-color: #8b4b4b; /* 기존 빨간색에서 조금 더 연한 빨간색 */
+    border-left: 8px solid #f44336; /* 왼쪽 변 빨간색 */
 }
+
 
 /* Hover 효과 추가 */
 .match-row:hover {
-    background-color: #343a40; /* Hover 시 어두운 배경색 */
+    background-color: #343a40;
     color: #fff;
 }
 
 @media (max-width: 768px) {
     .custom-container {
-        max-width: 100%; /* 모바일에서는 최대 너비를 화면에 맞게 설정 */
-        padding: 0 10px; /* 모바일에서는 여백을 조금 줄임 */
+        max-width: 100%;
+        padding: 0 10px;
     }
 
     .half-width {
-        flex: 1 1 100%; /* 모바일에서는 두 개의 요소가 세로로 쌓이도록 설정 */
-        min-width: 100%; /* 최소 너비를 화면에 맞게 설정 */
-        margin: 5px 0; /* 여백을 조금 줄임 */
+        flex: 1 1 100%;
+        min-width: 100%;
+        margin: 5px 0;
     }
 
     .match-info-header {
-        flex-direction: column; /* 헤더가 세로로 배치되도록 설정 */
-        padding: 10px 5px; /* 모바일에서는 패딩을 줄임 */
+        flex-direction: column;
+        padding: 10px 5px;
     }
 
     .match-info-header span {
-        font-size: 1rem; /* 글씨 크기를 줄임 */
+        font-size: 1rem;
     }
 
     .match-row {
-        flex-direction: column; /* 매치 행도 세로로 쌓이도록 설정 */
-        padding: 10px; /* 패딩을 줄여서 모바일에서 공간을 절약 */
+        flex-direction: column;
+        padding: 10px;
     }
 
     .match-row span {
-        font-size: 0.9rem; /* 글씨 크기를 줄여서 화면에 잘 맞도록 설정 */
+        font-size: 0.9rem;
     }
 
     .score {
-        font-size: 1.2rem; /* 스코어 글씨 크기를 모바일에 맞게 줄임 */
+        font-size: 1.2rem;
     }
 
     .result {
-        font-size: 1rem; /* 결과 글씨 크기를 줄임 */
+        font-size: 1rem;
     }
 }
