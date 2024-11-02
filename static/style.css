@@ -1,6 +1,6 @@
 body {
     font-family: 'Poppins', 'Noto Sans KR', sans-serif;
-    background-color: #fafbfc; /* 조금 더 연한 색상 */
+    background-color: #fcfcfd;
     overflow-x: auto; /* 가로 스크롤을 추가하여 고정된 레이아웃이 잘리더라도 볼 수 있도록 설정 */
     margin: 0;
     padding: 0;
