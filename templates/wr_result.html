@@ -131,9 +131,17 @@
                         <ul class="list-group list-group-flush improvement-metrics-list shadow-sm">
                             {% for feature in improved_features_text.split("\n") if feature %}
                                 <li class="list-group-item d-flex justify-content-between align-items-center improvement-box">
-                                    <span style="font-size: 1rem;">{{ feature.split('->')[0] }}</span>
-                                    <span class="text-success ms-2" style="font-size: 1.2rem; font-weight: bold;">&#8594;</span>
-                                    <span style="font-size: 1rem;">{{ feature.split('->')[1] }}</span>
+                                    <!-- 지표명 강조 (":" 기준 앞부분만 초록색) -->
+                                    <span style="font-size: 1.1rem; font-weight: bold; color: #333;">
+                                        {{ feature.split(':')[0] }}
+                                    </span>
+                                    <span style="font-size: 1.1rem; color: #333;">
+                                        :{{ feature.split(':')[1].split('->')[0] }}
+                                    </span>
+                                    <span class="text-success ms-2" style="font-size: 1.5rem; font-weight: bold;">&#8594;</span>
+                                    <span style="font-size: 1.1rem; color: #333;">
+                                        {{ feature.split('->')[1] }}
+                                    </span>
                                 </li>
                             {% endfor %}
                         </ul>
