@@ -1,7 +1,9 @@
 body {
-    font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
-    background-color: #fcfcfc;
+    font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+    background-color: #f8f9fa;
     overflow-x: auto; /* 가로 스크롤을 추가하여 고정된 레이아웃이 잘리더라도 볼 수 있도록 설정 */
+    margin: 0;
+    padding: 0;
 }
 
 .logo {
@@ -64,4 +66,88 @@ button {
     button {
         width: auto;
     }
+}
+
+/* 로고 텍스트 스타일 */
+.main-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: bold;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
+    transition: transform 0.3s ease; /* 호버 시 크기 조절 애니메이션 */
+}
+
+/* 그림자 */
+/* .main-title:hover {
+    transform: scale(1.1); 
+    text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5); 
+} */
+
+/* 주요 버튼 스타일 */
+.btn-success {
+    background-color: #28a745;
+    border: none;
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+    background-color: #218838; /* 더 짙은 초록색으로 변경 */
+    transform: scale(1.05); /* 살짝 커짐 */
+}
+
+/* 광고 섹션 여백 조정 */
+.left-ad, .right-ad {
+    margin-top: 60px; /* 광고를 아래로 내리기 */
+}
+
+/* 주요 섹션 배경 및 텍스트 스타일 */
+.notice-container, .upcoming-container {
+    background-color: #f1f1f1; /* 연한 회색 배경 */
+    padding: 20px;
+    border-radius: 8px; /* 모서리 둥글게 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
+}
+
+.notice-item, .upcoming-item {
+    margin-bottom: 10px;
+    font-size: 1.1rem; /* 텍스트 크기 증가 */
+}
+
+/* 검색창 스타일 */
+.form-control {
+    border: 2px solid #28a745;
+    border-right: none;
+}
+
+.btn-success {
+    border: 2px solid #28a745;
+    background-color: #28a745;
+    color: #fff;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+/* 광고 섹션 여백 조정 및 스타일링 */
+.left-ad, .right-ad {
+    margin-top: 60px;
+}
+
+/* Footer 스타일 */
+footer {
+    background-color: #343a40;
+    color: #ffffff;
+    padding: 20px 0;
+    text-align: center;
+}
+
+footer h2 {
+    font-size: 1.8rem;
+}
+
+footer p {
+    margin: 0;
+    font-size: 1rem;
 }
