@@ -255,8 +255,8 @@ def wr_result():
         for data in match_data_list:
             my_data = me(data, character_name)
             imp = data_list(my_data)
-           
-            if imp == None:
+            imp2 = data_list(you(data, character_name))
+            if imp == None or imp2 == None:
                 continue
                
             w_l = my_data['matchDetail']['matchResult']
