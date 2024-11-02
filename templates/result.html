@@ -332,7 +332,7 @@
             <div class="card mb-4 p-4 shadow-sm half-width">
                 <h2 class="card-title h4 text-center">최근 <span class="text-success">{{ match_data|length }}</span>경기 승률</h2>
                 <div class="card-body text-center">
-                    <p>총 {{ match_data|length }}전 {{ match_data | selectattr('결과', 'equalto', '승') | list | length }}승 
+                    <p style="font-size: 20px;">총 {{ match_data|length }}전 {{ match_data | selectattr('결과', 'equalto', '승') | list | length }}승 
                     {{ match_data | selectattr('결과', 'equalto', '무') | list | length }}무 
                     {{ match_data | selectattr('결과', 'equalto', '패') | list | length }}패</p>
 
@@ -340,10 +340,10 @@
                         <canvas id="winRateChart" class="img-fluid"></canvas>
                         <div class="centered-percentage" id="winRatePercentage"></div>
                     </div>
-                    <p class="win-rate-message" id="winRateMessage" style="font-size: 18px;"></p>
+                    <p class="win-rate-message" id="winRateMessage" style="font-size: 20px;"></p>
                     
                     <div class="improve-btn-container">
-                        <p style="font-size: 18px;">나의 승률을 높이는 방법은?</p>
+                        <p style="font-size: 20px;">나의 승률을 높이는 방법은?</p>
                         <a class="btn btn-primary" id="winRateButton" href="javascript:void(0);" onclick="goToWinRateResult('{{my_data.nickname}}')" style="font-size: 20px;">승률 개선 솔루션</a>
                     </div>
                 </div>
