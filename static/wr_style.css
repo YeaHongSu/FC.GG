@@ -193,3 +193,16 @@ iframe {
         width: 100%; /* iframe 너비 자동 조정 */
     }
 }
+
+/* 지표명에만 초록색 적용 */
+.metric-name {
+    color: #4CAF50; /* 초록색 */
+}
+
+/* 리스트 항목 스타일 개선 */
+.improvement-metrics-list .list-group-item {
+    background-color: #f9f9f9; /* 리스트 배경 색상 */
+    border-left: 5px solid #4CAF50; /* 강조된 녹색 테두리 */
+    border-radius: 5px; /* 모서리 둥글게 */
+    padding: 12px; /* 여백 추가 */
+}
