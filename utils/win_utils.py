@@ -4,6 +4,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score
 from sklearn.utils import resample
 import numpy as np
+import random
 
 # 데이터 증강 함수
 def augment_data(X, y, random_state=42):
@@ -13,9 +14,9 @@ def augment_data(X, y, random_state=42):
 
     win_count, lose_count, draw_count = len(win_data), len(lose_data), len(draw_data)
 
-    win_data_resampled = np.array(resample(win_data, replace=True, n_samples=win_count * 3, random_state=random_state)) if win_count > 0 else np.array(win_data)
-    lose_data_resampled = np.array(resample(lose_data, replace=True, n_samples=lose_count * 3, random_state=random_state)) if lose_count > 0 else np.array(lose_data)
-    draw_data_resampled = np.array(resample(draw_data, replace=True, n_samples=draw_count * 3, random_state=random_state)) if draw_count > 0 else np.array(draw_data)
+    win_data_resampled = np.array(resample(win_data, replace=True, n_samples=win_count * 4, random_state=random_state)) if win_count > 0 else np.array(win_data)
+    lose_data_resampled = np.array(resample(lose_data, replace=True, n_samples=lose_count * 4, random_state=random_state)) if lose_count > 0 else np.array(lose_data)
+    draw_data_resampled = np.array(resample(draw_data, replace=True, n_samples=draw_count * 4, random_state=random_state)) if draw_count > 0 else np.array(draw_data)
 
     resampled_data = [win_data_resampled, lose_data_resampled, draw_data_resampled]
     resampled_data = [data for data in resampled_data if len(data) > 0]
