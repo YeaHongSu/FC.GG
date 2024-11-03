@@ -142,7 +142,8 @@
             font-size: 1.2rem;
             color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
             text-align: center;
-            margin-top: 10px; /* 로딩 스피너와 간격 */
+            margin-bottom: 17px; 
+            margin-left: 10px;
         }
         /* 왼쪽 광고 스타일 */
         .ad-left {
@@ -211,13 +212,23 @@
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <!-- 로딩창 -->
-    <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-overlay" id="loading-win">
         <div class="spinner-border text-success" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
         <!-- 추가된 텍스트 -->
         <div class="loading-message mt-3">
             유저님의 승률을 영혼부터 끌어올리고 있는 중입니다!
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading-result">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <!-- 추가된 텍스트 -->
+        <div class="loading-message mt-3">
+            유저님의 경기들을 분석 중입니다! 잠시만 기다려 주세요!
         </div>
     </div>
     <!-- 공통 Header Section -->
@@ -273,7 +284,7 @@
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">기본정보</h2>
             <div class="d-flex justify-content-between align-items-start">
                 <span class="nickname" style="font-size: 3rem; font-weight: bold;">
-                    <span class="text-success">{{ my_data.nickname }}</span>
+                    <span class="text-success">{{ level_data.nickname }}</span>
                     <span id="title-box" class="title-box ms-2" style="display: none;"></span> <!-- 기본적으로 숨김 처리 -->
                 </span>
 
@@ -291,23 +302,19 @@
         </div>
         <!-- 경기 모드 선택 탭 메뉴 -->
         <div class="game-mode-tab mb-4">
-            <span class="tab-item active" onclick="selectGameMode('1vs1')">공식경기</span>
+            <span class="tab-item" id='50' onclick="selectGameMode('{{ level_data.nickname }}', '50', this)">공식경기</span>
             <!-- <span class="tab-item" onclick="selectGameMode('2vs2')">2vs2 공식경기</span> -->
-            <span class="tab-item" onclick="selectGameMode('friendly')">친선경기</span>
-            <span class="tab-item" onclick="selectGameMode('manager')">감독모드</span>
-            <span><button class="info-btn" onclick="showInfoModal()">?</button></span>
+            <span class="tab-item" id='60' onclick="selectGameMode('{{ level_data.nickname }}', '60', this)">친선경기</span>
+            <span class="tab-item" id='52' onclick="selectGameMode('{{ level_data.nickname }}', '52', this)">감독모드</span>
         </div>
-        <!-- Modal 창 -->
-        <div id="infoModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeInfoModal()">&times;</span>
-                <p>친선경기와 감독모드는 준비 중입니다!</p>
-            </div>
-        </div>
+
+        {% if no_recent_matches %}
+        <p style="text-align: center;">최근 전적이 존재하지 않습니다.</p>
+        {% else %}
         <!-- Player Style Section -->
         <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm" style="border: 1px solid #ddd;">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">플레이 스타일</h2>
-            <h4>{{ my_data.nickname }}님은 <span class="text-success">{{ play_style }}</span>입니다!</h4>
+            <h4>{{ level_data.nickname }}님은 <span class="text-success">{{ play_style }}</span>입니다!</h4>
         </div>
 
         <!-- Content Section -->
@@ -327,7 +334,7 @@
                     
                     <div class="improve-btn-container">
                         <p style="font-size: 20px;">나의 승률을 높이는 방법은?</p>
-                        <a class="btn btn-primary" id="winRateButton" href="javascript:void(0);" onclick="goToWinRateResult('{{my_data.nickname}}')" style="font-size: 20px;">승률 개선 솔루션</a>
+                        <a class="btn btn-primary" id="winRateButton" href="javascript:void(0);" onclick="goToWinRateResult('{{level_data.nickname}}','{{match_type}}')" style="font-size: 20px;">승률 개선 솔루션</a>
                     </div>
                 </div>
             </div>
@@ -393,6 +400,7 @@
                 {% endfor %}
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Footer Section -->
@@ -420,7 +428,7 @@
         const fifaInventKingList = ["화성간정무", "무리윤주니어"]; // 새로 추가된 피파인벤1황 목록
         
         // 현재 닉네임 가져오기
-        const nickname = "{{ my_data.nickname }}";
+        const nickname = "{{ level_data.nickname }}";
 
         // 칭호 요소 선택
         const titleBox = document.getElementById("title-box");
@@ -439,32 +447,21 @@
             titleBox.classList.add("fifa-invent-king");
             titleBox.style.display = "inline-block"; // 칭호가 있을 때만 표시
         }
-        function showInfoModal() {
-            document.getElementById("infoModal").style.display = "block";
-        }
+        
+        function selectGameMode(nick, mode) {
+            const tabs = document.querySelectorAll('.tab-item');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
 
-        function closeInfoModal() {
-            document.getElementById("infoModal").style.display = "none";
+            // 클릭된 탭에 active 클래스 추가
+            event.currentTarget.classList.add('active');
+            
+            resultLoading();
+            const url = `/result.html?character_name=${nick}&match_type=${mode}`;
+            window.location.href = url;
         }
-
-        // Modal 창을 클릭하면 닫히도록 설정
-        window.onclick = function(event) {
-            const modal = document.getElementById("infoModal");
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
-         function selectGameMode(mode) {
-            // 모든 탭의 활성화 클래스를 제거
-            const tabs = document.querySelectorAll('.game-mode-tab .tab-item');
-            tabs.forEach(tab => tab.classList.remove('active'));
-
-            // 선택한 탭에만 활성화 클래스 추가
-            document.querySelector(`.tab-item[onclick="selectGameMode('${mode}')"]`).classList.add('active');
-
-            // 선택된 경기 모드에 따른 데이터를 로드하는 로직을 여기에 추가할 수 있습니다
-            console.log("Selected Game Mode:", mode);
-        }
+        
         // 결과 통계 계산
         const matchResults = {
             win: {{ match_data | selectattr('결과', 'equalto', '승') | list | length }},
@@ -476,6 +473,16 @@
         const winRate = (matchResults.win / totalGames * 100).toFixed(2);  // 승률 계산
 
         document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const matchType = urlParams.get('match_type');
+
+            // 해당하는 탭에 active 클래스 추가
+            if (matchType) {
+                const activeTab = document.querySelector(`.tab-item[id='${matchType}']`);
+                if (activeTab) {
+                    activeTab.classList.add('active');
+                }
+            }
             document.getElementById('winRatePercentage').textContent = `${winRate}%`;
 
             const winRateMessage = document.getElementById('winRateMessage');
@@ -503,12 +510,6 @@
             }
         });
 
-        // 검색 버튼 클릭 이벤트
-        document.getElementById("search_button").addEventListener("click", function(){
-            var characterName = document.getElementById("character_name").value;
-            window.location.href = "/result.html?character_name=" + characterName;
-        });
-
         document.getElementById("character_name").addEventListener("keyup", function(event) {
             if (event.key === "Enter") {  
                 document.getElementById("search_button").click();
@@ -519,23 +520,30 @@
         document.getElementById("search_button").addEventListener("click", function() {
             var characterName = document.getElementById("character_name").value;
             if (characterName.trim() !== "") {
-                showLoading(); // 로딩창 표시
+                resultLoading(); // 로딩창 표시
                 setTimeout(function() {
-                    window.location.href = "/result.html?character_name=" + characterName;
+                    window.location.href = "/result.html?character_name=" + characterName + "&match_type=50";
                 }, 10); // 1초 후에 페이지 이동
             }
         });
 
         // 승률 개선 솔루션 페이지로 이동
-        function goToWinRateResult(nickname) {
-            showLoading();  // 로딩창 표시
+        function goToWinRateResult(nickname, match_type) {
+            winLoading();  // 로딩창 표시
             setTimeout(function() {
-                window.location.href = "/wr_result.html?character_name=" + nickname;
-            }, 10);  // 1초 후 페이지 이동
+                    window.location.href = "/wr_result.html?character_name=" + nickname + "&match_type="+match_type;
+                }, 10);
         }
 
-        function showLoading() {
-            var loadingOverlay = document.getElementById('loading-overlay');
+        function winLoading() {
+            var loadingOverlay = document.getElementById('loading-win');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';  // 로딩창 표시
+            }
+        }
+
+        function resultLoading() {
+            var loadingOverlay = document.getElementById('loading-result');
             if (loadingOverlay) {
                 loadingOverlay.style.display = 'flex';  // 로딩창 표시
             }
