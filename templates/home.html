@@ -162,6 +162,12 @@
                 <div class="notice-container">
                     <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                     <div class="notice-item">
+                        <p id="notice7-title">24/11/03 1.1.1v 업데이트 (<span style="color: red;">감독모드, 친선경기</span>) <span class="notice-date" id="notice7-date"></span></p>
+                        <div id="notice7-content" class="notice-content">
+                            <p>이번 업데이트에서는 전적 검색 서비스에서 공식경기뿐만 아니라 감독모드와 친선경기의 전적과 플레이 스타일을 확인하실 수 있습니다.</p>
+                        </div>
+                    </div>
+                    <div class="notice-item">
                         <p id="notice6-title">24/10/28 1.0.2v 업데이트 (선수 티어, UX/UI) <span class="notice-date" id="notice6-date"></span></p>
                         <div id="notice6-content" class="notice-content">
                             <p>이번 업데이트에서는 선수 티어 서비스에서 선수 검색 기능을 추가하여 편의성을 높이고 모바일 환경에서의 UX/UI 편의성을 높였습니다.</p>
@@ -205,7 +211,7 @@
                 <div class="upcoming-container">
                     <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
                     <div class="upcoming-item">
-                        <p id="upcoming1-title">1.0.3v 신규 기능 추가 예정 (전적 검색 서비스) <span class="upcoming-date" id="upcoming1-date"></span></p>
+                        <p id="upcoming1-title">1.1.1v 신규 기능 추가 예정 (전적 검색 서비스) <span class="upcoming-date" id="upcoming1-date"></span></p>
                         <div id="upcoming1-content" class="upcoming-content">
                             <p>감독모드와 친선경기 전적 검색 서비스를 추가하여, 유저들이 더 나은 게임 인사이트를 얻을 수 있도록 개선할 예정입니다.</p>
                         </div>
@@ -275,6 +281,7 @@
         document.getElementById("notice4-date").textContent = calculateDaysAgo("2024-10-13");
         document.getElementById("notice5-date").textContent = calculateDaysAgo("2024-10-24");
         document.getElementById("notice6-date").textContent = calculateDaysAgo("2024-10-28");
+        document.getElementById("notice7-date").textContent = calculateDaysAgo("2024-11-03");
 
         // 업데이트 예정사항 날짜 자동 설정
         document.getElementById("upcoming1-date").textContent = calculateDaysAgo("2024-10-29");
@@ -328,6 +335,15 @@
 
         document.getElementById("notice6-title").addEventListener("click", function() {
             const content = document.getElementById("notice6-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("notice7-title").addEventListener("click", function() {
+            const content = document.getElementById("notice7-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
