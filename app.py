@@ -160,6 +160,9 @@ def result():
             result_list.append(match_data)
             # 중요 정보 저장용
             imp_data.append(imp)
+            
+        if len(imp_data) == 0:
+            return render_template('result.html', level_data=level_data, no_recent_matches=True)
 
         # 중요 지표 평균 계산
         my_avg = np.nanmean(imp_data, axis=0)
