@@ -58,7 +58,8 @@
             font-size: 1.2rem;
             color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
             text-align: center;
-            margin-top: 15px; /* 로딩 스피너와 간격 */
+            margin-bottom: 17px; 
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -160,7 +161,7 @@
             if (characterName.trim() !== "") {
                 showLoading(); // 로딩창 표시
                 setTimeout(function() {
-                    window.location.href = "/wr_result.html?character_name=" + characterName;
+                    window.location.href = "/wr_result.html?character_name=" + characterName + "&match_type=50";
                 }, 1000); // 1초 후에 페이지 이동
             }
         });
