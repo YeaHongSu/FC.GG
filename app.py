@@ -123,7 +123,7 @@ def result():
 
 
         # 유저 매치 데이터 20개 불러와 저장 (전적 띄우기 용 + 중요 정보 저장)
-        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype="+match_type+"&limit=20"
+        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype="+match_type+"&limit=25"
         response = requests.get(urlString, headers=headers)
         matches = response.json()
 
@@ -239,7 +239,7 @@ def wr_result():
             "level": lv
         }
 
-        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype=" + match_type + "&limit=20"
+        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype=" + match_type + "&limit=25"
         response = requests.get(urlString, headers=headers)
         matches = response.json()
 
