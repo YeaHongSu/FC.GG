@@ -35,11 +35,49 @@
     <!-- Open Graph Meta Tags for customizing the thumbnail -->
     <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
     <meta property="og:type" content="website">
+    <style>
+        /* 로딩 애니메이션 스타일 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .loading-message {
+            font-size: 1.2rem;
+            color: #28a745; /* 로딩 스피너와 일치하도록 초록색으로 설정 */
+            text-align: center;
+            margin-bottom: 17px; 
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX3HQ7FD"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <!-- 추가된 텍스트 -->
+        <div class="loading-message mt-3">
+            유저님의 승률을 영혼부터 끌어올리고 있는 중입니다!
+        </div>
+    </div>
+    
     <!-- End Google Tag Manager (noscript) -->
     <header class="bg-white shadow-sm sticky-top">
         <div class="container d-flex flex-column align-items-center py-3">
@@ -225,9 +263,14 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 검색 버튼 클릭 이벤트
-        document.getElementById("search_button").addEventListener("click", function(){
+        document.getElementById("search_button").addEventListener("click", function() {
             var characterName = document.getElementById("character_name").value;
-            window.location.href = "/wr_result.html?character_name=" + characterName;
+            if (characterName.trim() !== "") {
+                showLoading(); // 로딩창 표시
+                setTimeout(function() {
+                    window.location.href = "/wr_result.html?character_name=" + characterName + "&match_type=50";
+                }, 1000); // 1초 후에 페이지 이동
+            }
         });
 
         document.getElementById("character_name").addEventListener("keyup", function(event) {
@@ -235,6 +278,11 @@
                 document.getElementById("search_button").click();  // 검색 버튼 클릭 이벤트 트리거
             }
         });
+
+        // 로딩창 보이기 함수
+        function showLoading() {
+            document.getElementById("loading-overlay").style.display = "flex";
+        }
 
 
         // Chart.js 그래프 생성
