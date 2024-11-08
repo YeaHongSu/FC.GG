@@ -67,9 +67,7 @@ def determine_play_style(max_data, min_data):
             counters[label_to_counter[label]] += 1
 
     # 세분화된 플레이 스타일 결정
-    if counters['drive_pass_master'] >= 2:
-        return "잔디와 한 몸인 땅볼 패스 마스터"
-    elif counters['setpiece_master'] >= 3:
+    if counters['setpiece_master'] >= 3:
         return "프리킥 딸깍의 신"
     elif counters['offside'] >= 1:
         return "옵사를 사랑하는 플레이어"
@@ -80,17 +78,19 @@ def determine_play_style(max_data, min_data):
     elif counters['finisher'] >= 1 and counters['attack'] >= 1:
         return "공격적인 피니셔"
     elif counters['finisher'] >= 1 and counters['header_specialist'] >= 1:
-        return "헤더 마무리의 신"
+        return "헤더 원샷원킬의 신"
     elif counters['attack'] >= 1 and counters['dribbler'] >= 1:
-        return "공격형 드리블러"
+        return "공격적인 드리블러"
     elif counters['defense'] >= 1 and counters['tackler'] >= 1:
         return "방어적인 태클러"
     elif counters['interceptor'] >= 1 and counters['defense'] >= 1:
         return "완벽한 차단기"
     elif counters['playmaker'] >= 1 and counters['dribbler'] >= 1:
-        return "드리블형 플레이메이커"
+        return "드리블로 빌드업하는 플레이어"
     elif counters['playmaker'] >= 1 and counters['long_shot_master'] >= 1:
-        return "중거리형 플레이메이커"
+        return "빌드업 후 중거리 딸각의 신"
+    elif counters['drive_pass_master'] >= 2:
+        return "잔디랑 친구 먹은 땅볼 패스의 신"
     elif counters['setpiece_master'] >= 1 and counters['header_specialist'] >= 1:
         return "헤더와 프리킥 날먹의 신"
     elif counters['penalty_specialist'] >= 1 and counters['long_shot_master'] >= 1:
@@ -98,11 +98,11 @@ def determine_play_style(max_data, min_data):
     elif counters['tackler'] >= 2:
         return "태클키 없으면 게임 못 하는 플레이어"
     elif counters['defense'] >= 2:
-        return "수비의 신"
+        return "유일무이한 수비의 신"
     elif counters['attack'] >= 2:
-        return "공격의 신"
+        return "유일무이한 공격의 신"
     elif counters['playmaker'] >= 2:
-        return "플레이메이커"
+        return "패스 플레이메이커"
     elif counters['header_specialist'] >= 2:
         return "헤더 날먹의 신"
     elif counters['penalty_specialist'] >= 2:
