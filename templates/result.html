@@ -313,8 +313,19 @@
         <p style="text-align: center;">최근 전적이 존재하지 않습니다.</p>
         {% else %}
         <!-- Player Style Section -->
-        <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm" style="border: 1px solid #ddd;">
+        <!-- <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm" style="border: 1px solid #ddd;">
             <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">플레이 스타일</h2>
+            <h4>{{ level_data.nickname }}님은 <span class="text-success">{{ play_style }}</span>입니다!</h4>
+        </div> -->
+        <!-- Player Style Section -->
+        <div class="player-style d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm" style="border: 1px solid #ddd;">
+            <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">
+                플레이 스타일 
+                <!-- 느낌표 아이콘과 이벤트 버튼 -->
+                <a href="https://www.inven.co.kr/board/fifaonline4/3146/8303940" target="_blank" class="btn btn-warning btn-sm ms-2" style="font-weight: bold; font-size: 0.9rem;">
+                    칭호 이벤트
+                </a>
+            </h2>
             <h4>{{ level_data.nickname }}님은 <span class="text-success">{{ play_style }}</span>입니다!</h4>
         </div>
 
