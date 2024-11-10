@@ -66,91 +66,108 @@
             </div>
         </nav>
     </header>
-
-    <!-- Main Content Section -->
-    <main class="container my-5">
-        <h1 class="text-center mb-4">내가 쓰는 선수 티어는 무엇일까?</h1>
-        <h3 class="text-center mb-4">랭커 기준 선수 티어를 확인해 보세요!</h3>
-        <!-- 광고 영역 -->
-        <div class="container my-4 d-flex justify-content-center">
-            <ins class="kakao_ad_area" style="display:none;"
-            data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
-            data-ad-width = "728"
-            data-ad-height = "90"></ins>
+    <!-- 전체 레이아웃 컨테이너 -->
+    <div class="container d-flex justify-content-center my-5">
+        <!-- 왼쪽 광고 -->
+        <div class="left-ad d-none d-lg-block" style="margin-right: 120px; margin-top: 300px;">
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-yNhcyouyq0OP25XV" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
             <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
         </div>
+        <!-- Main Content Section -->
+        <main class="container my-5">
+            <h1 class="text-center mb-4">내가 쓰는 선수 티어는 무엇일까?</h1>
+            <h3 class="text-center mb-4">랭커 기준 선수 티어를 확인해 보세요!</h3>
+            <!-- 광고 영역 -->
+            <div class="container my-4 d-flex justify-content-center">
+                <ins class="kakao_ad_area" style="display:none;"
+                data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
+                data-ad-width = "728"
+                data-ad-height = "90"></ins>
+                <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+            </div>
 
-        <!-- Position Container with Title -->
-        <div class="position-container border p-4 rounded">
-            <h2 class="position-title mb-3">포지션별 선수 티어</h2>
-            
-            <div class="d-flex justify-content-between align-items-center">
-                <!-- Position Tabs (Buttons) -->
-                <ul class="nav nav-tabs" id="positionTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-position-options="ST,CF,LW,RW" type="button">공격수</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-position-options="CAM,CM,CDM" type="button">미드필더</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-position-options="CB,LB,RB" type="button">수비수</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-position-options="GK" type="button">골키퍼</button>
-                    </li>
-                </ul>
+            <!-- Position Container with Title -->
+            <div class="position-container border p-4 rounded">
+                <h2 class="position-title mb-3">포지션별 선수 티어</h2>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <!-- Position Tabs (Buttons) -->
+                    <ul class="nav nav-tabs" id="positionTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-position-options="ST,CF,LW,RW" type="button">공격수</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-position-options="CAM,CM,CDM" type="button">미드필더</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-position-options="CB,LB,RB" type="button">수비수</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-position-options="GK" type="button">골키퍼</button>
+                        </li>
+                    </ul>
 
-                <!-- Position Dropdown -->
-                <div class="dropdown-container">
-                    <select id="positionDropdown" class="form-select dropdown" aria-label="Position selection">
-                    </select>
+                    <!-- Position Dropdown -->
+                    <div class="dropdown-container">
+                        <select id="positionDropdown" class="form-select dropdown" aria-label="Position selection">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 선수 검색 기능 -->
+                <div class="search-container mt-3">
+                    <div class="input-group">
+                        <input type="text" id="playerSearchInput" class="form-control" placeholder="선수 이름을 입력하세요" style="font-size: 1.0rem;">
+                        <button class="btn btn-success" id="searchPlayerButton" style="font-size: 1.0rem;">검색</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- 선수 검색 기능 -->
-            <div class="search-container mt-3">
-                <div class="input-group">
-                    <input type="text" id="playerSearchInput" class="form-control" placeholder="선수 이름을 입력하세요" style="font-size: 1.0rem;">
-                    <button class="btn btn-success" id="searchPlayerButton" style="font-size: 1.0rem;">검색</button>
+            <!-- 최고의 OP 선수 박스 -->
+            <div id="top-player" class="top-player-box mt-4 p-4 border rounded">
+                <!-- 박스 제목 -->
+                <h3 class="text-center" id="top-player-title" style="font-weight: bold;">
+                    <span id="position-name" style="color: #4CAF50;">ST</span> 최고 OP 선수
+                </h3>
+                <div class="d-flex align-items-center justify-content-between">
+                    <!-- OP 아이콘과 미니페이스온을 감싸는 부분 -->
+                    <div class="d-flex align-items-center">
+                    </div>
+                    <!-- 텍스트를 한 줄로 정렬 (크기 및 강조 추가) -->
+                    <div class="d-flex justify-content-between w-100 ms-3 align-items-center">
+                        <div class="tier-icon tier-0" style="min-width: 90px; min-height: 40px;">BEST OP</div>
+                        <img id="top-player-image" src="" alt="미니페이스온" class="img-thumbnail" width="100">
+                        <p id="top-player-season" class="text-center m-0" style="font-size: 1.2rem;"></p>
+                        <p id="top-player-name" class="text-center m-0" style="font-size: 1.2rem; font-weight: bold;"></p>
+                        <p id="top-player-score" class="text-center fw-bold m-0" style="font-size: 1.2rem;"></p>
+                    </div>
                 </div>
             </div>
+
+            <!-- Player Tier List Section -->
+            <div id="tier-list" class="mt-4">
+                <!-- 열 이름을 추가 -->
+                <div class="tier-header">
+                    <div class="tier-column">티어</div>
+                    <div class="tier-column">시즌</div>
+                    <div class="tier-column">선수 이름</div>
+                    <div class="tier-column">FC스코어</div>
+                    <div class="tier-column">출전</div>
+                </div>
+            </div>
+        </main>
+        <!-- 오른쪽 광고 -->
+        <div class="right-ad d-none d-lg-block" style="margin-left: 120px; margin-top: 300px;">
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-o8lUifeFCtHAH0Gb" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
+            <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
         </div>
-
-        <!-- 최고의 OP 선수 박스 -->
-        <div id="top-player" class="top-player-box mt-4 p-4 border rounded">
-            <!-- 박스 제목 -->
-            <h3 class="text-center" id="top-player-title" style="font-weight: bold;">
-                <span id="position-name" style="color: #4CAF50;">ST</span> 최고 OP 선수
-            </h3>
-            <div class="d-flex align-items-center justify-content-between">
-                <!-- OP 아이콘과 미니페이스온을 감싸는 부분 -->
-                <div class="d-flex align-items-center">
-                </div>
-                <!-- 텍스트를 한 줄로 정렬 (크기 및 강조 추가) -->
-                <div class="d-flex justify-content-between w-100 ms-3 align-items-center">
-                    <div class="tier-icon tier-0" style="min-width: 90px; min-height: 40px;">BEST OP</div>
-                    <img id="top-player-image" src="" alt="미니페이스온" class="img-thumbnail" width="100">
-                    <p id="top-player-season" class="text-center m-0" style="font-size: 1.2rem;"></p>
-                    <p id="top-player-name" class="text-center m-0" style="font-size: 1.2rem; font-weight: bold;"></p>
-                    <p id="top-player-score" class="text-center fw-bold m-0" style="font-size: 1.2rem;"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Player Tier List Section -->
-        <div id="tier-list" class="mt-4">
-            <!-- 열 이름을 추가 -->
-            <div class="tier-header">
-                <div class="tier-column">티어</div>
-                <div class="tier-column">시즌</div>
-                <div class="tier-column">선수 이름</div>
-                <div class="tier-column">FC스코어</div>
-                <div class="tier-column">출전</div>
-            </div>
-        </div>
-    </main>
-
+    </div>
     <!-- Footer Section -->
     <footer style="background-color: #343a40;" class="text-white py-4 mt-5">
         <div class="container">
