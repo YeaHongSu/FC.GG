@@ -197,61 +197,79 @@
             </div>
         </nav>
     </header>
+    <!-- 전체 레이아웃 컨테이너 -->
+    <div class="container d-flex justify-content-center my-5">
+        <!-- 왼쪽 광고 -->
+        <div class="left-ad d-none d-lg-block" style="margin-right: 120px; margin-top: 280px;">
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-yNhcyouyq0OP25XV" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
+            <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+        </div>
+        <!-- 송편 선택 Section -->
+        <div class="main-content" style="max-width: 1024px;">
+            <h1 class="text-center mb-4">빠칭코 연습으로 손 풀고 실전으로 가볼까요?</h1>
+            <h3 class="text-center mb-4">나혼자만 SSS : Decision</h3>
+            <!-- 광고 영역 -->
+            <div class="container my-4 d-flex justify-content-center">
+                <ins class="kakao_ad_area" style="display:none;"
+                    data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
+                    data-ad-width = "728"
+                    data-ad-height = "90"></ins>
+                <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+            </div>
 
-    <!-- 송편 선택 Section -->
-    <div class="container my-5">
-        <h1 class="text-center mb-4">빠칭코 연습으로 손 풀고 실전으로 가볼까요?</h1>
-        <h3 class="text-center mb-4">나혼자만 SSS : Decision</h3>
-        <!-- 광고 영역 -->
-        <div class="container my-4 d-flex justify-content-center">
-            <ins class="kakao_ad_area" style="display:none;"
-                data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
-                data-ad-width = "728"
-                data-ad-height = "90"></ins>
+            <!-- FC 및 게임 모드 선택 -->
+            <div class="container my-5 text-center fc-box d-flex justify-content-between align-items-center" style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
+                
+                <!-- 게임 모드 선택 (왼쪽) -->
+                <div class="songpyeon-selector">
+                    <input type="radio" id="appa" name="songpyeon" value="appa" checked>
+                    <label for="appa">일반게임</label>
+
+                    <input type="radio" id="mom" name="songpyeon" value="mom">
+                    <label for="mom">스폐셜게임</label>
+                </div>
+
+                <!-- FC 정보 및 충전 (오른쪽) -->
+                <div class="fc-info">
+                    <h5>현재 보유 : <span id="fc-balance">0</span> FC</h5>
+                    <h6>누적 소모 : <span id="fc-spent">0</span> FC</h6>
+                    <button id="charge-fc" class="btn btn-primary">FC 충전하기</button>
+                </div>
+
+            </div>
+
+
+            <!-- 아빠 토끼 송편 (7x7 행렬) -->
+            <div class="songpyeon-container text-center" id="appa-container">
+                <h4>일반 게임</h4>
+                <div id="appa-matrix" class="songpyeon-matrix"></div>
+            </div>
+
+            <!-- 엄마 토끼 송편 (7x7 행렬) -->
+            <div class="songpyeon-container text-center" id="mom-container" style="display:none;">
+                <h4>스페셜 게임</h4>
+                <div id="mom-matrix" class="songpyeon-matrix"></div>
+            </div>
+
+            <!-- 버튼들 -->
+            <div class="button-container mt-4">
+                <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
+                <a href="https://shop.fconline.nexon.com/Events/241024/TheOnlySSS" target="_blank" class="btn btn-primary btn-lg px-4 py-2" id="real-action-button">실전으로 가기</a>
+            </div>
+        </div>
+        <!-- 오른쪽 광고 -->
+        <div class="right-ad d-none d-lg-block" style="margin-left: 120px; margin-top: 280px;"> <!-- margin-top 값을 조정하여 광고 위치 변경 -->
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-o8lUifeFCtHAH0Gb" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
             <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
         </div>
 
-        <!-- FC 및 게임 모드 선택 -->
-        <div class="container my-5 text-center fc-box d-flex justify-content-between align-items-center" style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
-            
-            <!-- 게임 모드 선택 (왼쪽) -->
-            <div class="songpyeon-selector">
-                <input type="radio" id="appa" name="songpyeon" value="appa" checked>
-                <label for="appa">일반게임</label>
-
-                <input type="radio" id="mom" name="songpyeon" value="mom">
-                <label for="mom">스폐셜게임</label>
-            </div>
-
-            <!-- FC 정보 및 충전 (오른쪽) -->
-            <div class="fc-info">
-                <h5>현재 보유 : <span id="fc-balance">0</span> FC</h5>
-                <h6>누적 소모 : <span id="fc-spent">0</span> FC</h6>
-                <button id="charge-fc" class="btn btn-primary">FC 충전하기</button>
-            </div>
-
-        </div>
-
-
-        <!-- 아빠 토끼 송편 (7x7 행렬) -->
-        <div class="songpyeon-container text-center" id="appa-container">
-            <h4>일반 게임</h4>
-            <div id="appa-matrix" class="songpyeon-matrix"></div>
-        </div>
-
-        <!-- 엄마 토끼 송편 (7x7 행렬) -->
-        <div class="songpyeon-container text-center" id="mom-container" style="display:none;">
-            <h4>스페셜 게임</h4>
-            <div id="mom-matrix" class="songpyeon-matrix"></div>
-        </div>
-
-        <!-- 버튼들 -->
-        <div class="button-container mt-4">
-            <button id="reset-board" class="btn btn-warning btn-lg px-4 py-2">판 초기화</button>
-            <a href="https://shop.fconline.nexon.com/Events/241024/TheOnlySSS" target="_blank" class="btn btn-primary btn-lg px-4 py-2" id="real-action-button">실전으로 가기</a>
-        </div>
     </div>
-
     <!-- Footer Section -->
     <footer class="mt-auto bg-dark text-white py-4">
         <div class="container">
