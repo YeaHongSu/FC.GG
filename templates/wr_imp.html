@@ -109,49 +109,90 @@
             </div>
         </nav>
     </header>
-    <div class="container my-5 custom-container">
-        <!-- Header -->
-        <h1 class="text-center mb-4">어떻게 하면 더 이길 수 있을까?</h1>
-        <h3 class="text-center mb-4">승률 개선 솔루션을 경험해 보세요!</h3>
-        <!-- Search Input Section -->
-        <div class="row justify-content-center mb-5">
-            <div class="col-md-7 d-flex justify-content-center">
-                <!-- Search Input and Button -->
-                <div class="input-group mb-3">
-                    <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="border-top-right-radius: 0; border-bottom-right-radius: 0; height: 44px; font-size: 1.0rem;">
-                    <button class="btn btn-success rounded-end-pill" id="search_button" style="border-top-left-radius: 0; border-bottom-left-radius: 0; height: 44px; font-size: 1.0rem;">검색</button>
+    <div class="container d-flex justify-content-center my-5">
+        <!-- Left Ad -->
+        <div class="left-ad d-block" style="margin-right: 120px;"> <!-- d-none d-lg-block을 d-block으로 변경 -->
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-yNhcyouyq0OP25XV" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
+            <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+        </div>  
+        <div class="main-content" style="max-width: 1024px;">
+            <!-- Header -->
+            <h1 class="text-center mb-4">어떻게 하면 더 이길 수 있을까?</h1>
+            <h3 class="text-center mb-4">승률 개선 솔루션을 경험해 보세요!</h3>
+            <!-- Search Input Section -->
+            <div class="row justify-content-center mb-5">
+                <div class="col-md-7 d-flex justify-content-center">
+                    <!-- Search Input and Button -->
+                    <div class="input-group mb-3">
+                        <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="border-top-right-radius: 0; border-bottom-right-radius: 0; height: 44px; font-size: 1.0rem;">
+                        <button class="btn btn-success rounded-end-pill" id="search_button" style="border-top-left-radius: 0; border-bottom-left-radius: 0; height: 44px; font-size: 1.0rem;">검색</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 광고 영역 -->
+            <div class="container my-4 d-flex justify-content-center">
+                <ins class="kakao_ad_area" style="display:none;"
+                    data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
+                    data-ad-width = "728"
+                    data-ad-height = "90"></ins>
+                <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+            </div>
+            <div class="col-md-12 d-flex justify-content-between">
+                <!-- 왼쪽 질문 박스 -->
+                <div class="upcoming-container" style="width: 48%;">
+                    <h4 class="mb-4 text-start">자주 들어오는 질문 <span class="text-success">(1)</span></h4>
+                    <div class="upcoming-item">
+                        <h5 id="question-title" style="margin-bottom: 15px;"><span class="text-primary">"승률 개선은 AI를 사용하는건가요?"</span></h5>
+                        <div id="question-content" class="upcoming-content">
+                            <p style="margin-top: 10px;"><strong>네, 맞습니다. AI 분석</strong>을 통해 솔루션이 제공됩니다.</p>
+                            <p>자신의 최근 경기에서 <strong>승패에 영향을 많이 끼치는 지표를 분석</strong>하여, 지표를 개선할 시 <strong>예상되는 승률</strong>을 제공합니다.</p>
+                            <p>솔루션을 제공받아 <strong>자신의 약점을 보완한 후에 승률을 높여보세요.</strong></p>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- 오른쪽 질문 박스 (복제) -->
+                <div class="upcoming-container" style="width: 48%;">
+                    <h4 class="mb-4 text-start">자주 들어오는 질문 <span class="text-success">(2)</span></h4>
+                    <div class="upcoming-item">
+                        <h5 id="question-title-duplicate" style="margin-bottom: 15px;"><span class="text-primary">"전 현재 모델로 개선 불가능한가요?"</span></h5>
+                        <div id="question-content-duplicate" class="upcoming-content">
+                            <p style="margin-top: 10px;"><strong>현재로서는 그러실 수 있지만, 지속적으로 모델 성능을 개선하고 있습니다.</strong></p>
+                            <p><strong>경기 내용에 따라 승률 개선이 불가능할 수 있기에, 몇 경기 더 하신 후에 솔루션을 확인해 보신다면 개선이 가능하실 수 있습니다.</strong></p>
+                            <p><strong>모든 유저분들이 솔루션을 받아보실 수 있도록 빠른 시일 내에 개선하도록 하겠습니다. 감사합니다.</strong></p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        <!-- Right Ad -->
+        <div class="right-ad d-block" style="margin-left: 120px;"> <!-- d-none d-lg-block을 d-block으로 변경 -->
+            <ins class="kakao_ad_area" style="display:block;" 
+                data-ad-unit="DAN-o8lUifeFCtHAH0Gb" 
+                data-ad-width="160" 
+                data-ad-height="600"></ins>
+            <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+        </div>
     </div>
-
-    <!-- 광고 영역 -->
-    <div class="container my-4 d-flex justify-content-center">
-        <ins class="kakao_ad_area" style="display:none;"
-            data-ad-unit = "DAN-PWbZJXHgqkT7GvAj"
-            data-ad-width = "728"
-            data-ad-height = "90"></ins>
-        <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-    </div>
-
     <!-- Footer Section -->
-    <footer style="background-color: #343a40;" class="text-white py-4 mt-5">
-        <div class="container">
+    <footer class="bg-dark text-white py-4">
+        <div class="container-fluid">
             <div class="row">
-                <!-- FC.GG 로고 중앙 정렬 -->
                 <div class="col-md-12 text-center">
                     <h2>FC.GG</h2>
                 </div>
             </div>
-            <div class="row mt-5">
-                <!-- 하단 텍스트도 중앙 정렬 -->
+            <div class="row mt-4">
                 <div class="col text-center">
                     <p>© FC.GG All rights reserved; FC ONLINE is a trademark of Nexon & Electronic Arts.</p>
                     <p>문의 : hsyea203@naver.com / jtk5959@naver.com</p>
                 </div>
             </div>
         </div>
-    </footer> 
+    </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
