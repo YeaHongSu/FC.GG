@@ -243,7 +243,6 @@
             });
         });
 
-        // 수수료 계산
         document.getElementById("calculate_button").addEventListener("click", function() {
             var players = document.querySelectorAll(".player-row");
             var totalFee = 0;
@@ -260,12 +259,43 @@
                 } else {
                     salePriceInput.classList.remove("is-invalid");
                     var count = parseInt(player.querySelector(".input-group input").value);
-                    var discount = parseFloat(player.querySelector("select").value);
+                    var discount = parseFloat(player.querySelector("select").value); // 쿠폰 할인율
 
-                    var baseFee = salePrice * 0.4 * count;
-                    var finalFee = baseFee * (1 - discount);
-                    totalFee += Math.floor(finalFee);
-                    totalReceive += (salePrice * count) - Math.floor(finalFee);
+                    var fee; // 해당 선수의 수수료
+                    var receive; // 해당 선수의 받는 금액
+
+                    // 기본 수수료율 (40%)를 기준으로 계산 시작
+                    var baseFeeRate = 0.4;
+
+                    // 수수료 쿠폰 적용 여부에 따라 할인율 계산
+                    if (discount > 0) {
+                        // 쿠폰이 있는 경우: 최종 할인율 계산
+                        var isPremiumPC = document.getElementById("premium_pc").checked ? 0.3 : 0; // 30% 추가 할인
+                        var isTopClass = document.getElementById("top_class").checked ? 0.2 : 0; // 20% 추가 할인
+                        var totalDiscount = baseFeeRate * (1 - discount - isPremiumPC - isTopClass);
+                        fee = salePrice * totalDiscount * count; // 총 할인율을 적용한 최종 수수료
+                    } else {
+                        // 쿠폰이 없는 경우: 프리미엄 PC방과 TOP CLASS만 고려하여 수수료 계산
+                        var isPremiumPC = document.getElementById("premium_pc").checked;
+                        var isTopClass = document.getElementById("top_class").checked;
+
+                        if (isPremiumPC && isTopClass) {
+                            fee = salePrice * 0.2 * count;  // 80% 할인 적용
+                        } else if (isPremiumPC) {
+                            fee = salePrice * 0.28 * count;  // 72% 할인 적용
+                        } else if (isTopClass) {
+                            fee = salePrice * 0.32 * count;  // 68% 할인 적용
+                        } else {
+                            fee = salePrice * 0.4 * count;   // 60% 할인 적용
+                        }
+                    }
+
+                    // 반올림하여 최종 수수료 및 받는 금액 계산
+                    fee = Math.round(fee);
+                    receive = (salePrice * count) - fee; // 최종 받는 금액 계산
+
+                    totalFee += fee; // 전체 수수료 누적
+                    totalReceive += receive; // 전체 받는 금액 누적
                 }
             });
 
@@ -275,21 +305,11 @@
                 return;
             }
 
-            var isPremiumPC = document.getElementById("premium_pc").checked;
-            var isTopClass = document.getElementById("top_class").checked;
-
-            if (isPremiumPC) {
-                totalFee = Math.floor(totalFee * 0.7);
-                totalReceive += Math.floor(totalFee * 0.3);
-            }
-            if (isTopClass) {
-                totalFee = Math.floor(totalFee * 0.8);
-                totalReceive += Math.floor(totalFee * 0.2);
-            }
-
-            document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
+            // 최종 수수료와 최종 받는 금액 출력
             document.getElementById("result_receive").textContent = "최종 받는 금액: " + totalReceive.toLocaleString() + " BP";
+            document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
         });
+
     </script>
 </body>
 </html>
