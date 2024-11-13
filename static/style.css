@@ -121,7 +121,7 @@ button {
 }
 
 .btn-success {
-    border: 2px solid #28a745;
+/*     border: 2px solid #28a745; */
     background-color: #28a745;
     color: #fff;
 }
