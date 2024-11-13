@@ -84,15 +84,18 @@
             <!-- 수수료 계산기 Section -->
             <div class="container">
                 <h1 class="text-center mb-4">BP 부족할 일 없이 팀을 맞춰볼까요?</h1>
-                <h3 class="text-center mb-4">수수료 계산기를 이용해 보세요!</h3>
+                <h3 class="text-center mb-4">더 간편해진 수수료 계산기를 이용해 보세요!</h3>
                 <div class="row justify-content-center">
                     <div class="col-md-8">
                         <h4 class="mb-4">판매 예정 금액 (BP)</h4>
                         <div id="players-container">
                             <!-- 첫 번째 입력창 -->
                             <div class="player-row d-flex align-items-center mb-3">
-                                <input type="text" class="form-control me-3 price-input" placeholder="판매 금액 입력" aria-label="판매 금액 입력">
-                                <div class="input-group">
+                                <input type="text" class="form-control me-1 price-input-trillion" placeholder="조 단위" aria-label="판매 금액 (조)">
+                                <span class="input-group-text">조</span>
+                                <input type="text" class="form-control ms-1 price-input-billion" placeholder="억 단위" aria-label="판매 금액 (억)">
+                                <span class="input-group-text">억</span>
+                                <div class="input-group ms-3">
                                     <input type="number" class="form-control" value="1" min="1" max="10" aria-label="선수 수량">
                                     <span class="input-group-text">명</span>
                                 </div>
@@ -185,30 +188,98 @@
         function formatNumberWithCommas(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
-
+    
         // 콤마 제거
         function removeCommas(num) {
             return num.toString().replace(/,/g, '');
         }
-
-        // 입력 창에서 숫자 입력시 콤마 추가
-        document.querySelectorAll('.price-input').forEach(function(input) {
+    
+        // "조"와 "억" 입력값을 합산하여 총 판매 금액을 반환하는 함수
+        function getTotalSalePrice(player) {
+            var trillionInput = player.querySelector(".price-input-trillion");
+            var billionInput = player.querySelector(".price-input-billion");
+            var trillion = parseInt(removeCommas(trillionInput.value) || "0") * 1000000000000; // 조 단위
+            var billion = parseInt(removeCommas(billionInput.value) || "0") * 100000000; // 억 단위
+            return trillion + billion;
+        }
+    
+        // 입력 창에서 숫자 입력시 콤마 추가 및 실시간 계산
+        function addCommaFormattingAndCalculation(input) {
             input.addEventListener('input', function(event) {
                 let value = removeCommas(event.target.value);  // 콤마 제거 후
                 if (!isNaN(value) && value.length > 0) {
                     event.target.value = formatNumberWithCommas(Number(value));  // 숫자로 변환 후 콤마 추가
                 }
+                calculateFees(); // 실시간 계산 업데이트
             });
-        });
-
+        }
+    
+        // 수수료 계산 함수 정의
+        function calculateFees() {
+            var players = document.querySelectorAll(".player-row");
+            var totalFee = 0;
+            var totalReceive = 0;
+            var valid = true; // 입력 검증용 변수
+    
+            players.forEach(function(player) {
+                var salePrice = getTotalSalePrice(player);
+    
+                if (isNaN(salePrice) || salePrice <= 0) {
+                    valid = false;
+                    player.querySelector(".price-input-trillion").classList.add("is-invalid");
+                    player.querySelector(".price-input-billion").classList.add("is-invalid");
+                } else {
+                    player.querySelector(".price-input-trillion").classList.remove("is-invalid");
+                    player.querySelector(".price-input-billion").classList.remove("is-invalid");
+    
+                    var count = parseInt(player.querySelector(".input-group input").value);
+                    var discount = parseFloat(player.querySelector("select").value); // 쿠폰 할인율
+    
+                    // 기본 수수료율 (40%)
+                    var baseFee = salePrice * 0.4 * count;
+                    var fee = baseFee; // 초기값을 기본 수수료로 설정
+    
+                    // 프리미엄 PC방 및 TOP CLASS 할인 적용 여부 확인
+                    var isPremiumPC = document.getElementById("premium_pc").checked ? 0.3 : 0; // 30% 추가 할인
+                    var isTopClass = document.getElementById("top_class").checked ? 0.2 : 0; // 20% 추가 할인
+    
+                    // 할인율 계산 (쿠폰 + 프리미엄 PC방 + TOP CLASS)
+                    var totalDiscount = discount + isPremiumPC + isTopClass;
+    
+                    // 총 할인율 적용
+                    fee = baseFee * (1 - totalDiscount); // 할인율에 따라 최종 수수료 계산
+    
+                    // 반올림하여 최종 수수료 및 받는 금액 계산
+                    fee = Math.round(fee); // 최종 수수료 반올림
+                    var receive = (salePrice * count) - fee; // 최종 받는 금액 계산
+                    
+                    totalFee += fee; // 전체 수수료 누적
+                    totalReceive += receive; // 전체 받는 금액 누적
+                }
+            });
+    
+            if (!valid) {
+                document.getElementById("result_fee").textContent = "판매 금액 입력이 필요합니다!";
+                document.getElementById("result_receive").textContent = "";
+                return;
+            }
+    
+            // 최종 수수료와 최종 받는 금액 출력 (일관된 순서로)
+            document.getElementById("result_receive").textContent = "최종 받는 금액: " + totalReceive.toLocaleString() + " BP";
+            document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
+        }
+    
         // 입력창 추가 기능
         document.getElementById("add-player").addEventListener("click", function() {
             var container = document.getElementById("players-container");
             var newRow = document.createElement("div");
             newRow.classList.add("player-row", "d-flex", "align-items-center", "mb-3");
             newRow.innerHTML = `
-                <input type="text" class="form-control me-3 price-input" placeholder="판매 금액 입력" aria-label="판매 금액 입력">
-                <div class="input-group">
+                <input type="text" class="form-control me-1 price-input-trillion" placeholder="조" aria-label="판매 금액 (조)">
+                <span class="input-group-text">조</span>
+                <input type="text" class="form-control ms-1 price-input-billion" placeholder="억" aria-label="판매 금액 (억)">
+                <span class="input-group-text">억</span>
+                <div class="input-group ms-3">
                     <input type="number" class="form-control" value="1" min="1" max="10" aria-label="선수 수량">
                     <span class="input-group-text">명</span>
                 </div>
@@ -228,88 +299,33 @@
                 <button class="btn btn-danger ms-3 remove-player">-</button>
             `;
             container.appendChild(newRow);
-
-            // Remove player row
+    
+            // 새 입력창에 콤마 추가 및 실시간 계산 기능 추가
+            addCommaFormattingAndCalculation(newRow.querySelector(".price-input-trillion"));
+            addCommaFormattingAndCalculation(newRow.querySelector(".price-input-billion"));
+            newRow.querySelector(".input-group input").addEventListener("input", calculateFees);
+            newRow.querySelector("select").addEventListener("change", calculateFees);
+    
+            // 입력창 삭제 기능 추가
             newRow.querySelector(".remove-player").addEventListener("click", function() {
                 newRow.remove();
-            });
-
-            // 새로운 입력 창에도 콤마 추가 기능 적용
-            newRow.querySelector(".price-input").addEventListener('input', function(event) {
-                let value = removeCommas(event.target.value);  // 콤마 제거 후
-                if (!isNaN(value) && value.length > 0) {
-                    event.target.value = formatNumberWithCommas(Number(value));  // 숫자로 변환 후 콤마 추가
-                }
+                calculateFees(); // 실시간 계산 업데이트
             });
         });
-
-        document.getElementById("calculate_button").addEventListener("click", function() {
-            var players = document.querySelectorAll(".player-row");
-            var totalFee = 0;
-            var totalReceive = 0;
-            var valid = true; // 입력 검증용 변수
-
-            players.forEach(function(player) {
-                var salePriceInput = player.querySelector("input[type='text']");
-                var salePrice = parseInt(removeCommas(salePriceInput.value)); // 콤마 제거 후 숫자로 변환
-
-                if (isNaN(salePrice) || salePrice <= 0) {
-                    valid = false;
-                    salePriceInput.classList.add("is-invalid");
-                } else {
-                    salePriceInput.classList.remove("is-invalid");
-                    var count = parseInt(player.querySelector(".input-group input").value);
-                    var discount = parseFloat(player.querySelector("select").value); // 쿠폰 할인율
-
-                    var fee; // 해당 선수의 수수료
-                    var receive; // 해당 선수의 받는 금액
-
-                    // 기본 수수료율 (40%)를 기준으로 계산 시작
-                    var baseFeeRate = 0.4;
-
-                    // 수수료 쿠폰 적용 여부에 따라 할인율 계산
-                    if (discount > 0) {
-                        // 쿠폰이 있는 경우: 최종 할인율 계산
-                        var isPremiumPC = document.getElementById("premium_pc").checked ? 0.3 : 0; // 30% 추가 할인
-                        var isTopClass = document.getElementById("top_class").checked ? 0.2 : 0; // 20% 추가 할인
-                        var totalDiscount = baseFeeRate * (1 - discount - isPremiumPC - isTopClass);
-                        fee = salePrice * totalDiscount * count; // 총 할인율을 적용한 최종 수수료
-                    } else {
-                        // 쿠폰이 없는 경우: 프리미엄 PC방과 TOP CLASS만 고려하여 수수료 계산
-                        var isPremiumPC = document.getElementById("premium_pc").checked;
-                        var isTopClass = document.getElementById("top_class").checked;
-
-                        if (isPremiumPC && isTopClass) {
-                            fee = salePrice * 0.2 * count;  // 80% 할인 적용
-                        } else if (isPremiumPC) {
-                            fee = salePrice * 0.28 * count;  // 72% 할인 적용
-                        } else if (isTopClass) {
-                            fee = salePrice * 0.32 * count;  // 68% 할인 적용
-                        } else {
-                            fee = salePrice * 0.4 * count;   // 60% 할인 적용
-                        }
-                    }
-
-                    // 반올림하여 최종 수수료 및 받는 금액 계산
-                    fee = Math.round(fee);
-                    receive = (salePrice * count) - fee; // 최종 받는 금액 계산
-
-                    totalFee += fee; // 전체 수수료 누적
-                    totalReceive += receive; // 전체 받는 금액 누적
-                }
-            });
-
-            if (!valid) {
-                document.getElementById("result_fee").textContent = "판매 금액 입력이 필요합니다!";
-                document.getElementById("result_receive").textContent = "";
-                return;
+    
+        // 초기 입력 창에 콤마 추가 및 실시간 계산 기능 적용
+        document.querySelectorAll('.price-input-trillion, .price-input-billion, .input-group input, .form-select, .form-check-input').forEach(function(input) {
+            if (input.classList.contains("price-input-trillion") || input.classList.contains("price-input-billion")) {
+                addCommaFormattingAndCalculation(input);
+            } else {
+                input.addEventListener("input", calculateFees);
             }
-
-            // 최종 수수료와 최종 받는 금액 출력
-            document.getElementById("result_receive").textContent = "최종 받는 금액: " + totalReceive.toLocaleString() + " BP";
-            document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
         });
-
+    
+        // 수수료 계산 버튼 이벤트 리스너
+        document.getElementById("calculate_button").addEventListener("click", calculateFees);
+    
     </script>
+    
 </body>
 </html>
