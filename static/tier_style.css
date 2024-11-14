@@ -1,8 +1,9 @@
 body {
-    font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
+    font-family: 'Poppins', 'Noto Sans KR', sans-serif;
+    background-color: #fcfcfd;
+    overflow-x: auto; /* 가로 스크롤을 추가하여 고정된 레이아웃이 잘리더라도 볼 수 있도록 설정 */
+    margin: 0;
+    padding: 0;
 }
 
 .main-title {
@@ -20,7 +21,6 @@ body {
 }
 
 .mt-4 {
-    background-color: #f1f1f1; /* 상자 배경색 */
     border-radius: 10px; /* 모서리 둥글게 */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 그림자 추가 */
     /* padding: 20px; */
@@ -192,7 +192,6 @@ body {
 .tier-item .tier-column:nth-child(3) {
     font-weight: bold;
 }
-
 
 
 /* 각 열에 대한 추가 스타일 (선수 이름 및 시즌) */
