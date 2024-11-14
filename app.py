@@ -11,6 +11,32 @@ from tier.tier_info import tier
 import warnings
 import asyncio
 import aiohttp
+import sqlite3
+
+# 데이터베이스 초기화 함수
+def init_db():
+    conn = sqlite3.connect('search_data.db')
+    c = conn.cursor()
+    # 닉네임 검색 기록 테이블에 lv와 tier_image 컬럼 추가
+    c.execute('''CREATE TABLE IF NOT EXISTS nickname_searches (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nickname TEXT NOT NULL,
+                    lv INTEGER,
+                    tier_image TEXT,
+                    search_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )''')
+    conn.commit()
+    conn.close()
+
+
+# 검색된 닉네임 저장 함수
+def save_nickname_search(nickname, lv, tier_image):
+    conn = sqlite3.connect('search_data.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO nickname_searches (nickname, lv, tier_image) 
+                 VALUES (?, ?, ?)''', (nickname, lv, tier_image))
+    conn.commit()
+    conn.close()
 
 
 async def fetch_match_data(session, match_id, headers):
@@ -33,13 +59,27 @@ app.config.from_object(Config)
 # home 화면 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-   if request.method == 'POST':
-      character_name = request.form.get('character_name')
-      session['character_name'] = character_name
-      match_type = request.form.get('match_type')
-      session['match_type'] = match_type
-      return redirect(url_for('result'))
-   return render_template('home.html')
+    if request.method == 'POST':
+        character_name = request.form.get('character_name')
+        if character_name:
+            save_nickname_search(character_name)
+            session['character_name'] = character_name
+            return redirect(url_for('result'))
+
+    # 많이 검색된 상위 5개 닉네임과 레벨, 티어 이미지 가져오기
+    conn = sqlite3.connect('search_data.db')
+    c = conn.cursor()
+    c.execute('''SELECT nickname, lv, tier_image, COUNT(nickname) as search_count
+                 FROM nickname_searches
+                 GROUP BY nickname
+                 ORDER BY search_count DESC
+                 LIMIT 5''')
+    top_nicknames = c.fetchall()  # nickname, lv, tier_image를 포함한 리스트
+    conn.close()
+    
+    return render_template('home.html', top_nicknames=top_nicknames)
+
+
 
 # 전적 검색 페이지
 @app.route('/result.html', methods=['GET', 'POST'])
@@ -114,6 +154,8 @@ def result():
             tier_name = "정보 없음"
             tier_image = None
 
+        save_nickname_search(character_name, lv, tier_image)
+
         level_data = {
             "nickname": character_name,
             "level": lv,
@@ -122,7 +164,7 @@ def result():
         }
 
 
-         # 유저 매치 데이터 20개 불러오기
+        # 유저 매치 데이터 20개 불러오기
         response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25", headers=headers)
         matches = response.json() if response.ok else []
 
@@ -343,5 +385,7 @@ def calculate():
 
 
 # 포트 설정 및 웹에 띄우기
-if __name__ == '__main__':  
-   app.run('0.0.0.0',port=3000,debug=True)
+# 초기화 실행 및 Flask 앱 실행
+if __name__ == '__main__':
+    init_db()  # 데이터베이스 및 테이블 생성
+    app.run('0.0.0.0', port=3000, debug=True)
