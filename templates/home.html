@@ -69,6 +69,33 @@
             margin-bottom: 17px; 
             margin-left: 10px;
         }
+        .badge-label {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #28a745; /* 보라색 배경 */
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+            border-radius: 20px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .list-group-item {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .list-group-item span {
+            white-space: nowrap;
+        }
+
+        .list-group-item img {
+            flex-shrink: 0;
+        }
+
     </style>
 </head>
 <body>
@@ -139,7 +166,7 @@
             <h1 class="text-center mb-4">FC 온라인 유저를 위한 사이트</h1>
             <h3 class="text-center mb-4">자신의 닉네임을 검색해 보세요!</h3>
             <!-- 검색창 -->
-            <div class="container mt-2 d-flex justify-content-center mb-5"> <!-- mb-5로 간격을 늘림 -->
+            <div class="container mt-2 d-flex justify-content-center mb-3"> <!-- mb-5로 간격을 늘림 -->
                 <div class="col-md-6">
                     <div class="input-group mb-3">
                         <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="border-top-right-radius: 0; border-bottom-right-radius: 0; height: 44px; font-size: 1.0rem;">
@@ -149,6 +176,27 @@
                     <div id="match_dates"></div>
                 </div>
             </div>
+            <!-- 실시간 인기 구단주 상자 -->
+            <div class="container d-flex justify-content-center mb-5">
+                <div class="col-md-6"> <!-- col-md-6을 사용하여 검색창과 동일한 너비로 설정 -->
+                    <div class="card" style="width: 100%;"> <!-- 카드 너비를 100%로 설정 -->
+                        <div class="card-header text-center text-success font-weight-bold">실시간 인기 구단주</div>
+                        <ul class="list-group list-group-flush">
+                            {% for nickname, lv, tier_image, search_count in top_nicknames %}
+                                <li class="list-group-item">
+                                    <div class="d-flex align-items-center" style="width: 100%;">
+                                        <span class="badge-label">Top {{ loop.index }}</span> <!-- Top 레이블 둥근 상자로 표현 -->
+                                        <span class="ms-3">Lv. {{ lv }}</span> <!-- 레벨 표시 -->
+                                        <span class="ms-2">{{ nickname }}</span> <!-- 닉네임 표시 -->
+                                        <!-- 티어 이미지를 오른쪽 끝에 배치 -->
+                                        <img src="{{ tier_image }}" alt="Tier Image" class="ms-auto" style="width: 25px; height: 25px;"> <!-- 티어 이미지 -->
+                                    </div>
+                                </li>                                              
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>   
             <!-- 광고 영역 -->
             <div class="container my-4 d-flex justify-content-center">
                 <ins class="kakao_ad_area" style="display:none;"
@@ -156,7 +204,7 @@
                 data-ad-width = "728"
                 data-ad-height = "90"></ins>
                 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-            </div>
+            </div>  
             <!-- FC 온라인 채널 소식과 FC.GG 공지사항을 가운데로 배치하고, 좌우 간격을 줄임 -->
             <div class="row justify-content-center gap-3"> <!-- justify-content-center와 gap-3으로 간격 조정 -->
                 <!-- 왼쪽: FC.GG 공지사항 -->
