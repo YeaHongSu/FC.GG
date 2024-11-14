@@ -122,15 +122,33 @@ def result():
         }
 
 
-        # 유저 매치 데이터 20개 불러와 저장 (전적 띄우기 용 + 중요 정보 저장)
-        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype="+match_type+"&limit=25"
-        response = requests.get(urlString, headers=headers)
-        matches = response.json()
+         # 유저 매치 데이터 20개 불러오기
+        response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25", headers=headers)
+        matches = response.json() if response.ok else []
 
-        if len(matches) == 0:
-            return render_template('result.html', level_data=level_data, no_recent_matches=True)
+        # matches가 빈 리스트인 경우 바로 렌더링
+        if not matches:
+            return render_template(
+                'result.html', 
+                my_data={},  # my_data에 빈 딕셔너리를 기본값으로 설정
+                match_data=[],  # match_data에 빈 리스트를 기본값으로 설정
+                level_data=level_data, 
+                match_type=match_type, 
+                max_data=[],  # max_data에 빈 리스트를 기본값으로 설정
+                min_data=[],  # min_data에 빈 리스트를 기본값으로 설정
+                data_label=[],  # data_label에 빈 리스트를 기본값으로 설정
+                jp_num=0,  # jp_num 기본값 설정
+                play_style={},  # play_style에 빈 딕셔너리를 기본값으로 설정
+                no_recent_matches=True  # no_recent_matches 값 전달
+            )
 
+        # match 데이터 가져오기
         match_data_list = get_match_data(matches, headers)
+
+        # match 데이터 가져오기
+        match_data_list = get_match_data(matches, headers)
+        if not match_data_list:
+            return render_template('result.html', level_data=level_data, no_recent_matches=True)
 
         result_list = []
         imp_data = []
@@ -204,8 +222,7 @@ def result():
                             max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
                             play_style=play_style)
 
-    except Exception as e:
-        print(e)
+    except Exception:
         flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
         return render_template('home.html')
 
