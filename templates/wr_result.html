@@ -380,6 +380,12 @@
                 }, 1000); // 1초 후에 페이지 이동
             }
         });
+        window.addEventListener("pageshow", function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                // 페이지가 캐시로부터 불러와졌을 때, 로딩창을 숨깁니다.
+                document.getElementById("loading-overlay").style.display = "none";
+            }
+        });
 
         document.getElementById("character_name").addEventListener("keyup", function(event) {
             if (event.key === "Enter") {  // 엔터 키를 감지
