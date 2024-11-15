@@ -95,7 +95,12 @@
         .list-group-item img {
             flex-shrink: 0;
         }
-
+        .notice-item p, .upcoming-item p {
+            cursor: pointer; /* 마우스 포인터 모양 변경 */
+        }
+        .clickable-nickname {
+            cursor: pointer; /* 마우스 포인터 모양 변경 */
+        }
     </style>
 </head>
 <body>
@@ -185,13 +190,12 @@
                             {% for nickname, lv, tier_image, search_count in top_nicknames %}
                                 <li class="list-group-item">
                                     <div class="d-flex align-items-center" style="width: 100%;">
-                                        <span class="badge-label">Top {{ loop.index }}</span> <!-- Top 레이블 둥근 상자로 표현 -->
-                                        <span class="ms-3">Lv. {{ lv }}</span> <!-- 레벨 표시 -->
-                                        <span class="ms-2">{{ nickname }}</span> <!-- 닉네임 표시 -->
-                                        <!-- 티어 이미지를 오른쪽 끝에 배치 -->
-                                        <img src="{{ tier_image }}" alt="Tier Image" class="ms-auto" style="width: 25px; height: 25px;"> <!-- 티어 이미지 -->
+                                        <span class="badge-label">Top {{ loop.index }}</span>
+                                        <span class="ms-3">Lv. {{ lv }}</span>
+                                        <span class="ms-2 clickable-nickname" data-nickname="{{ nickname }}">{{ nickname }}</span> <!-- 닉네임 클릭 가능 -->
+                                        <img src="{{ tier_image }}" alt="Tier Image" class="ms-auto" style="width: 25px; height: 25px;">
                                     </div>
-                                </li>                                              
+                                </li>                                                                           
                             {% endfor %}
                         </ul>
                     </div>
@@ -573,6 +577,14 @@
             if (event.key === "Enter") {  // 엔터 키를 감지
                 document.getElementById("search_button").click();  // 검색 버튼 클릭 이벤트 트리거
             }
+        });
+
+        // 닉네임 클릭 이벤트
+        document.querySelectorAll('.clickable-nickname').forEach(function(element) {
+            element.addEventListener('click', function() {
+                const characterName = this.getAttribute('data-nickname');
+                window.location.href = `/result.html?character_name=${characterName}&match_type=50`;
+            });
         });
     </script>
 </body>
