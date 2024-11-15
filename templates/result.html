@@ -791,14 +791,16 @@
                 }, 10); // 1초 후에 페이지 이동
             }
         });
-        // 페이지가 로드될 때 캐시에서 불러오는 경우 로딩창을 숨깁니다.
         window.addEventListener("pageshow", function(event) {
-            // 캐시에서 로드되었는지 확인
             if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-                // 로딩창을 숨깁니다.
-                document.getElementById("loading-overlay").style.display = "none";
+                // 두 로딩창 모두 숨김 처리
+                const loadingWin = document.getElementById("loading-win");
+                const loadingResult = document.getElementById("loading-result");
+                if (loadingWin) loadingWin.style.display = "none";
+                if (loadingResult) loadingResult.style.display = "none";
             }
         });
+
         // 승률 개선 솔루션 페이지로 이동
         function goToWinRateResult(nickname, match_type) {
             winLoading();  // 로딩창 표시
