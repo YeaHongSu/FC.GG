@@ -91,7 +91,7 @@ def serve_robots():
 def redirect_to_fcgg():
     # www 도메인을 fcgg.kr로 리다이렉트
     if request.host.startswith("www."):
-        return redirect(f"https://fcgg.kr{request.full_path}", code=301)
+        return redirect(f"https://fcgg.kr{request.path}", code=301)
 
 # 전적 검색 페이지
 @app.route('/result.html', methods=['GET', 'POST'])
