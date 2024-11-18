@@ -91,6 +91,9 @@ def serve_robots():
 def redirect_to_fcgg():
     # www 도메인을 fcgg.kr로 리다이렉트
     if request.host.startswith("www."):
+        # 쿼리 스트링이 비어 있는 경우를 명시적으로 처리
+        if request.query_string:
+            return redirect(f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}", code=301)
         return redirect(f"https://fcgg.kr{request.path}", code=301)
 
 # 전적 검색 페이지
