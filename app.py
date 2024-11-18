@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, redirect
 import requests
 import pandas as pd
 import numpy as np
@@ -79,7 +79,11 @@ def home():
     
     return render_template('home.html', top_nicknames=top_nicknames)
 
-
+@app.before_request
+def redirect_to_fcgg():
+    # www 도메인을 fcgg.kr로 리다이렉트
+    if request.host.startswith("www."):
+        return redirect(f"https://fcgg.kr{request.full_path}", code=301)
 
 # 전적 검색 페이지
 @app.route('/result.html', methods=['GET', 'POST'])
