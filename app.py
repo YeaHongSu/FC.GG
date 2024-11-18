@@ -91,26 +91,58 @@ def serve_robots():
 def redirect_to_fcgg():
     # www 도메인을 fcgg.kr로 리다이렉트
     if request.host.startswith("www."):
-        # 쿼리 스트링이 비어 있는 경우를 명시적으로 처리
-        if request.query_string:
+        # 쿼리 스트링이 비어 있지 않은 경우에만 추가
+        if request.query_string and request.query_string != b'':
             return redirect(f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}", code=301)
+        # 쿼리 스트링이 없으면 ?를 포함하지 않음
         return redirect(f"https://fcgg.kr{request.path}", code=301)
 
-# 전적 검색 페이지
-@app.route('/result.html', methods=['GET', 'POST'])
-def result():
-    try:
-        # 유저 닉네임 받기
-        character_name = request.args.get('character_name')
-        if not character_name:
-            flash("닉네임이 존재하지 않아 검색이 불가능합니다.")
-            return render_template('home.html')
+# match_type 값을 이름으로 변환
+MATCH_TYPE_MAP = {
+    "50": "공식경기",
+    "60": "친선경기",
+    "52": "감독모드",
+    "40": "커스텀매치"
+}
 
-        # 닉네임에서 띄어쓰기 제거
+REVERSE_MATCH_TYPE_MAP = {v: k for k, v in MATCH_TYPE_MAP.items()}
+
+# 전적 검색 페이지
+# 간단한 URL 라우트 및 기존 라우트 통합
+@app.route('/전적검색/<character_name>/<match_type_name>', methods=['GET'])
+@app.route('/result.html', methods=['GET'])
+def result(character_name=None, match_type_name=None):
+    try:
+        # 간단한 URL 요청 처리
+        if character_name and match_type_name:
+            # match_type_name을 match_type으로 변환
+            match_type = REVERSE_MATCH_TYPE_MAP.get(match_type_name)
+            if not match_type:
+                flash("잘못된 경기 유형입니다.")
+                return redirect(url_for('home'))
+        else:
+            # 기존 URL 요청 처리
+            character_name = request.args.get('character_name')
+            match_type = request.args.get('match_type')
+            if not character_name or not match_type:
+                flash("닉네임 또는 경기 유형이 누락되었습니다.")
+                return redirect(url_for('home'))
+            
+            # match_type을 이름으로 변환
+            match_type_name = MATCH_TYPE_MAP.get(match_type)
+
+            if not match_type_name:
+                flash("잘못된 경기 유형입니다.")
+                return redirect(url_for('home'))
+
+            # 기존 URL 요청을 간단한 URL로 리다이렉트
+            return redirect(
+                url_for('result', character_name=character_name, match_type_name=match_type_name),
+                code=301
+            )
+
+        # 닉네임에서 공백 제거
         character_name = character_name.replace(" ", "")
-       
-        # match 종류 확인
-        match_type = request.args.get('match_type')
        
         # API key 설정
         headers = {"x-nxopen-api-key" : f"{app.config['API_KEY']}"}
@@ -285,24 +317,54 @@ def result():
 
 
 
-# 승률 개선 솔루션 페이지
-@app.route('/wr_imp.html', methods=['GET', 'POST'])
-def wr_imp():
+# 승률개선검색
+@app.route('/승률개선검색', methods=['GET', 'POST'])
+def wr_imp_new():
     return render_template('wr_imp.html')
 
+# 기존 URL 리다이렉트
+@app.route('/wr_imp.html', methods=['GET', 'POST'])
+def wr_imp_redirect():
+    return redirect(url_for('wr_imp_new'), code=301)
+
+
+
+# 승률 개선 솔루션 결과 페이지
+@app.route('/승률개선결과/<character_name>/<match_type_name>', methods=['GET'])
 @app.route('/wr_result.html', methods=['GET'])
-def wr_result():
+def wr_result(character_name=None, match_type_name=None):
     try:
-        character_name = request.args.get('character_name') or session.get('character_name')
-        if not character_name:
-            flash("닉네임이 존재하지 않아 검색이 불가능합니다.")
-            return redirect(url_for('home'))
+        # 간단한 URL 요청 처리
+        if character_name and match_type_name:
+            # match_type_name을 match_type으로 변환
+            match_type = REVERSE_MATCH_TYPE_MAP.get(match_type_name)
+            if not match_type:
+                flash("잘못된 경기 유형입니다.")
+                return redirect(url_for('home'))
+        else:
+            # 기존 URL 요청 처리
+            character_name = request.args.get('character_name') or session.get('character_name')
+            match_type = request.args.get('match_type')
 
-        # 닉네임에서 띄어쓰기 제거
+            if not character_name or not match_type:
+                flash("닉네임 또는 경기 유형이 누락되었습니다.")
+                return redirect(url_for('home'))
+
+            # match_type을 이름으로 변환
+            match_type_name = MATCH_TYPE_MAP.get(match_type)
+
+            if not match_type_name:
+                flash("잘못된 경기 유형입니다.")
+                return redirect(url_for('home'))
+
+            # 기존 URL 요청을 간단한 URL로 리다이렉트
+            return redirect(
+                url_for('wr_result', character_name=character_name, match_type_name=match_type_name),
+                code=301
+            )
+
+        # 닉네임에서 공백 제거
         character_name = character_name.replace(" ", "")
-
-        # match 종류 확인
-        match_type = request.args.get('match_type')
        
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         urlString = "https://open.api.nexon.com/fconline/v1/id?nickname=" + character_name
@@ -383,20 +445,38 @@ def wr_result():
         return redirect(url_for('home'))
 
 # 선수 티어 페이지
-@app.route('/player_tier.html', methods=['GET', 'POST'])
-def player_tier():
+@app.route('/선수티어', methods=['GET', 'POST'])
+def player_tier_new():
     tier_list = tier
     return render_template('player_tier.html', tier_forward_list=tier_list)
 
+# 기존 URL 리다이렉트
+@app.route('/player_tier.html', methods=['GET', 'POST'])
+def player_tier_redirect():
+    return redirect(url_for('player_tier_new'), code=301)
+
+
 # 빠칭코 페이지
-@app.route('/random.html', methods=['GET', 'POST'])
-def random():
+@app.route('/빠칭코연습실', methods=['GET', 'POST'])
+def random_new():
     return render_template('random.html')
 
+# 기존 URL 리다이렉트
+@app.route('/random.html', methods=['GET', 'POST'])
+def random_redirect():
+    return redirect(url_for('random_new'), code=301)
+
+
 # 수수료 계산기 페이지
-@app.route('/calculate.html', methods=['GET', 'POST'])
-def calculate():
+@app.route('/수수료계산기', methods=['GET', 'POST'])
+def calculate_new():
     return render_template('calculate.html')
+
+# 기존 URL 리다이렉트
+@app.route('/calculate.html', methods=['GET', 'POST'])
+def calculate_redirect():
+    return redirect(url_for('calculate_new'), code=301)
+
 
 
 # 포트 설정 및 웹에 띄우기
