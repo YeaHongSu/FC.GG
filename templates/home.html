@@ -584,9 +584,13 @@
         document.querySelectorAll('.clickable-nickname').forEach(function(element) {
             element.addEventListener('click', function() {
                 const characterName = this.getAttribute('data-nickname');
-                window.location.href = `/result.html?character_name=${characterName}&match_type=50`;
+                showLoading(); // 로딩창 표시
+                setTimeout(function() {
+                    window.location.href = `/result.html?character_name=${characterName}&match_type=50`;
+                }, 10); // 페이지 이동
             });
         });
+
     </script>
 </body>
 </html>
