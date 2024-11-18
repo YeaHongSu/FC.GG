@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, redirect
+from flask import Flask, render_template, request, redirect, url_for, session, redirect, send_from_directory
 import requests
 import pandas as pd
 import numpy as np
@@ -78,6 +78,14 @@ def home():
     conn.close()
     
     return render_template('home.html', top_nicknames=top_nicknames)
+
+@app.route('/sitemap.xml')
+def serve_sitemap():
+    return send_from_directory('.', 'sitemap.xml', mimetype='application/xml')
+
+@app.route('/robots.txt')
+def serve_robots():
+    return send_from_directory('.', 'robots.txt', mimetype='text/plain')
 
 @app.before_request
 def redirect_to_fcgg():
