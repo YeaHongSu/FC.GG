@@ -102,6 +102,24 @@
         .clickable-nickname {
             cursor: pointer; /* 마우스 포인터 모양 변경 */
         }
+        .hover-animate {
+            transition: transform 0.3s ease, color 0.3s ease; /* 크기와 색상이 부드럽게 변경되도록 설정 */
+            transform-origin: center; /* 중심을 기준으로 확대 */
+        }
+
+        .hover-animate:hover {
+            transform: scale(1.05); /* 살짝 확대 */
+            color: #28a745; /* 초록색으로 변경 */
+        }
+
+        /* 티어 이미지 hover 애니메이션 */
+        .tier-hover {
+            transition: transform 0.3s ease; /* 확대 애니메이션 부드럽게 설정 */
+        }
+
+        .tier-hover:hover {
+            transform: scale(1.5); /* 약간 더 크게 확대 */
+        }
     </style>
 </head>
 <body>
@@ -192,13 +210,15 @@
                                 <li class="list-group-item">
                                     <div class="d-flex align-items-center" style="width: 100%;">
                                         <span class="badge-label">Top {{ loop.index }}</span>
-                                        <span class="ms-3">Lv. {{ lv }}</span>
-                                        <span class="ms-2 clickable-nickname" data-nickname="{{ nickname }}">{{ nickname }}</span> <!-- 닉네임 클릭 가능 -->
-                                        <img src="{{ tier_image }}" alt="Tier Image" class="ms-auto" style="width: 25px; height: 25px;">
+                                        <span class="ms-3" style="width: 80px; text-align: center;">Lv. {{ lv }}</span>
+                                        <!-- 닉네임에 hover 효과 추가 -->
+                                        <span class="ms-2 clickable-nickname hover-animate" data-nickname="{{ nickname }}" style="flex-grow: 1;">{{ nickname }}</span>
+                                        <!-- 티어 이미지에 hover 효과 추가 -->
+                                        <img src="{{ tier_image }}" alt="Tier Image" class="ms-auto tier-hover" style="width: 30px; height: 30px;">
                                     </div>
-                                </li>                                                                           
+                                </li>
                             {% endfor %}
-                        </ul>
+                        </ul>                        
                     </div>
                 </div>
             </div>   
