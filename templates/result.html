@@ -318,12 +318,12 @@
             </div>
             <!-- 경기 모드 선택 탭 메뉴 -->
             <div class="game-mode-tab mb-4">
-                <span class="tab-item" id='50' onclick="selectGameMode('{{ level_data.nickname }}', '50', this)">공식경기</span>
-                <!-- <span class="tab-item" onclick="selectGameMode('2vs2')">2vs2 공식경기</span> -->
-                <span class="tab-item" id='60' onclick="selectGameMode('{{ level_data.nickname }}', '60', this)">친선경기</span>
-                <span class="tab-item" id='52' onclick="selectGameMode('{{ level_data.nickname }}', '52', this)">감독모드</span>
-                <span class="tab-item" id='40' onclick="selectGameMode('{{ level_data.nickname }}', '40', this)">커스텀매치</span>
+                <span class="tab-item {% if match_type == '50' %}active{% endif %}" id='50' onclick="selectGameMode('{{ level_data.nickname }}', '50', this)">공식경기</span>
+                <span class="tab-item {% if match_type == '60' %}active{% endif %}" id='60' onclick="selectGameMode('{{ level_data.nickname }}', '60', this)">친선경기</span>
+                <span class="tab-item {% if match_type == '52' %}active{% endif %}" id='52' onclick="selectGameMode('{{ level_data.nickname }}', '52', this)">감독모드</span>
+                <span class="tab-item {% if match_type == '40' %}active{% endif %}" id='40' onclick="selectGameMode('{{ level_data.nickname }}', '40', this)">커스텀매치</span>
             </div>
+            
 
             {% if no_recent_matches %}
             <p style="text-align: center;">최근 전적이 존재하지 않습니다.</p>
@@ -667,19 +667,17 @@
             }
         });
 
-        // 기존 selectGameMode 함수
         function selectGameMode(nick, mode) {
             const tabs = document.querySelectorAll('.tab-item');
-            tabs.forEach(tab => {
-                tab.classList.remove('active');
-            });
+            tabs.forEach(tab => tab.classList.remove('active'));
 
-            // 클릭된 탭에 active 클래스 추가
-            event.currentTarget.classList.add('active');
-            
-            resultLoading();
-            const url = `/result.html?character_name=${nick}&match_type=${mode}`;
-            window.location.href = url;
+            const activeTab = document.querySelector(`.tab-item[id='${mode}']`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+
+            // 페이지 이동
+            window.location.href = `/result.html?character_name=${nick}&match_type=${mode}`;
         }
 
         // 칭호 목록
@@ -741,8 +739,12 @@
             const urlParams = new URLSearchParams(window.location.search);
             const matchType = urlParams.get('match_type');
 
-            // 해당하는 탭에 active 클래스 추가
             if (matchType) {
+                // 모든 탭에서 active 클래스를 제거
+                const tabs = document.querySelectorAll('.tab-item');
+                tabs.forEach(tab => tab.classList.remove('active'));
+
+                // 현재 match_type에 해당하는 탭에 active 클래스 추가
                 const activeTab = document.querySelector(`.tab-item[id='${matchType}']`);
                 if (activeTab) {
                     activeTab.classList.add('active');
@@ -801,6 +803,25 @@
             }
         });
 
+        // 브라우저의 뒤로가기/앞으로 가기 동작을 감지
+        window.addEventListener('popstate', function () {
+            const newUrlParams = new URLSearchParams(window.location.search);
+            const newMatchType = newUrlParams.get('match_type');
+
+            if (newMatchType) {
+                // 모든 탭에서 active 클래스를 제거
+                tabs.forEach(tab => tab.classList.remove('active'));
+
+                // 새 match_type에 해당하는 탭에 active 클래스 추가
+                const newActiveTab = document.querySelector(`.tab-item[id='${newMatchType}']`);
+                if (newActiveTab) {
+                    newActiveTab.classList.add('active');
+                }
+            }
+        });
+
+        
+        
         // 승률 개선 솔루션 페이지로 이동
         function goToWinRateResult(nickname, match_type) {
             winLoading();  // 로딩창 표시
