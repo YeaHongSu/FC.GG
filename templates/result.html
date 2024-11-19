@@ -657,15 +657,20 @@
         }
 
         // 페이지 로드 시 URL의 match_type 파라미터 확인
-        document.addEventListener("DOMContentLoaded", function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const matchType = urlParams.get("match_type");
+        document.addEventListener("DOMContentLoaded", function () {
+            const pathParts = window.location.pathname.split('/'); // URL 경로를 '/'로 나눔
+            const matchTypeName = decodeURIComponent(pathParts[pathParts.length - 1]); // 마지막 경로 추출 및 디코딩
 
-            if (matchType === '40') {
-                document.getElementById("opponentStatsSection").style.display = 'block';
+            if (matchTypeName === '커스텀매치') { // '커스텀매치'인 경우
+                const section = document.getElementById("opponentStatsSection");
+                if (!section) {
+                    return; // 요소가 없으면 종료
+                }
+                section.style.display = 'block';
                 calculateOpponentStats();
             }
         });
+
 
         function selectGameMode(nick, mode) {
             const tabs = document.querySelectorAll('.tab-item');
