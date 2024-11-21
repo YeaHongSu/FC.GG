@@ -238,8 +238,6 @@ def result(character_name=None, match_type_name=None):
         # match 데이터 가져오기
         match_data_list = get_match_data(matches, headers)
 
-        # match 데이터 가져오기
-        match_data_list = get_match_data(matches, headers)
         if not match_data_list:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
 
@@ -253,8 +251,7 @@ def result(character_name=None, match_type_name=None):
             your_data = you(data, character_name)
             imp = data_list(my_data)
             imp2 = data_list(your_data)
-            if imp == None or imp2 == None:
-               continue
+            
             w_l = my_data['matchDetail']['matchResult']
 
             # 비정상 게임 3:0으로 처리
@@ -269,6 +266,10 @@ def result(character_name=None, match_type_name=None):
             }
             # 전적 표시용
             result_list.append(match_data)
+
+            if imp == None or imp2 == None:
+               continue
+                
             # 중요 정보 저장용
             imp_data.append(imp)
             
