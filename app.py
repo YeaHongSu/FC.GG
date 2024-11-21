@@ -87,6 +87,10 @@ def serve_sitemap():
 def serve_robots():
     return send_from_directory('.', 'robots.txt', mimetype='text/plain')
 
+@app.route('/ads.txt')
+def serve_ads():
+    return send_from_directory('.', 'ads.txt', mimetype='text/plain')
+
 @app.before_request
 def redirect_to_fcgg():
     # www 도메인을 fcgg.kr로 리다이렉트
