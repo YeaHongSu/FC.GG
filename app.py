@@ -251,7 +251,30 @@ def result(character_name=None, match_type_name=None):
             your_data = you(data, character_name)
             imp = data_list(my_data)
             imp2 = data_list(your_data)
-            
+
+            # 컨트롤러 값 가져오기
+            my_controller = my_data['matchDetail'].get('controller', 'Unknown')  # None일 경우 "Unknown"
+            your_controller = your_data['matchDetail'].get('controller', 'Unknown')
+
+            # None 값을 "Unknown"으로 처리
+            if my_controller is None:
+                my_controller = "오류"
+            elif my_controller == 'gamepad':  # 'is' 대신 '=='
+                my_controller = '🎮'
+            elif my_controller == 'keyboard':
+                my_controller = '⌨️'
+
+            if your_controller is None:
+                your_controller = "오류"
+            elif your_controller == 'gamepad':  # 'is' 대신 '=='
+                your_controller = '🎮'
+            elif your_controller == 'keyboard':
+                your_controller = '⌨️'
+
+
+            # print("my_controller:", my_controller)
+            # print("your_controller:", your_controller)
+
             w_l = my_data['matchDetail']['matchResult']
 
             # 비정상 게임 3:0으로 처리
@@ -262,8 +285,10 @@ def result(character_name=None, match_type_name=None):
                 '매치 날짜': date,
                 '결과': w_l,
                 '플레이어 1 vs 플레이어 2': f'{my_data["nickname"]} vs {your_data["nickname"]}',
-                '스코어': f'{my_goal_total}:{your_goal_total}'
+                '스코어': f'{my_goal_total}:{your_goal_total}',
+                '컨트롤러': f"{my_controller}:{your_controller}"
             }
+            # print('매치정보', match_data)
             # 전적 표시용
             result_list.append(match_data)
 
@@ -275,9 +300,15 @@ def result(character_name=None, match_type_name=None):
             
         if len(imp_data) == 0:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
+        
+        # 숫자 데이터만 필터링
+        filtered_imp_data = [[value for value in row if isinstance(value, (int, float))] for row in imp_data]
 
-        # 중요 지표 평균 계산
-        my_avg = np.nanmean(imp_data, axis=0)
+        # 평균 계산
+        filtered_imp_data = np.array(filtered_imp_data, dtype=float)  # 숫자 데이터만 포함
+        my_avg = np.nanmean(filtered_imp_data, axis=0)
+
+
 
         # 전체 유저 중요 지표 평균 불러오기
         cl_data = np.array(data_list_cl(avg_data(match_type)))
