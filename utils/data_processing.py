@@ -127,6 +127,7 @@ def data_list(data):
     match_data = []
     if data['matchDetail']['matchEndType'] == 2 or data['matchDetail']['dribble']==None:
         return None
+    match_data.append(data['matchDetail']['controller'])
     match_data.append(data['matchDetail']['foul'])
     match_data.append(data['matchDetail']['yellowCards'])
     match_data.append(data['matchDetail']['dribble'])
