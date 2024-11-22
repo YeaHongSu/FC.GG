@@ -209,6 +209,59 @@
             background: linear-gradient(45deg, #433E49, #928490);
             color: #e2d3c7; /* 텍스트는 흰색 */
         }
+        .match-info-container {
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .match-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+
+        }
+        .match-date,
+        .result,
+        .score,
+        .controller,
+        .header-item {
+            flex: 1; /* 각 요소가 동일한 너비를 차지하도록 설정 */
+            text-align: center;
+        }
+        .player-vs {
+            flex: 2; /* 중앙의 vs 섹션이 약간 더 넓게 보이도록 설정 */
+            text-align: center;
+        }
+        .player1,
+        .player2 {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .vs {
+            font-size: 14px;
+        }
+        .score,
+        .result {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .math-data {
+            font-size: 18px;
+        }
+        .controller {
+            font-size: 20px;
+        }
+        /* 헤더 스타일 */
+        .match-info-header {
+            justify-content: space-between;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 15px;
+            color: #555;
+        }
     </style>
 
 </head>
@@ -414,22 +467,31 @@
             <!-- 매치 정보 Section -->
             <div class="match-info-container mt-4">
                 <h2 class="card-title h4 mb-3 text-center">매칭 정보</h2>
+                <!-- 헤더: Flexbox로 정렬 -->
                 <div class="match-info-header d-flex justify-content-between p-2">
-                    <span>매치 날짜</span>
-                    <span>결과</span>
-                    <span>나 vs 상대</span>
-                    <span>스코어</span>
+                    <div class="header-item">매치 날짜</div>
+                    <div class="header-item">결과</div>
+                    <div class="header-item">나 vs 상대</div>
+                    <div class="header-item">스코어</div>
+                    <div class="header-item">컨트롤러</div>
                 </div>
                 <div class="row">
                     {% for match in match_data %}
                     <div class="col-md-12">
                         <!-- 승리, 무승부, 패배에 따라 클래스가 달라짐 -->
-                        <div class="match-row {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %}">
+                        <div class="match-row d-flex justify-content-between align-items-center {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %}">
                             <div class="result-indicator"></div>
                             <span class="match-date">{{ match['매치 날짜'] }}</span>
                             <span class="result">{{ match['결과'] }}</span>
-                            <span class="player-vs">{{ match['플레이어 1 vs 플레이어 2'] }}</span>
+                            <div class="player-vs text-center">
+                                <span class="player1">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[0] }}</span>
+                                <br>
+                                <span class="vs">vs</span>
+                                <br>
+                                <span class="player2">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[1] }}</span>
+                            </div>
                             <span class="score">{{ match['스코어'] }}</span>
+                            <span class="controller">{{ match['컨트롤러'] }}</span>
                         </div>
                     </div>
                     {% endfor %}
