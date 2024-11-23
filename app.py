@@ -1,4 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, redirect, send_from_directory
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired
+from datetime import datetime, timedelta, timezone
+import os
 import requests
 import pandas as pd
 import numpy as np
@@ -538,6 +543,132 @@ def calculate_new():
 def calculate_redirect():
     return redirect(url_for('calculate_new'), code=301)
 
+# SQLite 데이터베이스 경로
+DB_PATH = 'community_data.db'
+
+# 데이터베이스 초기화 함수
+def initialize_database():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # 커뮤니티 게시글 테이블 생성
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            nickname TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# 초기화 실행
+initialize_database()
+
+# 시간 차이를 계산하는 필터
+@app.template_filter('timeago')
+def timeago_filter(timestamp):
+    # 한국 표준시 시간대를 정의
+    kst = timezone(timedelta(hours=9))
+    current_time = datetime.now(tz=kst)
+    
+    try:
+        # 입력된 timestamp를 datetime 객체로 변환 (한국 시간으로 변환 필요)
+        input_time = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+        # 입력 시간을 KST로 설정
+        input_time = input_time.replace(tzinfo=timezone.utc).astimezone(kst)
+    except ValueError:
+        # 잘못된 포맷의 경우 예외 처리
+        return "날짜 오류"
+    
+    # 시간 차이 계산
+    time_difference = current_time - input_time
+
+    # 시간 차이에 따른 결과 반환
+    if time_difference < timedelta(days=1):
+        hours_diff = int(time_difference.total_seconds() // 3600)
+        minutes_diff = int((time_difference.total_seconds() % 3600) // 60)
+        if hours_diff == 0:
+            if minutes_diff <= 1:
+                return "방금 전"
+            else:
+                return f"{minutes_diff}분 전"
+        elif hours_diff == 1:
+            return "1시간 전"
+        else:
+            return f"{hours_diff}시간 전"
+    else:
+        days_diff = time_difference.days
+        if days_diff == 1:
+            return "1일 전"
+        else:
+            return f"{days_diff}일 전"
+
+# 커뮤니티 작성 폼 정의
+class CommunityForm(FlaskForm):
+    nickname = StringField('닉네임', validators=[DataRequired()])
+    category = SelectField('카테고리', choices=[
+        ('자유게시판', '자유게시판'),
+        ('1vs1게시판', '1vs1게시판'),
+        ('2vs2게시판', '2vs2게시판'),
+        ('친추게시판', '친추게시판'),
+        ('건의사항', '건의사항')
+    ], validators=[DataRequired()])
+    content = TextAreaField('내용', validators=[DataRequired()])
+    submit = SubmitField('작성하기')
+
+# 전체 커뮤니티 페이지
+@app.route('/커뮤니티', methods=['GET', 'POST'])
+def community_new():
+    form = CommunityForm()
+    if form.validate_on_submit():
+        nickname = form.nickname.data
+        category = form.category.data
+        content = form.content.data
+
+        # 게시글 DB 저장
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO posts (category, nickname, content) VALUES (?, ?, ?)', (category, nickname, content))
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('community_new'))
+
+    # 전체 게시글 데이터 로드
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts ORDER BY id DESC')
+    posts = cursor.fetchall()
+    conn.close()
+
+    return render_template('community.html', form=form, posts=posts, selected_category="전체")
+
+@app.route('/커뮤니티/<category>', methods=['GET', 'POST'])
+def community_category(category):
+    form = CommunityForm()
+    if form.validate_on_submit():
+        nickname = form.nickname.data
+        content = form.content.data
+
+        # 게시글 DB 저장
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO posts (category, nickname, content) VALUES (?, ?, ?)', (category, nickname, content))
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('community_category', category=category))
+
+    # 선택된 카테고리의 게시글만 가져오기
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts WHERE category = ? ORDER BY id DESC', (category,))
+    posts = cursor.fetchall()
+    conn.close()
+
+    return render_template('community.html', form=form, posts=posts, selected_category=category)
 
 
 # 포트 설정 및 웹에 띄우기
