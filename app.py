@@ -670,6 +670,11 @@ def community_category(category):
 
     return render_template('community.html', form=form, posts=posts, selected_category=category)
 
+# 기존 URL 리다이렉트
+@app.route('/community.html', methods=['GET', 'POST'])
+def community_redirect():
+    return redirect(url_for('community_new'), code=301)
+
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
