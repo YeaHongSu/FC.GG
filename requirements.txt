@@ -15,6 +15,5 @@ Jinja2==3.0.3
 MarkupSafe==2.0.1
 aiohttp==3.8.6
 asyncio==3.4.3
-python-dateutil==2.8.2  # 날짜 및 시간 파싱
-openpyxl==3.0.9        # pandas에서 Excel 데이터 처리에 필요할 수 있음
-sqlite3                # 내장 모듈이지만, 데이터베이스 관련 문제 해결 시 추가적으로 명시 가능
+python-dateutil==2.8.2
+openpyxl==3.0.9
