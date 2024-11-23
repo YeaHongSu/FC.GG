@@ -368,15 +368,12 @@ def wr_imp_redirect():
 @app.route('/wr_result.html', methods=['GET'])
 def wr_result(character_name=None, match_type_name=None):
     try:
-        # 간단한 URL 요청 처리
         if character_name and match_type_name:
-            # match_type_name을 match_type으로 변환
             match_type = REVERSE_MATCH_TYPE_MAP.get(match_type_name)
             if not match_type:
                 flash("잘못된 경기 유형입니다.")
                 return redirect(url_for('home'))
         else:
-            # 기존 URL 요청 처리
             character_name = request.args.get('character_name') or session.get('character_name')
             match_type = request.args.get('match_type')
 
@@ -384,22 +381,17 @@ def wr_result(character_name=None, match_type_name=None):
                 flash("닉네임 또는 경기 유형이 누락되었습니다.")
                 return redirect(url_for('home'))
 
-            # match_type을 이름으로 변환
             match_type_name = MATCH_TYPE_MAP.get(match_type)
-
             if not match_type_name:
                 flash("잘못된 경기 유형입니다.")
                 return redirect(url_for('home'))
 
-            # 기존 URL 요청을 간단한 URL로 리다이렉트
             return redirect(
                 url_for('wr_result', character_name=character_name, match_type_name=match_type_name),
                 code=301
             )
 
-        # 닉네임에서 공백 제거
         character_name = character_name.replace(" ", "")
-       
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         urlString = "https://open.api.nexon.com/fconline/v1/id?nickname=" + character_name
         characterName = requests.get(urlString, headers=headers).json()["ouid"]
@@ -407,10 +399,7 @@ def wr_result(character_name=None, match_type_name=None):
         urlString = "https://open.api.nexon.com/fconline/v1/user/basic?ouid=" + characterName
         lv = requests.get(urlString, headers=headers).json()["level"]
 
-        level_data = {
-            "nickname": character_name,
-            "level": lv
-        }
+        level_data = {"nickname": character_name, "level": lv}
 
         urlString = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25"
         response = requests.get(urlString, headers=headers)
@@ -419,9 +408,8 @@ def wr_result(character_name=None, match_type_name=None):
         if len(matches) <= 5:
             flash("경기 수가 부족하여 검색이 불가능합니다 (최소 5경기가 필요합니다)")
             return redirect(url_for('home'))
-           
+
         match_data_list = get_match_data(matches, headers)
-        
         result_list = []
         imp_data = []
         w_l_data = []
@@ -430,7 +418,7 @@ def wr_result(character_name=None, match_type_name=None):
             my_data = me(data, character_name)
             imp = data_list(my_data)
             imp2 = data_list(you(data, character_name))
-                    
+
             w_l = my_data['matchDetail']['matchResult']
             match_data = {'결과': w_l}
             result_list.append(match_data)
@@ -441,30 +429,9 @@ def wr_result(character_name=None, match_type_name=None):
 
             imp_data.append(imp)
 
-        # imp_data에서 숫자 데이터만 필터링 및 길이 통일
-        filtered_imp_data = []
-        max_length = 0  # 최대 길이 추적
-
-        for idx, row in enumerate(imp_data):
-            try:
-                # 숫자 값만 필터링하고 'nan' 값 제거
-                numeric_row = [float(value) for value in row if isinstance(value, (int, float)) and not np.isnan(float(value))]
-                filtered_imp_data.append(numeric_row)
-                max_length = max(max_length, len(numeric_row))  # 가장 긴 행의 길이를 업데이트
-            except (ValueError, TypeError):
-                continue
-
-        # 모든 행의 길이를 최대 길이에 맞게 패딩 처리
-        padded_imp_data = []
-        for idx, row in enumerate(filtered_imp_data):
-            if len(row) < max_length:
-                row += [0.0] * (max_length - len(row))  # 짧은 행은 0으로 패딩
-            elif len(row) > max_length:
-                row = row[:max_length]  # 긴 행은 잘라냄
-            padded_imp_data.append(row)
-
-        # numpy 배열로 변환
-        padded_imp_data = np.array(padded_imp_data, dtype=float)
+        # imp_data에서 숫자 데이터만 필터링
+        filtered_imp_data = [[value for value in row if isinstance(value, (int, float))] for row in imp_data]
+        padded_imp_data = np.array(filtered_imp_data, dtype=float)
 
         # 평균 계산
         my_avg = np.nanmean(padded_imp_data, axis=0)
@@ -473,34 +440,27 @@ def wr_result(character_name=None, match_type_name=None):
         cl_data = np.array(data_list_cl(avg_data(match_type)))
 
         # 길이 일치
-        if cl_data.shape[0] > my_avg.shape[0]:  # cl_data가 더 길면 자르기
+        if cl_data.shape[0] > my_avg.shape[0]:
             cl_data = cl_data[:my_avg.shape[0]]
-        elif cl_data.shape[0] < my_avg.shape[0]:  # cl_data가 더 짧으면 패딩
-            cl_data = np.pad(cl_data, (0, my_avg.shape[0] - cl_data.shape[0]), constant_values=0)
+        elif cl_data.shape[0] < my_avg.shape[0]:
+            cl_data = np.pad(cl_data, (0, my_avg.shape[0] - cl_data.shape[0]), constant_values=np.nan)
 
-        # 승률 개선 계산
-        jp_num = 20
+        # max_diff 및 min_diff 계산
+        max_diff = (my_avg - cl_data) / cl_data
+        max_idx, max_values = top_n_argmax(max_diff, 20)
+
+        min_diff = (my_avg - cl_data) / cl_data
+        min_idx, min_values = top_n_argmin(min_diff, 20)
+
+        # 상위/하위 5개 지표 필터링
+        filtered_max_idx = max_idx[:5]
+        filtered_max_values = max_values[:5]
+
         threshold = 0.9
 
-        # 승률 개선 계산
-        try:
-            max_diff = (my_avg - cl_data) / (cl_data + 1e-8)  # 0으로 나누기 방지
-            max_idx, max_values = top_n_argmax(max_diff, jp_num)
+        filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
+        filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
 
-            # 상위 5개만 남기기
-            filtered_max_idx = max_idx[:5]
-            filtered_max_values = max_values[:5]
-
-            min_diff = (my_avg - cl_data) / (cl_data + 1e-8)  # 0으로 나누기 방지
-            min_idx, min_values = top_n_argmin(min_diff, jp_num)
-
-            filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
-            filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
-
-        except ValueError:
-            raise
-
-        # 기존 로직 유지
         max_data = zip(filtered_max_idx, filtered_max_values)
         min_data = zip(filtered_min_idx, filtered_min_values)
 
@@ -512,14 +472,13 @@ def wr_result(character_name=None, match_type_name=None):
             'wr_result.html',
             my_data=my_data,
             match_data=result_list,
-            level_data=level_data, 
+            level_data=level_data,
             max_data=max_data,
             min_data=min_data,
             data_label=data_label,
-            jp_num=jp_num,
             top_n=top_n,
             increase_ratio=increase_ratio,
-            improved_features_text=improved_features_text, 
+            improved_features_text=improved_features_text,
             original_win_rate=original_win_rate,
             modified_win_rate=modified_win_rate,
             win_rate_improvement=win_rate_improvement
@@ -528,7 +487,6 @@ def wr_result(character_name=None, match_type_name=None):
     except Exception as e:
         flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
         return redirect(url_for('home'))
-
 
 
 # 선수 티어 페이지
