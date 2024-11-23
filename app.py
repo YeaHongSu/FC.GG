@@ -308,8 +308,6 @@ def result(character_name=None, match_type_name=None):
         filtered_imp_data = np.array(filtered_imp_data, dtype=float)  # 숫자 데이터만 포함
         my_avg = np.nanmean(filtered_imp_data, axis=0)
 
-
-
         # 전체 유저 중요 지표 평균 불러오기
         cl_data = np.array(data_list_cl(avg_data(match_type)))
        
@@ -414,7 +412,7 @@ def wr_result(character_name=None, match_type_name=None):
             "level": lv
         }
 
-        urlString = "https://open.api.nexon.com/fconline/v1/user/match?ouid=" + characterName + "&matchtype=" + match_type + "&limit=25"
+        urlString = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25"
         response = requests.get(urlString, headers=headers)
         matches = response.json()
 
@@ -428,59 +426,110 @@ def wr_result(character_name=None, match_type_name=None):
         imp_data = []
         w_l_data = []
 
-        # for i in matches:
-        #     urlString = "https://open.api.nexon.com/fconline/v1/match-detail?matchid=" + i
-        #     response = requests.get(urlString, headers=headers)
-        #     data = response.json()
         for data in match_data_list:
             my_data = me(data, character_name)
             imp = data_list(my_data)
             imp2 = data_list(you(data, character_name))
-               
+                    
             w_l = my_data['matchDetail']['matchResult']
-            match_data = {
-                '결과': w_l
-            }
+            match_data = {'결과': w_l}
             result_list.append(match_data)
             w_l_data.append(w_l)
-            
-            if imp == None or imp2 == None:
+
+            if imp is None or imp2 is None:
                 continue
-            
+
             imp_data.append(imp)
 
-        my_avg = np.nanmean(imp_data, axis=0)
+        # imp_data에서 숫자 데이터만 필터링 및 길이 통일
+        filtered_imp_data = []
+        max_length = 0  # 최대 길이 추적
+
+        for idx, row in enumerate(imp_data):
+            try:
+                # 숫자 값만 필터링하고 'nan' 값 제거
+                numeric_row = [float(value) for value in row if isinstance(value, (int, float)) and not np.isnan(float(value))]
+                filtered_imp_data.append(numeric_row)
+                max_length = max(max_length, len(numeric_row))  # 가장 긴 행의 길이를 업데이트
+            except (ValueError, TypeError):
+                continue
+
+        # 모든 행의 길이를 최대 길이에 맞게 패딩 처리
+        padded_imp_data = []
+        for idx, row in enumerate(filtered_imp_data):
+            if len(row) < max_length:
+                row += [0.0] * (max_length - len(row))  # 짧은 행은 0으로 패딩
+            elif len(row) > max_length:
+                row = row[:max_length]  # 긴 행은 잘라냄
+            padded_imp_data.append(row)
+
+        # numpy 배열로 변환
+        padded_imp_data = np.array(padded_imp_data, dtype=float)
+
+        # 평균 계산
+        my_avg = np.nanmean(padded_imp_data, axis=0)
+
+        # `cl_data`를 `my_avg` 길이에 맞추기
         cl_data = np.array(data_list_cl(avg_data(match_type)))
 
+        # 길이 일치
+        if cl_data.shape[0] > my_avg.shape[0]:  # cl_data가 더 길면 자르기
+            cl_data = cl_data[:my_avg.shape[0]]
+        elif cl_data.shape[0] < my_avg.shape[0]:  # cl_data가 더 짧으면 패딩
+            cl_data = np.pad(cl_data, (0, my_avg.shape[0] - cl_data.shape[0]), constant_values=0)
+
+        # 승률 개선 계산
         jp_num = 20
         threshold = 0.9
 
-        max_diff = (my_avg - cl_data) / cl_data
-        max_idx, max_values = top_n_argmax(max_diff, jp_num)
-        # 상위 5개만 남기기
-        filtered_max_idx = max_idx[:5]
-        filtered_max_values = max_values[:5]
+        # 승률 개선 계산
+        try:
+            max_diff = (my_avg - cl_data) / (cl_data + 1e-8)  # 0으로 나누기 방지
+            max_idx, max_values = top_n_argmax(max_diff, jp_num)
 
-        min_diff = (my_avg - cl_data) / cl_data
-        min_idx, min_values = top_n_argmin(min_diff, jp_num)
+            # 상위 5개만 남기기
+            filtered_max_idx = max_idx[:5]
+            filtered_max_values = max_values[:5]
 
-        filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
-        filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
+            min_diff = (my_avg - cl_data) / (cl_data + 1e-8)  # 0으로 나누기 방지
+            min_idx, min_values = top_n_argmin(min_diff, jp_num)
 
+            filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
+            filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
+
+        except ValueError:
+            raise
+
+        # 기존 로직 유지
         max_data = zip(filtered_max_idx, filtered_max_values)
         min_data = zip(filtered_min_idx, filtered_min_values)
 
-        top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = calculate_win_improvement(imp_data, w_l_data, data_label)
+        top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = calculate_win_improvement(
+            padded_imp_data, w_l_data, data_label
+        )
 
-        return render_template('wr_result.html', my_data=my_data, match_data=result_list, level_data=level_data, 
-                               max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
-                               top_n=top_n, increase_ratio=increase_ratio, improved_features_text=improved_features_text, 
-                               original_win_rate=original_win_rate, modified_win_rate=modified_win_rate, win_rate_improvement=win_rate_improvement)
+        return render_template(
+            'wr_result.html',
+            my_data=my_data,
+            match_data=result_list,
+            level_data=level_data, 
+            max_data=max_data,
+            min_data=min_data,
+            data_label=data_label,
+            jp_num=jp_num,
+            top_n=top_n,
+            increase_ratio=increase_ratio,
+            improved_features_text=improved_features_text, 
+            original_win_rate=original_win_rate,
+            modified_win_rate=modified_win_rate,
+            win_rate_improvement=win_rate_improvement
+        )
 
     except Exception as e:
-        print(e)
         flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
         return redirect(url_for('home'))
+
+
 
 # 선수 티어 페이지
 @app.route('/선수티어', methods=['GET', 'POST'])
