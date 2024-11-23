@@ -206,3 +206,20 @@ iframe {
     border-radius: 5px; /* 모서리 둥글게 */
     padding: 12px; /* 여백 추가 */
 }
+
+.video-wrapper {
+    position: relative;
+    width: 370px;
+    height: 203px;
+}
+
+/* Fade-in/out 애니메이션 */
+.fade-out {
+    opacity: 0;
+    transition: opacity 1s ease-out;
+}
+
+.fade-in {
+    opacity: 1;
+    transition: opacity 1s ease-in;
+}
