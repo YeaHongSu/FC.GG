@@ -214,7 +214,6 @@ def result(character_name=None, match_type_name=None):
             "tier_image": tier_image
         }
 
-
         # 유저 매치 데이터 20개 불러오기
         response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25", headers=headers)
         matches = response.json() if response.ok else []
@@ -285,8 +284,8 @@ def result(character_name=None, match_type_name=None):
                 '매치 날짜': date,
                 '결과': w_l,
                 '플레이어 1 vs 플레이어 2': f'{my_data["nickname"]} vs {your_data["nickname"]}',
-                '스코어': f'{my_goal_total}:{your_goal_total}',
-                '컨트롤러': f"{my_controller}:{your_controller}"
+                '스코어': f'{my_goal_total} : {your_goal_total}',
+                '컨트롤러': f"{my_controller} : {your_controller}"
             }
             # print('매치정보', match_data)
             # 전적 표시용
@@ -346,8 +345,25 @@ def result(character_name=None, match_type_name=None):
                             play_style=play_style)
 
     except Exception:
-        flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
-        return render_template('home.html')
+        try:
+            # 문제가 발생하면 result.html 먼저 시도
+            return render_template(
+                'result.html', 
+                my_data={},  # my_data에 빈 딕셔너리를 기본값으로 설정
+                match_data=[],  # match_data에 빈 리스트를 기본값으로 설정
+                level_data=level_data, 
+                match_type=match_type, 
+                max_data=[],  # max_data에 빈 리스트를 기본값으로 설정
+                min_data=[],  # min_data에 빈 리스트를 기본값으로 설정
+                data_label=[],  # data_label에 빈 리스트를 기본값으로 설정
+                jp_num=0,  # jp_num 기본값 설정
+                play_style={},  # play_style에 빈 딕셔너리를 기본값으로 설정
+                no_recent_matches=True  # no_recent_matches 값 전달
+            )
+        except Exception:
+            # result.html이 안 되면 home.html로 이동
+            flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
+            return render_template('home.html')
 
 
 
