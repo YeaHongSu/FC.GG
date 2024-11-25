@@ -278,15 +278,9 @@ def result(character_name=None, match_type_name=None):
             elif your_controller == 'keyboard':
                 your_controller = '⌨️'
 
-            # 디버깅 로그 추가: my_controller 값 확인
-            print(f"Match ID: {data['matchId']}, My Controller: {my_controller}")
-
             # 컨트롤러 통계 업데이트
             if my_controller in controller_stats:
                 controller_stats[my_controller] += 1
-
-            # 디버깅 로그 추가: controller_stats 값 확인
-            print(f"Updated controller_stats: {controller_stats}")
 
             w_l = my_data['matchDetail']['matchResult']
 
