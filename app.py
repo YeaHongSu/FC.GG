@@ -248,6 +248,9 @@ def result(character_name=None, match_type_name=None):
         result_list = []
         imp_data = []
 
+        # 유저 컨트롤러 통계를 저장할 리스트 추가
+        controller_stats = {"🎮": 0, "⌨️": 0, "오류": 0}
+
         # 각 매치 데이터 처리
         for data in match_data_list:
             date = calculate_time_difference(data['matchDate'])
@@ -257,10 +260,10 @@ def result(character_name=None, match_type_name=None):
             imp2 = data_list(your_data)
 
             # 컨트롤러 값 가져오기
-            my_controller = my_data['matchDetail'].get('controller', 'Unknown')  # None일 경우 "Unknown"
+            my_controller = my_data['matchDetail'].get('controller', 'Unknown')  # 기본값 "Unknown"
             your_controller = your_data['matchDetail'].get('controller', 'Unknown')
 
-            # None 값을 "Unknown"으로 처리
+            # None 값을 "오류"로 처리 및 매핑
             if my_controller is None:
                 my_controller = "오류"
             elif my_controller == 'gamepad':  # 'is' 대신 '=='
@@ -270,14 +273,20 @@ def result(character_name=None, match_type_name=None):
 
             if your_controller is None:
                 your_controller = "오류"
-            elif your_controller == 'gamepad':  # 'is' 대신 '=='
+            elif your_controller == 'gamepad':
                 your_controller = '🎮'
             elif your_controller == 'keyboard':
                 your_controller = '⌨️'
 
+            # 디버깅 로그 추가: my_controller 값 확인
+            print(f"Match ID: {data['matchId']}, My Controller: {my_controller}")
 
-            # print("my_controller:", my_controller)
-            # print("your_controller:", your_controller)
+            # 컨트롤러 통계 업데이트
+            if my_controller in controller_stats:
+                controller_stats[my_controller] += 1
+
+            # 디버깅 로그 추가: controller_stats 값 확인
+            print(f"Updated controller_stats: {controller_stats}")
 
             w_l = my_data['matchDetail']['matchResult']
 
@@ -292,16 +301,17 @@ def result(character_name=None, match_type_name=None):
                 '스코어': f'{my_goal_total} : {your_goal_total}',
                 '컨트롤러': f"{my_controller} : {your_controller}"
             }
-            # print('매치정보', match_data)
-            # 전적 표시용
             result_list.append(match_data)
 
             if imp == None or imp2 == None:
-               continue
-                
+                continue
+
             # 중요 정보 저장용
             imp_data.append(imp)
-            
+
+        # 가장 많이 사용된 my_controller 추출
+        most_common_controller = max(controller_stats, key=controller_stats.get)
+
         if len(imp_data) == 0:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
         
@@ -347,7 +357,7 @@ def result(character_name=None, match_type_name=None):
 
         return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type = match_type,
                             max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
-                            play_style=play_style)
+                            play_style=play_style, most_common_controller=most_common_controller)
 
     except Exception:
         try:
@@ -610,8 +620,8 @@ class CommunityForm(FlaskForm):
     nickname = StringField('닉네임', validators=[DataRequired()])
     category = SelectField('카테고리', choices=[
         ('자유게시판', '자유게시판'),
-        ('1vs1게시판', '1vs1게시판'),
-        ('2vs2게시판', '2vs2게시판'),
+        ('키보드게시판', '키보드게시판'),
+        ('패드게시판', '패드게시판'),
         ('친추게시판', '친추게시판'),
         ('건의사항', '건의사항')
     ], validators=[DataRequired()])
