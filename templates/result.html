@@ -316,7 +316,8 @@
                         <!-- 추천 커뮤니티 섹션 -->
                         <div class="card mb-4 p-4 shadow-sm">
                             <h2 class="card-title h4 text-center"><span class="text-success">{{ level_data.nickname }}</span>님은 {{most_common_controller}} 유저</h2>
-                            <p class="text-center text-muted small mb-2">커뮤니티에서 승률 개선을 위해 팁을 공유해 보세요</p>
+                            <p class="text-center text-muted small mb-2">커뮤니티에서 승률 개선을 위해</p>
+                            <p class="text-center text-muted small mb-2">{{most_common_controller}}에 대한 팁을 찾거나 공유해 보세요!</p>
                             <div class="text-center">
                                 {% if most_common_controller == "⌨️" or most_common_controller == "오류" %}
                                 <a class="btn custom-btn btn-warning mt-1" href="https://fcgg.kr/커뮤니티/키보드게시판" target="_blank">키보드게시판 바로가기</a>
@@ -669,7 +670,7 @@
         }
 
         // 칭호 목록
-        const influencerList = ["해설한승엽", "메시연", "교로텔리", "뀨뀨rr", "호날두", "굴리트", "크라우터", "잉유진", "신림동밀탱크", "방배우", "af박준효", "빅윈", "감스트", "천국", "lictfe", "유튜브싸커러리", "AF김우다", "김칠홍", "타워"];
+        const influencerList = ["해설한승엽", "메시연", "교로텔리", "뀨뀨rr", "호날두", "굴리트", "크라우터", "잉유진", "신림동밀탱크", "방배우", "af박준효", "빅윈", "감스트", "천국", "lictfe", "유튜브싸커러리", "af김우다", "김칠홍", "타워"];
         const proGamerList = ["geng박세영", "kt곽준혁", "kt박찬화", "kdf강준호", "kdf최호석", "kimyoomin"];
         const fifaInventKingList = ["화성간정무", "무리윤주니어"]; // 새로 추가된 피파인벤1황 목록
         const firsttenList = ["pgzi발", "관찰력", "agw펠레", "펠레해적단", "마포구3pop", "내일이되면", "터러기fc", "왕금복"] // 최초의 10인 목록
@@ -748,7 +749,7 @@
                 winRateMessage.textContent = "이건 팀의 문제일 수도 있어요..!";
                 winRateMessage.style.color = '#ef4444'; // 빨간색
             } else if (winRate >= 40 && winRate < 50) {
-                winRateMessage.textContent = "승률이 좋지않아요.. 지고만 계실건가요?";
+                winRateMessage.textContent = "승률이 좋지않아요.. 지고 계실건가요?";
                 winRateMessage.style.color = '#ef4444'; // 빨간색
             } else if (winRate >= 50 && winRate < 60) {
                 winRateMessage.textContent = "경기력이 좋지만 더 잘해지실 수 있어요!";
