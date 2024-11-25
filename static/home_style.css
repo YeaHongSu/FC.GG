@@ -1,110 +1,169 @@
+/* 기본 스타일 */
 body {
-    font-family: 'Noto Sans KR', sans-serif; /* 기본 폰트를 Noto Sans KR로 설정 */
+    font-family: 'Noto Sans KR', sans-serif;
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* 화면 크기 상관없이 푸터가 바닥에 붙도록 */
-    overflow-x: auto; /* 가로 스크롤 허용 */
+    min-height: 100vh;
+    overflow-x: hidden; /* 가로 스크롤 제거 */
+    margin: 0;
+    padding: 0;
 }
 
 main.container {
-    max-width: 1024px; /* 고정 너비 설정 */
-    width: 1024px; /* 모든 화면에서 고정된 너비 사용 */
+    max-width: 1024px;
+    width: 100%; /* 모바일에서도 가로 폭에 맞도록 수정 */
     margin: 0 auto;
+    padding: 0 15px; /* 좌우 여백 추가 */
 }
 
 .header, .footer, .video-container, .notice-container, .d-flex, .upcoming-container {
-    width: 1024px; /* 모든 요소의 너비를 고정 */
+    width: 100%; /* 모든 요소의 너비를 100%로 설정 */
 }
 
-.video-container, .notice-container, .upcoming-container {
+/* 공지사항 및 업데이트 박스 스타일 */
+.notice-container, .upcoming-container {
     background-color: #f8f9fa;
-    padding: 15px;
+    padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    width: 500px; /* 고정된 너비 설정 */
+    width: 100%; /* 박스의 너비를 100%로 설정 */
+    margin-bottom: 20px; /* 박스 간격 추가 */
 }
 
-.video-thumbnail-container {
-    width: 500px;
-    height: 120px;
-    position: relative;
-    margin-right: 15px;
-}
-
-.video-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.video-info {
-    width: 100%;
-}
-
-.news-item {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-}
-
+/* 공지 및 업데이트 제목 스타일 */
 .notice-title, .upcoming-title {
     color: #007bff;
+    font-weight: bold;
+    cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: pointer;
 }
 
+/* 공지 및 업데이트 내용 스타일 */
 .notice-content, .upcoming-content {
     font-size: 0.9rem;
     color: #333;
-    padding-left: 10px;
     margin-top: 10px;
-    border-left: 2px solid #dee2e6;
+    border-left: 3px solid #dee2e6;
+    padding-left: 10px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
 }
 
 .notice-content.open, .upcoming-content.open {
-    max-height: 200px;
+    max-height: 200px; /* 펼쳤을 때의 최대 높이 */
 }
 
+/* 공지 및 업데이트 날짜 스타일 */
 .notice-date, .upcoming-date {
     font-size: 0.85rem;
     color: #6c757d;
+    float: right;
 }
 
-.d-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
-}
-
-footer {
-    background-color: #343a40;
-}
-
-/* 메인 컨테이너를 flex로 중앙 정렬 */
+/* 반응형 레이아웃 */
 .row.justify-content-center {
     display: flex;
     justify-content: center; /* 두 박스를 가로 방향 중앙 정렬 */
-    align-items: flex-start; /* 세로 방향으로 정렬 */
+    align-items: flex-start;
     gap: 20px; /* 두 박스 사이 간격 */
     flex-wrap: wrap; /* 화면이 좁아지면 세로로 배치되도록 */
 }
 
+footer {
+    background-color: #343a40;
+    color: #fff;
+    text-align: center;
+    padding: 20px 0;
+}
 
+footer a {
+    color: #ccc;
+    text-decoration: none;
+}
 
-@media (min-width: 700px) {
-    .col-md-5 {
-        max-width: 49%; /* 화면이 넓어질 때 각 박스가 49% 너비로 중앙에 배치 */
+footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* 검색창 스타일 */
+.input-group {
+    max-width: 100%;
+    width: 100%; /* 검색창을 화면 너비에 맞춤 */
+}
+
+/* 닉네임 및 순위 리스트 스타일 */
+.clickable-nickname {
+    cursor: pointer; /* 마우스 포인터 변경 */
+}
+
+.hover-animate {
+    transition: transform 0.3s ease, color 0.3s ease;
+    transform-origin: center;
+}
+
+.hover-animate:hover {
+    transform: scale(1.05); /* 살짝 확대 */
+    color: #28a745; /* 초록색으로 변경 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    main.container {
+        max-width: 100%; /* 모바일 화면에서 컨테이너가 가로 폭에 맞게 */
+        padding: 0 10px; /* 좌우 여백 조정 */
+    }
+
+    .row.justify-content-center {
+        flex-direction: column; /* 모바일에서는 세로로 배치 */
+        gap: 15px; /* 세로 간격 조정 */
+    }
+
+    .notice-container, .upcoming-container {
+        width: 100%; /* 박스가 전체 화면 너비에 맞도록 */
+        padding: 15px; /* 패딩 축소 */
+    }
+
+    .notice-title, .upcoming-title {
+        font-size: 1rem; /* 제목 크기 조정 */
+    }
+
+    .notice-content, .upcoming-content {
+        font-size: 0.85rem; /* 내용 크기 축소 */
+    }
+
+    .notice-date, .upcoming-date {
+        font-size: 0.8rem; /* 날짜 글꼴 크기 축소 */
     }
 }
 
-.upcoming-date, .notice-date {
-    float: right; /* 맨 오른쪽으로 정렬 */
+/* 로딩 애니메이션 스타일 */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    display: none;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.loading-message {
+    font-size: 1.2rem;
+    color: #28a745;
+    text-align: center;
+    margin-bottom: 17px;
+    margin-left: 10px;
 }
