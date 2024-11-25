@@ -61,6 +61,25 @@
             margin-bottom: 17px; 
             margin-left: 10px;
         }
+        .custom-arrow {
+            width: 0;
+            height: 0;
+            margin: 0 auto;
+            border-left: 10px solid transparent; /* 좌측 투명 삼각형 */
+            border-right: 10px solid transparent; /* 우측 투명 삼각형 */
+            border-top: 20px solid #ffc107; /* 상단 노란색 (화살표 색상) */
+            animation: moveArrow 1s infinite alternate; /* 애니메이션 추가 */
+        }
+
+        @keyframes moveArrow {
+            0% {
+                transform: translateY(0); /* 원래 위치 */
+            }
+            100% {
+                transform: translateY(10px); /* 아래로 10px 이동 */
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -151,7 +170,15 @@
                                 <p>예상 승률</p>
                             </div>
                         </div>
-                        <h4 class="mt-3 text-center">지표 개선 시 승률 <span class="text-success">{{ "%.1f"|format(win_rate_improvement * 100) }}</span>% 증가</h4>
+                        <h4 class="mt-3 text-center">
+                            지표 개선 시 승률 
+                            <span class="text-success">{{ "%.1f"|format(win_rate_improvement * 100) }}</span>% 증가
+                        </h4>
+                        <!-- 아래 방향 화살표 중앙 정렬 추가 -->
+                        <!-- 아래 방향 화살표 중앙 정렬 추가 -->
+                        <div class="text-center mt-2">
+                            <div class="custom-arrow"></div>
+                        </div>
                     {% else %}
                         <h4 class="mt-3 text-danger text-center">현재 모델로 개선이 불가능합니다.</h4>
                     {% endif %}
@@ -185,24 +212,28 @@
                 <h2 class="card-title h4 text-center title-with-border"><span class="text-success">승률 개선 솔루션</span></h2>
                 <div class="card-body">
                     {% if top_n > 0 and increase_ratio > 0 %}
-                        <p class="lead text-center" style="font-size: 1.1rem;">아래 <strong>{{ top_n }}</strong>개 지표를 <strong>{{ "%.0f"|format(increase_ratio * 100) }}%</strong> 개선할 시 예상 승률</p>
-                        <ul class="list-group list-group-flush improvement-metrics-list shadow-sm">
+                        <p class="lead text-center" style="font-size: 1.1rem;">아래 <strong>{{ top_n }}</strong>개 지표를 <span class="text-success"><strong>{{ "%.0f"|format(increase_ratio * 100) }}%</strong></span> 개선할 시 예상 승률</p>
+                        <ul class="list-group list-group-flush improvement-metrics-list">
                             {% for feature in improved_features_text.split("\n") if feature %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center improvement-box">
+                            <li class="list-group-item d-flex justify-content-between align-items-center improvement-box" style="margin-top: 8px; margin-bottom: 8px;">
+
                                     <!-- 지표명 강조 (":" 기준 앞부분만 초록색) -->
-                                    <span style="font-size: 1.1rem; font-weight: bold; color: #333;">
+                                    <span style="font-size: 0.9rem; font-weight: bold; color: #333; flex: 3; text-align: left;">
                                         {{ feature.split(':')[0] }}
                                     </span>
-                                    <span style="font-size: 1.1rem; color: #333;">
-                                        :{{ feature.split(':')[1].split('->')[0] }}
+                                    <span style="font-size: 1rem; color: #333; flex: 1; text-align: center;">
+                                        {{ feature.split(':')[1].split('->')[0] }}
                                     </span>
-                                    <span class="text-success ms-2" style="font-size: 1.5rem; font-weight: bold;">&#8594;</span>
-                                    <span style="font-size: 1.1rem; color: #333;">
+                                    <span class="text-success ms-2" style="font-size: 1.5rem; font-weight: bold; flex: 1; text-align: center;">
+                                        &#8594;
+                                    </span>
+                                    <span style="font-size: 1.1rem; color: #333; flex: 1; text-align: center;">
                                         {{ feature.split('->')[1] }}
                                     </span>
                                 </li>
                             {% endfor %}
                         </ul>
+                        
                     {% else %}
                         <h4 class="text-danger text-center" style="font-size: 1.3rem; font-weight: bold;">현재 모델로 개선이 불가능합니다.</h4>
                     {% endif %}
