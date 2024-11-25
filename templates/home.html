@@ -248,11 +248,17 @@
             <!-- FC 온라인 채널 소식과 FC.GG 공지사항을 가운데로 배치하고, 좌우 간격을 줄임 -->
             <div class="row justify-content-center gap-3"> <!-- justify-content-center와 gap-3으로 간격 조정 -->
                 <!-- 왼쪽: FC.GG 공지사항 -->
-                <div class="col-md-5 d-flex flex-column">
+                <div class="col-lg-6 col-md-12 d-flex flex-column">
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                         <div class="notice-item">
-                            <p id="notice8-title">24/11/13 1.1.1v 업데이트 (<span style="color: red;">커스텀매치, 수수료 계산기</span>) <span class="notice-date" id="notice8-date"></span></p>
+                            <p id="notice9-title">24/11/25 1.1.2v 업데이트 (<span style="color: red;">커뮤니티</span>) <span class="notice-date" id="notice9-date"></span></p>
+                            <div id="notice9-content" class="notice-content">
+                                <p>이번 업데이트에서는 유저분들이 FC온라인에 대한 팁과 비슷한 플레이스타일을 보유한 유저들끼리 의견을 나눌 수 있는 커뮤니티를 개설하였습니다. 많은 이용 부탁드립니다.</p>
+                            </div>
+                        </div>
+                        <div class="notice-item">
+                            <p id="notice8-title">24/11/13 1.1.1v 업데이트 (커스텀매치, 수수료 계산기) <span class="notice-date" id="notice8-date"></span></p>
                             <div id="notice8-content" class="notice-content">
                                 <p>이번 업데이트에서는 커스텀매치 전적 확인 기능과 조, 억 단위로 계산할 수 있도록 편의성을 계산하였으며, 종종 발생하던 계산의 오류를 수정하였습니다.</p>
                             </div>
@@ -291,9 +297,15 @@
                 </div>
 
                 <!-- 오른쪽: FC.GG 업데이트 예정사항 -->
-                <div class="col-md-5 d-flex flex-column">
+                <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming4-title">1.1.2v 편의성 개선 예정 (커뮤니티) <span class="upcoming-date" id="upcoming4-date"></span></p>
+                            <div id="upcoming4-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 게임에 대한 팁과 유사한 유저분들끼리 의견을 나눌 수 있는 커뮤니티를 개설할 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming3-title">1.1.1v 편의성 개선 예정 (커스텀매치, 수수료 계산기) <span class="upcoming-date" id="upcoming3-date"></span></p>
                             <div id="upcoming3-content" class="upcoming-content">
@@ -480,11 +492,13 @@
         document.getElementById("notice6-date").textContent = calculateDaysAgo("2024-10-28");
         document.getElementById("notice7-date").textContent = calculateDaysAgo("2024-11-03");
         document.getElementById("notice8-date").textContent = calculateDaysAgo("2024-11-13");
+        document.getElementById("notice9-date").textContent = calculateDaysAgo("2024-11-25");
 
         // 업데이트 예정사항 날짜 자동 설정
         document.getElementById("upcoming1-date").textContent = calculateDaysAgo("2024-10-29");
         document.getElementById("upcoming2-date").textContent = calculateDaysAgo("2024-10-24");
         document.getElementById("upcoming3-date").textContent = calculateDaysAgo("2024-11-10");
+        document.getElementById("upcoming4-date").textContent = calculateDaysAgo("2024-11-23");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -559,6 +573,15 @@
             }
         });
 
+        document.getElementById("notice9-title").addEventListener("click", function() {
+            const content = document.getElementById("notice9-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -579,6 +602,15 @@
 
         document.getElementById("upcoming3-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming3-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming4-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming4-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
