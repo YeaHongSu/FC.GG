@@ -123,14 +123,15 @@
             <!-- Header -->
             <h1 class="text-center mb-4">어떻게 하면 더 이길 수 있을까?</h1>
             <h3 class="text-center mb-4">승률 개선 솔루션을 경험해 보세요!</h3>
-            <!-- Search Input Section -->
-            <div class="row justify-content-center mb-5">
-                <div class="col-md-7 d-flex justify-content-center">
-                    <!-- Search Input and Button -->
+            <!-- 검색창 -->
+            <div class="container mt-2 d-flex justify-content-center mb-3"> <!-- mb-5로 간격을 늘림 -->
+                <div class="col-md-6">
                     <div class="input-group mb-3">
                         <input type="text" id="character_name" class="form-control rounded-start-pill" placeholder="닉네임을 입력하세요." style="border-top-right-radius: 0; border-bottom-right-radius: 0; height: 44px; font-size: 1.0rem;">
                         <button class="btn btn-success rounded-end-pill" id="search_button" style="border-top-left-radius: 0; border-bottom-left-radius: 0; height: 44px; font-size: 1.0rem;">검색</button>
                     </div>
+                    <div id="search_result"></div>
+                    <div id="match_dates"></div>
                 </div>
             </div>
             <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
