@@ -155,6 +155,20 @@
             border-radius: 4px;
             display: inline-block;
         }
+        .bookmark-btn {
+            border: none;
+            /* background-color: transparent; */
+            color: #ccc;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .bookmark-btn:hover {
+            color: #f39c12;
+        }
+        .bookmark-btn.active {
+            color: #f39c12;
+        }
     </style>
 
 </head>
@@ -254,7 +268,11 @@
             </script>
             <!-- Player Info Section -->
             <div class="player-info d-flex flex-column mb-4 p-3 rounded bg-light shadow-sm" style="border: 1px solid #ddd;">
-                <h2 class="mb-3" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">기본정보</h2>
+                <h2 class="mb-3 d-flex align-items-center" style="font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1.3rem;">
+                    기본정보
+                    <!-- 즐겨찾기 버튼 -->
+                    <button class="bookmark-btn ms-2" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button>
+                </h2>
                 <div class="d-flex justify-content-between align-items-start">
                     <span class="nickname" style="font-size: 3rem; font-weight: bold;">
                         <span class="text-success">{{ level_data.nickname }}</span>
@@ -867,7 +885,31 @@
                 }
             }
         });
-        
+        // 즐겨찾기 추가 함수
+        function toggleBookmark(nickname) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || []; // 로컬 스토리지에서 즐겨찾기 목록 가져오기
+            const index = bookmarks.indexOf(nickname);
+            const button = document.getElementById('bookmark-btn');
+
+            if (index === -1) {
+                bookmarks.push(nickname); // 즐겨찾기 추가
+                button.classList.add('active');
+            } else {
+                bookmarks.splice(index, 1); // 즐겨찾기 제거
+                button.classList.remove('active');
+            }
+
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks)); // 업데이트된 즐겨찾기 목록 저장
+        }
+
+        // 페이지 로드 시 즐겨찾기 상태 확인
+        document.addEventListener('DOMContentLoaded', () => {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+            const button = document.getElementById('bookmark-btn');
+            if (bookmarks.includes('{{ level_data.nickname }}')) {
+                button.classList.add('active'); // 이미 즐겨찾기에 있으면 활성화 상태로 표시
+            }
+        });
     </script>
 
     <!-- Bootstrap JS -->
