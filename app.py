@@ -564,6 +564,26 @@ def initialize_database():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # 초기 데이터 삽입
+    # 기존 데이터가 없는 경우에만 삽입
+    cursor.execute('SELECT COUNT(*) FROM posts')
+    if cursor.fetchone()[0] == 0:  # 데이터가 없을 경우에만 삽입
+        cursor.executemany('''
+            INSERT INTO posts (id, category, nickname, content, timestamp) 
+            VALUES (?, ?, ?, ?, ?)
+        ''', [
+            (9, '키보드게시판', '하요', '하이용', '2024-11-25 13:00:00'),
+            (8, '자유게시판', 'ds', '아약스 센백 추천 금카기준', '2024-11-25 13:00:00'),
+            (7, '자유게시판', '모룽이', '아약스 가성비로 23NG 바시 추천', '2024-11-25 13:00:00'),
+            (6, '키보드게시판', 'qwer', '키보드로 퍼터 대각선으로 치는 법 있나요? 자꾸 삑이 납니다. 현 월클 2부입니다..', '2024-11-25 13:00:00'),
+            (5, '패드게시판', '패추', '패드 입문 하려능데 추천 점', '2024-11-25 13:00:00'),
+            (4, '패드게시판', 'toto', '패드 무선 5만원짜리 조이트론 다이어울프 ㅊㅊ', '2024-11-25 13:00:00'),
+            (3, '패드게시판', '루치치', '패드유저인데 키를 입력하면 3초쯤 뒤에 이상하게 먹히던데 어떻게 해야되죠?', '2024-11-26 13:00:00'),
+            (2, '패드게시판', '뽀로로', '투치치님 저는 전에 스팀 켜져있어서 키입력 오류 있었슴다 한번 다른 창들 다 꺼놓고 ㄱㄱ연', '2024-11-26 13:00:00'),
+            (1, '키보드게시판', '워킹데', '원래 삑 많아 나서 동시에 누르는게 최선', '2024-11-27 13:00:00')
+        ])
+
     conn.commit()
     conn.close()
 
@@ -643,7 +663,7 @@ def community_new():
     # 전체 게시글 데이터 로드
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts ORDER BY id DESC')
+    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts ORDER BY timestamp DESC')
     posts = cursor.fetchall()
     conn.close()
 
@@ -668,7 +688,7 @@ def community_category(category):
     # 선택된 카테고리의 게시글만 가져오기
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts WHERE category = ? ORDER BY id DESC', (category,))
+    cursor.execute('SELECT id, category, nickname, content, timestamp FROM posts WHERE category = ? ORDER BY timestamp DESC', (category,))
     posts = cursor.fetchall()
     conn.close()
 
@@ -678,7 +698,6 @@ def community_category(category):
 @app.route('/community.html', methods=['GET', 'POST'])
 def community_redirect():
     return redirect(url_for('community_new'), code=301)
-
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
