@@ -123,6 +123,109 @@
         .row.gap-3 {
             margin-top: 20px; /* 위쪽 간격 */
         }
+        /* 즐겨찾기 목록 스타일 */
+        .bookmark-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .bookmark-item:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* 노란색 별 */
+        .bookmark-star {
+            color: #f39c12;
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        /* 닉네임 스타일 */
+        .bookmark-nickname {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            background-color: #eef1f5;
+            padding: 3px 3px;
+            border-radius: 20px; /* 타원형 */
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .bookmark-nickname:hover {
+            background-color: #dde4eb;
+            color: #007bff;
+        }
+
+        /* X 버튼 스타일 */
+        .bookmark-remove {
+            margin-left: auto;
+            background-color: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .bookmark-remove:hover {
+            color: #b12a3c;
+        }
+        /* 즐겨찾기 전체 박스 스타일 */
+        .bookmark-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        /* 닉네임 + 삭제 버튼 박스 */
+        .bookmark-item {
+            display: flex;
+            align-items: center;
+            margin: 3px 5px; /* 박스 간격 축소 */
+            padding: 5px 8px; /* 내부 여백 축소 */
+            background-color: #eef1f5;
+            border-radius: 20px; /* 타원형 */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 노란색 별 */
+        .bookmark-star {
+            color: #f39c12;
+            font-size: 1rem; /* 별 크기 조정 */
+            margin-right: 5px; /* 닉네임과의 간격 */
+        }
+
+        /* 닉네임 스타일 */
+        .bookmark-nickname {
+            font-size: 0.9rem; /* 글씨 크기 조정 */
+            font-weight: bold;
+            color: #333;
+            margin-right: 8px; /* 삭제 버튼과의 간격 */
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .bookmark-nickname:hover {
+            color: #28a745;
+        }
+
+        /* X 버튼 스타일 */
+        .bookmark-remove {
+            background-color: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 0.9rem; /* X 버튼 크기 조정 */
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .bookmark-remove:hover {
+            color: #b12a3c;
+        }
     </style>
 </head>
 <body>
@@ -193,6 +296,11 @@
         <main class="container my-4">
             <h1 class="text-center mb-4">FC 온라인 유저를 위한 사이트</h1>
             <h3 class="text-center mb-4">자신의 닉네임을 검색해 보세요!</h3>
+            <div class="container mt-3 d-flex justify-content-center">
+                <div class="col-md-6">
+                    <div id="bookmark-container" class="bookmark-container"></div>
+                </div>
+            </div>
             <!-- 검색창 -->
             <div class="container mt-2 d-flex justify-content-center mb-3"> <!-- mb-5로 간격을 늘림 -->
                 <div class="col-md-6">
@@ -205,7 +313,7 @@
                 </div>
             </div>
             <!-- 실시간 인기 구단주 상자 -->
-            <div class="container d-flex justify-content-center mb-5">
+            <div class="container mt-3 d-flex justify-content-center mb-5">
                 <div class="col-md-6"> <!-- col-md-6을 사용하여 검색창과 동일한 너비로 설정 -->
                     <div class="card" style="width: 100%;"> <!-- 카드 너비를 100%로 설정 -->
                         <div class="card-header text-center text-success font-weight-bold">실시간 인기 구단주</div>
@@ -657,7 +765,73 @@
                 }, 10); // 페이지 이동
             });
         });
+        // 닉네임 클릭 이벤트
+        function setupClickableNicknames() {
+            document.querySelectorAll('.bookmark-nickname').forEach(function(element) {
+                element.addEventListener('click', function(event) {
+                    event.preventDefault(); // 기본 링크 동작 방지
+                    const characterName = this.textContent.trim();
+                    showLoading(); // 로딩창 표시
+                    setTimeout(function() {
+                        window.location.href = `/result.html?character_name=${characterName}&match_type=50`; // 페이지 이동
+                    }, 500); // 0.5초 후 페이지 이동
+                });
+            });
+        }
+        // 즐겨찾기 목록 렌더링
+        function renderBookmarks() {
+            const bookmarkContainer = document.getElementById('bookmark-container');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+            bookmarkContainer.innerHTML = ''; // 기존 목록 초기화
 
+            
+
+            bookmarks.forEach((nickname) => {
+                // 개별 닉네임 박스 생성
+                const listItem = document.createElement('div');
+                listItem.className = 'bookmark-item';
+
+                // 노란색 별
+                const star = document.createElement('span');
+                star.className = 'bookmark-star';
+                star.innerHTML = '★';
+
+                // 닉네임
+                const name = document.createElement('a');
+                name.className = 'bookmark-nickname';
+                name.textContent = nickname;
+                name.href = `/result.html?character_name=${nickname}&match_type=50`; // 클릭 시 이동
+
+                // 삭제 버튼
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'bookmark-remove';
+                removeBtn.textContent = 'X';
+                removeBtn.onclick = () => {
+                    const index = bookmarks.indexOf(nickname);
+                    if (index !== -1) {
+                        bookmarks.splice(index, 1);
+                        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                        renderBookmarks(); // 목록 재렌더링
+                        setupClickableNicknames(); // 닉네임 클릭 이벤트 재설정
+                    }
+                };
+
+                // 구성요소 추가
+                listItem.appendChild(star);
+                listItem.appendChild(name);
+                listItem.appendChild(removeBtn);
+                bookmarkContainer.appendChild(listItem);
+            });
+
+            // 닉네임 클릭 이벤트 설정
+            setupClickableNicknames();
+        }
+
+        // 페이지 로드 시 즐겨찾기 목록 렌더링
+        document.addEventListener('DOMContentLoaded', function() {
+            renderBookmarks();
+            hideLoading(); // 로딩창 숨기기
+        });
     </script>
 </body>
 </html>
