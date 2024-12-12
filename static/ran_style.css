@@ -267,3 +267,17 @@
 .game-mode-title span {
     color: #ff4d4d; /* "산타"를 강조하는 진한 빨간색 */
 }
+
+.choice-btn {
+    margin: 0 10px; /* Add spacing between buttons */
+    padding: 10px 20px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    border: none;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+.choice-btn:hover {
+    background-color: #e0e0e0;
+}
