@@ -38,7 +38,7 @@
     
     <!-- Open Graph Meta Tags for customizing the thumbnail -->
     <meta property="og:title" content="FC.GG - FC온라인 전적 검색, 선수 티어, 승률 개선, 빠칭코 연습실, 수수료 계산기">
-    <meta property="og:description" content="FC온라인 유저를 위한 FC.GG 서비스들을 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 빠칭코 연습실, 수수료 계산기를 이용해 보세요!">
+    <meta property="og:description" content="FC온라인 유저를 위한 FC.GG 서비스들을 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 빠칭코 연습실, 수수료 계산기, 커뮤니티를 이용해 보세요!">
     <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
     <meta property="og:url" content="https://www.fcgg.kr">
     <meta property="og:type" content="website">
@@ -360,7 +360,13 @@
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                         <div class="notice-item">
-                            <p id="notice9-title">24/11/25 1.1.2v 업데이트 (<span style="color: red;">커뮤니티</span>) <span class="notice-date" id="notice9-date"></span></p>
+                            <p id="notice10-title">24/12/12 1.2.0v 업데이트 (빠칭코 연습실 : <span style="color: red;">🎅산타</span>) <span class="notice-date" id="notice10-date"></span></p>
+                            <div id="notice10-content" class="notice-content">
+                                <p>이번 업데이트에서는 신규 산타 빠칭코 규칙에 맞게 연습실을 개편하였습니다. 많은 이용 부탁드립니다.</p>
+                            </div>
+                        </div>
+                        <div class="notice-item">
+                            <p id="notice9-title">24/11/25 1.1.2v 업데이트 (커뮤니티) <span class="notice-date" id="notice9-date"></span></p>
                             <div id="notice9-content" class="notice-content">
                                 <p>이번 업데이트에서는 유저분들이 FC온라인에 대한 팁과 비슷한 플레이스타일을 보유한 유저들끼리 의견을 나눌 수 있는 커뮤니티를 개설하였습니다. 많은 이용 부탁드립니다.</p>
                             </div>
@@ -408,6 +414,12 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming5-title">1.2.0v 편의성 개선 예정 (빠칭코 연습실) <span class="upcoming-date" id="upcoming5-date"></span></p>
+                            <div id="upcoming5-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 신규 빠칭코를 연습하실 수 있도록 개편 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming4-title">1.1.2v 편의성 개선 예정 (커뮤니티) <span class="upcoming-date" id="upcoming4-date"></span></p>
                             <div id="upcoming4-content" class="upcoming-content">
@@ -601,12 +613,14 @@
         document.getElementById("notice7-date").textContent = calculateDaysAgo("2024-11-03");
         document.getElementById("notice8-date").textContent = calculateDaysAgo("2024-11-13");
         document.getElementById("notice9-date").textContent = calculateDaysAgo("2024-11-25");
+        document.getElementById("notice10-date").textContent = calculateDaysAgo("2024-12-12");
 
         // 업데이트 예정사항 날짜 자동 설정
         document.getElementById("upcoming1-date").textContent = calculateDaysAgo("2024-10-29");
         document.getElementById("upcoming2-date").textContent = calculateDaysAgo("2024-10-24");
         document.getElementById("upcoming3-date").textContent = calculateDaysAgo("2024-11-10");
         document.getElementById("upcoming4-date").textContent = calculateDaysAgo("2024-11-23");
+        document.getElementById("upcoming5-date").textContent = calculateDaysAgo("2024-12-11");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -690,6 +704,15 @@
             }
         });
 
+        document.getElementById("notice10-title").addEventListener("click", function() {
+            const content = document.getElementById("notice10-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -719,6 +742,15 @@
 
         document.getElementById("upcoming4-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming4-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming5-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming5-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
