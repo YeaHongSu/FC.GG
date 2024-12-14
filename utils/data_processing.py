@@ -90,7 +90,7 @@ def determine_play_style(max_data, min_data):
     elif counters['playmaker'] >= 1 and counters['long_shot_master'] >= 1:
         return "빌드업 후 중거리 딸각의 신"
     elif counters['drive_pass_master'] >= 2:
-        return "잔디랑 친구 먹은 땅볼 패스의 신"
+        return "땅볼 패스 티키타카의 신"
     elif counters['setpiece_master'] >= 1 and counters['header_specialist'] >= 1:
         return "헤더와 프리킥 날먹의 신"
     elif counters['penalty_specialist'] >= 1 and counters['long_shot_master'] >= 1:
@@ -104,11 +104,11 @@ def determine_play_style(max_data, min_data):
     elif counters['playmaker'] >= 2:
         return "패스 플레이메이커"
     elif counters['header_specialist'] >= 2:
-        return "헤더 날먹의 신"
+        return "크로스 원툴 헤더 날먹의 신"
     elif counters['penalty_specialist'] >= 2:
         return "패널티박스에만 사는 플레이어"
     elif counters['long_shot_master'] >= 2:
-        return "중거리 딸깍의 신"
+        return "The ZD 중거리 딸깍의 신"
     elif counters['dribbler'] >= 1:
         return "드리블 마스터"
     elif counters['card_collector'] >= 1:
