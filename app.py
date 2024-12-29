@@ -536,7 +536,6 @@ def random_new():
 def random_redirect():
     return redirect(url_for('random_new'), code=301)
 
-
 # 수수료 계산기 페이지
 @app.route('/수수료계산기', methods=['GET', 'POST'])
 def calculate_new():
@@ -573,6 +572,7 @@ def initialize_database():
             INSERT INTO posts (id, category, nickname, content, timestamp) 
             VALUES (?, ?, ?, ?, ?)
         ''', [
+            (21, '자유게시판', 'ㅁㄴㅇㄹ', 'ㅁㄴㅇㄹ', '2024-12-27 13:00:00'),
             (20, '자유게시판', 'ㅇ', '80포 모은걸로 상자 다까고 나머지로 20포 돌리는거', '2024-12-21 13:00:00'),
             (19, '자유게시판', '이벤', '님들 그 다오있는 이벤트 80포 모으는게 베스트?', '2024-12-20 13:00:00'),
             (18, '키보드게시판', '부르노', 'ㅇㅇ 일록님 z키 맞음', '2024-12-20 13:00:00'),
@@ -709,6 +709,16 @@ def community_category(category):
 @app.route('/community.html', methods=['GET', 'POST'])
 def community_redirect():
     return redirect(url_for('community_new'), code=301)
+
+# 빠칭코 페이지
+@app.route('/현질을 안 했다면?', methods=['GET', 'POST'])
+def fun_new():
+    return render_template('fun.html')
+
+# 기존 URL 리다이렉트
+@app.route('/fun.html', methods=['GET', 'POST'])
+def fun_redirect():
+    return redirect(url_for('fun_new'), code=301)
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
