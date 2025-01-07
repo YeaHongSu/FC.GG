@@ -265,11 +265,26 @@
                         <li class="nav-item"><a class="nav-link" href="/calculate.html">수수료 계산기</a></li>
                         <li class="nav-item"><a class="nav-link" href="/community.html">커뮤니티</a></li>
                         <li class="nav-item"><a class="nav-link" href="/fun.html">현질을 안 했다면?</a></li>
+                        <li class="nav-item">
+                            <button id="happyButton" class="btn btn-warning" style="color: rgb(0, 0, 0); font-weight: bold; margin-top: 2px;">후원하기</button>
+                        </li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
+    <div id="happyPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:300px; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); z-index:1000; text-align:center;">
+        <button id="closePopup" style="position:absolute; top:10px; left:50%; transform:translateX(-50%); background:none; border:none; font-size:16px; cursor:pointer;">×</button>
+        <h4 style="margin-top:30px;">FC.GG를 위한 행복 버튼</h4>
+        <p>더 좋은 서비스를 위해 도와주세요!</p>
+        <p>-------------------------------------</p>
+        <p>NH농협은행 302-1363-7499-71</p>
+        <p>-------------------------------------</p>
+        <p>후원해 주신 분들 목록</p>
+    </div>
+    
+    <div id="popupOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;"></div>
 
     <!-- Flash 경고창 -->
     <div class="container mt-3 d-flex justify-content-center">
@@ -344,6 +359,12 @@
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                         <div class="notice-item">
+                            <p id="notice11-title">25/12/31 1.2.1v 업데이트 (현질을 안 했다면?) <span class="notice-date" id="notice11-date"></span></p>
+                            <div id="notice11-content" class="notice-content">
+                                <p>이번 업데이트에서는 FC 온라인 유저분들이 현질을 안 하셨다면, 어떠한 일이 일어났을지에 대한 계산기를 추가하였습니다!</p>
+                            </div>
+                        </div>
+                        <div class="notice-item">
                             <p id="notice10-title">24/12/12 1.2.0v 업데이트 (빠칭코 연습실 : <span style="color: red;">🎅산타</span>) <span class="notice-date" id="notice10-date"></span></p>
                             <div id="notice10-content" class="notice-content">
                                 <p>이번 업데이트에서는 신규 산타 빠칭코 규칙에 맞게 연습실을 개편하였습니다. 많은 이용 부탁드립니다.</p>
@@ -398,6 +419,12 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming6-title">1.2.1v 신규 기능 추가 예정 (현질을 안 했다면?) <span class="upcoming-date" id="upcoming6-date"></span></p>
+                            <div id="upcoming6-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 현질을 안 했다면 어떠한 일을 하셨을지 확인할 수 있는 계산기를 제작할 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming5-title">1.2.0v 편의성 개선 예정 (빠칭코 연습실) <span class="upcoming-date" id="upcoming5-date"></span></p>
                             <div id="upcoming5-content" class="upcoming-content">
@@ -601,6 +628,8 @@
         document.getElementById("notice8-date").textContent = calculateDaysAgo("2024-11-13");
         document.getElementById("notice9-date").textContent = calculateDaysAgo("2024-11-25");
         document.getElementById("notice10-date").textContent = calculateDaysAgo("2024-12-12");
+        document.getElementById("notice11-date").textContent = calculateDaysAgo("2024-12-31");
+
 
         // 업데이트 예정사항 날짜 자동 설정
         document.getElementById("upcoming1-date").textContent = calculateDaysAgo("2024-10-29");
@@ -608,6 +637,7 @@
         document.getElementById("upcoming3-date").textContent = calculateDaysAgo("2024-11-10");
         document.getElementById("upcoming4-date").textContent = calculateDaysAgo("2024-11-23");
         document.getElementById("upcoming5-date").textContent = calculateDaysAgo("2024-12-11");
+        document.getElementById("upcoming6-date").textContent = calculateDaysAgo("2024-12-26");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -700,6 +730,15 @@
             }
         });
 
+        document.getElementById("notice11-title").addEventListener("click", function() {
+            const content = document.getElementById("notice11-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -738,6 +777,15 @@
 
         document.getElementById("upcoming5-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming5-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming6-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming6-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
@@ -850,6 +898,21 @@
         document.addEventListener('DOMContentLoaded', function() {
             renderBookmarks();
             hideLoading(); // 로딩창 숨기기
+        });
+
+        document.getElementById('happyButton').addEventListener('click', function() {
+            document.getElementById('happyPopup').style.display = 'block';
+            document.getElementById('popupOverlay').style.display = 'block';
+        });
+
+        document.getElementById('closePopup').addEventListener('click', function() {
+            document.getElementById('happyPopup').style.display = 'none';
+            document.getElementById('popupOverlay').style.display = 'none';
+        });
+
+        document.getElementById('popupOverlay').addEventListener('click', function() {
+            document.getElementById('happyPopup').style.display = 'none';
+            document.getElementById('popupOverlay').style.display = 'none';
         });
     </script>
 </body>
