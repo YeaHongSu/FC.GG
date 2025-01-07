@@ -59,15 +59,28 @@
                             <a class="nav-link active" href="/random.html">
                                 빠칭코 연습실 : <span style="color: red;">🎅산타</span>
                             </a>
-                        </li>    
+                        </li>                        
                         <li class="nav-item"><a class="nav-link" href="/calculate.html">수수료 계산기</a></li>
                         <li class="nav-item"><a class="nav-link" href="/community.html">커뮤니티</a></li>
                         <li class="nav-item"><a class="nav-link" href="/fun.html">현질을 안 했다면?</a></li>
+                        <li class="nav-item">
+                            <button id="happyButton" class="btn btn-warning" style="color: rgb(0, 0, 0); font-weight: bold; margin-top: 2px;">후원하기</button>
+                        </li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
+    <div id="happyPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:300px; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); z-index:1000; text-align:center;">
+        <button id="closePopup" style="position:absolute; top:10px; left:50%; transform:translateX(-50%); background:none; border:none; font-size:16px; cursor:pointer;">×</button>
+        <h4 style="margin-top:30px;">FC.GG를 위한 행복 버튼</h4>
+        <p>더 좋은 서비스를 위해 도와주세요!</p>
+        <p>NH농협은행 302-1363-7499-71</p>
+        <p>후원해 주신 분들 목록</p>
+    </div>
+    
+    <div id="popupOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;"></div>
     <!-- 전체 레이아웃 컨테이너 -->
     <div class="container d-flex justify-content-center my-5">
         <main class="container my-2">
@@ -459,6 +472,21 @@
                 tierListContainer.innerText = '해당 포지션에 대한 티어 정보가 없습니다.';
             }
         }
+
+        document.getElementById('happyButton').addEventListener('click', () => {
+            document.getElementById('happyPopup').style.display = 'block';
+            document.getElementById('popupOverlay').style.display = 'block';
+        });
+
+        document.getElementById('closePopup').addEventListener('click', () => {
+            document.getElementById('happyPopup').style.display = 'none';
+            document.getElementById('popupOverlay').style.display = 'none';
+        });
+
+        document.getElementById('popupOverlay').addEventListener('click', () => {
+            document.getElementById('happyPopup').style.display = 'none';
+            document.getElementById('popupOverlay').style.display = 'none';
+        });
     </script>
 </body>
 </html>
