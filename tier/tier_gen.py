@@ -8,46 +8,47 @@ import numpy as np
 from sklearn.cluster import KMeans
 from collections import Counter 
 from meta_score import get_meta_score
-from dt_info import XPATHS, pos_threshold, column_mapping
+from dt_info import XPATHS, pos_threshold, column_mapping, cr_info
 
 # position 정보
 positions = ["ST","CF", "LW", "RW", "CAM", "CM", "CDM", "CB", "LB", "RB", "GK"]
 
 # position 별 상위 100명 선수 정보 크롤링
 def pos_info(position):
-    # 옵션 설정
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
+    # # 옵션 설정
+    # options = Options()
+    # options.add_argument("--headless")
+    # options.add_argument("--disable-gpu")
+    # options.add_argument("--no-sandbox")
 
-    # 드라이버 설정 (Chrome 드라이버 경로 지정 필요)
-    driver = webdriver.Chrome(options=options)
+    # # 드라이버 설정 (Chrome 드라이버 경로 지정 필요)
+    # driver = webdriver.Chrome(options=options)
 
-    # 페이지 열기
-    driver.get("https://fconline.nexon.com/datacenter/PlayerStat")
+    # # 페이지 열기
+    # driver.get("https://fconline.nexon.com/datacenter/PlayerStat")
 
-    # 페이지 로드 대기
-    time.sleep(3)  
+    # # 페이지 로드 대기
+    # time.sleep(3)  
 
-    # XPath를 이용하여 버튼 클릭하기
-    pos_path = XPATHS[position]
-    button = driver.find_element(By.XPATH, pos_path)
-    driver.execute_script("arguments[0].click();", button)
+    # # XPath를 이용하여 버튼 클릭하기
+    # pos_path = XPATHS[position]
+    # button = driver.find_element(By.XPATH, pos_path)
+    # driver.execute_script("arguments[0].click();", button)
 
-    time.sleep(1)
+    # time.sleep(1)
 
-    button2 = driver.find_element(By.XPATH, '//*[@id="form1"]/div[2]/div[2]/a')
-    driver.execute_script("arguments[0].click();", button2)
+    # button2 = driver.find_element(By.XPATH, '//*[@id="form1"]/div[2]/div[2]/a')
+    # driver.execute_script("arguments[0].click();", button2)
 
-    # 버튼 클릭 후 페이지 로드 대기 
-    time.sleep(3)  
+    # # 버튼 클릭 후 페이지 로드 대기 
+    # time.sleep(3)  
 
-    # 페이지 소스 가져오기
-    html = driver.page_source
+    # # 페이지 소스 가져오기
+    # html = driver.page_source
 
     # BeautifulSoup으로 파싱
-    soup = BeautifulSoup(html, 'html.parser')
+    # soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(cr_info[position], 'html.parser')
 
     # 각 선수의 데이터를 저장할 리스트
     player_data = []
@@ -89,8 +90,8 @@ def pos_info(position):
             # 한 선수의 데이터를 추가
             player_data.append(stats)
 
-    # 드라이버 종료
-    driver.quit()
+    # # 드라이버 종료
+    # driver.quit()
 
     return player_data
 
@@ -181,7 +182,7 @@ def tier():
         tier_list[position] = tier_info
     return tier_list
 
-filename = 'C:/Users/user/Desktop/FC.GG/tier/tier_info.py'
+filename = '/home/kist/FC.GG/tier/tier_info.py'
 TIER_DATA = tier()
 
 # Open the file in write mode
