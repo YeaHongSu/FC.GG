@@ -359,6 +359,12 @@
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                         <div class="notice-item">
+                            <p id="notice13-title">25/02/15 1.4.0v 업데이트 (전적 검색 서비스) <span class="notice-date" id="notice13-date"></span></p>
+                            <div id="notice13-content" class="notice-content">
+                                <p>이번 업데이트에서는 전적 검색 시 구단주님의 스쿼드를 확인할 수 있도록 수정하였습니다. 많은 이용 부탁드립니다.</p>
+                            </div>
+                        </div>
+                        <div class="notice-item">
                             <p id="notice12-title">25/01/23 1.3.0v 업데이트 (빠칭코 연습실 : <span style="color: rgb(246, 79, 221);">SSL</span>) <span class="notice-date" id="notice12-date"></span></p>
                             <div id="notice12-content" class="notice-content">
                                 <p>이번 업데이트에서는 신규 빠칭코 : SSL 규칙에 맞게 연습실을 개편하였습니다. 많은 이용 부탁드립니다.</p>
@@ -425,6 +431,12 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming8-title">1.4.0v 편의성 개선 예정 (전적 검색 서비스) <span class="upcoming-date" id="upcoming8-date"></span></p>
+                            <div id="upcoming8-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 전적 검색 시 자신의 스쿼드를 확인하실 수 있도록 개편 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming7-title">1.3.0v 편의성 개선 예정 (빠칭코 연습실 : SSL) <span class="upcoming-date" id="upcoming7-date"></span></p>
                             <div id="upcoming7-content" class="upcoming-content">
@@ -642,6 +654,7 @@
         document.getElementById("notice10-date").textContent = calculateDaysAgo("2024-12-12");
         document.getElementById("notice11-date").textContent = calculateDaysAgo("2024-12-31");
         document.getElementById("notice12-date").textContent = calculateDaysAgo("2025-01-23");
+        document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
 
 
         // 업데이트 예정사항 날짜 자동 설정
@@ -652,6 +665,7 @@
         document.getElementById("upcoming5-date").textContent = calculateDaysAgo("2024-12-11");
         document.getElementById("upcoming6-date").textContent = calculateDaysAgo("2024-12-26");
         document.getElementById("upcoming7-date").textContent = calculateDaysAgo("2025-01-22");
+        document.getElementById("upcoming8-date").textContent = calculateDaysAgo("2025-02-10");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -762,6 +776,15 @@
             }
         });
 
+        document.getElementById("notice13-title").addEventListener("click", function() {
+            const content = document.getElementById("notice13-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -818,6 +841,15 @@
 
         document.getElementById("upcoming7-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming7-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming8-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming8-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
