@@ -139,33 +139,116 @@ def result(character_name=None, match_type_name=None):
             
             # match_type을 이름으로 변환
             match_type_name = MATCH_TYPE_MAP.get(match_type)
-
             if not match_type_name:
                 flash("잘못된 경기 유형입니다.")
                 return redirect(url_for('home'))
 
             # 기존 URL 요청을 간단한 URL로 리다이렉트
-            return redirect(
-                url_for('result', character_name=character_name, match_type_name=match_type_name),
-                code=301
-            )
+            return redirect(url_for('result', character_name=character_name, match_type_name=match_type_name), code=301)
 
-        # 닉네임에서 공백 제거
-        character_name = character_name.replace(" ", "")
+        # 닉네임에서 불필요한 공백 제거
+        character_name = character_name.strip()
        
         # API key 설정
-        headers = {"x-nxopen-api-key" : f"{app.config['API_KEY']}"}
+        headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         
-        # 유저 닉네임 및 레벨 데이터 저장
-        urlString = "https://open.api.nexon.com/fconline/v1/id?nickname=" + character_name
-        characterName = requests.get(urlString, headers=headers).json()["ouid"]
-    
-        urlString = "https://open.api.nexon.com/fconline/v1/user/basic?ouid=" + characterName
-        lv = requests.get(urlString, headers = headers).json()["level"]
+        # ✅ 유저 닉네임 및 레벨 가져오기
+        url_user = f"https://open.api.nexon.com/fconline/v1/id?nickname={character_name}"
+        characterName = requests.get(url_user, headers=headers).json()["ouid"]
 
-        # JSON 데이터를 가져옴
-        urlString = "https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid=" + characterName
-        division_info = requests.get(urlString, headers=headers).json()
+        url_level = f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={characterName}"
+        lv = requests.get(url_level, headers=headers).json()["level"]
+
+        url_division = f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={characterName}"
+        division_info = requests.get(url_division, headers=headers).json()
+
+        # ✅ 최근 매치 ID 가져오기 (최근 경기 1개)
+        url_recent_matches = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=2"
+        recent_matches = requests.get(url_recent_matches, headers=headers).json()
+        if not recent_matches:
+            return render_template('result.html', my_data={}, match_data=[], level_data={"nickname": character_name, "level": lv, "tier_name": None, "tier_image": None}, match_type=match_type,
+                                   max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
+                                   players=df_final.to_dict(orient="records") if 'df_final' in globals() and not df_final.empty else [])
+        
+        recent_match_id = recent_matches[1]  # 가장 최근 경기 ID
+
+        # ✅ 최근 경기의 상세 정보 가져오기
+        url_match_detail = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={recent_match_id}"
+        match_data = requests.get(url_match_detail, headers=headers).json()
+
+        # ✅ 해당 경기에서 유저가 사용한 선수 정보 가져오기 (SUB 제외)
+        player_list = []
+        for match in match_data.get("matchInfo", []):
+            if match.get("nickname", "").strip().lower() == character_name.lower():
+                for player in match.get("player", []):
+                    if player.get("spPosition") != 28:
+                        player_list.append({
+                            "spId": player.get("spId"),
+                            "spPosition": player.get("spPosition")
+                        })
+
+        # ✅ 선수 정보 DataFrame 변환
+        df_match_players = pd.DataFrame(player_list)
+
+        # ✅ 선수 데이터 요청 (한 번만 실행)
+        SPID_URL = "https://open.api.nexon.com/static/fconline/meta/spid.json"
+        player_data = requests.get(SPID_URL, headers=headers).json()
+        df_player = pd.DataFrame(player_data)
+        df_player.rename(columns={"id": "spId", "name": "name"}, inplace=True)
+
+        # ✅ 선수 정보와 매칭 (최종 선수 목록)
+        df_final = df_match_players.merge(df_player, on="spId", how="left") if not df_match_players.empty else pd.DataFrame()
+
+        # ★ 추가: 각 선수별 sd_image URL 생성 및 포지션 좌표, 포지션 약어 추가
+        if not df_final.empty:
+            df_final["sd_image"] = df_final["spId"].apply(
+                lambda spId: f"https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p{spId}.png"
+            )
+            # 포지션 좌표 매핑
+            vertical_position_mapping = {
+                0:  (50, 90),   # GK (골키퍼 - 가장 하단 중앙)
+                1:  (50, 82),   # SW (스위퍼)
+                2:  (80, 70),   # RWB (오른쪽 윙백)
+                3:  (85, 65),   # RB (오른쪽 수비수)
+                4:  (63, 78),   # RCB (오른쪽 중앙 수비수)
+                5:  (50, 78),   # CB (중앙 수비수)
+                6:  (37, 78),   # LCB (왼쪽 중앙 수비수)
+                7:  (15, 65),   # LB (왼쪽 수비수)
+                8:  (20, 70),   # LWB (왼쪽 윙백)
+                9:  (65, 57),   # RDM (오른쪽 수비형 미드필더)
+                10: (50, 57),   # CDM (중앙 수비형 미드필더)
+                11: (35, 57),   # LDM (왼쪽 수비형 미드필더)
+                12: (85, 35),   # RM (오른쪽 미드필더)
+                13: (65, 50),   # RCM (오른쪽 중앙 미드필더)
+                14: (50, 50),   # CM (중앙 미드필더)
+                15: (35, 50),   # LCM (왼쪽 중앙 미드필더)
+                16: (15, 35),   # LM (왼쪽 미드필더)
+                17: (80, 35),   # RAM (오른쪽 공격형 미드필더)
+                18: (50, 35),   # CAM (중앙 공격형 미드필더)
+                19: (20, 35),   # LAM (왼쪽 공격형 미드필더)
+                20: (60, 25),   # RF (오른쪽 공격수)
+                21: (50, 25),   # CF (중앙 공격수)
+                22: (40, 25),   # LF (왼쪽 공격수)
+                23: (80, 25),   # RW (오른쪽 윙어)
+                24: (65, 20),   # RS (오른쪽 스트라이커; 경우에 따라 다름)
+                25: (50, 17),   # ST (센터 스트라이커)
+                26: (35, 20),   # LS (왼쪽 스트라이커)
+                27: (20, 25)    # LW (왼쪽 윙어)
+                # 28: SUB (제외)
+            }
+            # 포지션 약어 매핑 (예시)
+            position_desc = {
+                0: "GK", 1: "SW", 2: "RWB", 3: "RB", 4: "RCB", 5: "CB",
+                6: "LCB", 7: "LB", 8: "LWB", 9: "RDM", 10: "CDM", 11: "LDM",
+                12: "RM", 13: "RCM", 14: "CM", 15: "LCM", 16: "LM", 17: "RAM",
+                18: "CAM", 19: "LAM", 20: "RF", 21: "CF", 22: "LF", 23: "RW",
+                24: "RS", 25: "ST", 26: "LS", 27: "LW"
+            }
+
+            df_final["x_coord"] = df_final["spPosition"].apply(lambda pos: vertical_position_mapping.get(pos, (0, 0))[0])
+            df_final["y_coord"] = df_final["spPosition"].apply(lambda pos: vertical_position_mapping.get(pos, (0, 0))[1])
+            df_final["pos_desc"] = df_final["spPosition"].apply(lambda pos: position_desc.get(pos, ""))
+
 
         # divisionId와 divisionName 매핑 테이블
         division_mapping = [
@@ -191,10 +274,8 @@ def result(character_name=None, match_type_name=None):
         
         # matchType의 division 가져오기
         match_type_info = next((item for item in division_info if item["matchType"] == int(match_type)), None)
-       
         if match_type_info:
             tier_id = match_type_info.get("division", "정보 없음")
-            # divisionId로 divisionName을 찾아서 level_data에 추가
             division_item = next((item for item in division_mapping if item["divisionId"] == tier_id), None)
             if division_item:
                 if division_item["divisionName"].startswith("http"):
@@ -219,39 +300,23 @@ def result(character_name=None, match_type_name=None):
             "tier_image": tier_image
         }
 
-        # 유저 매치 데이터 20개 불러오기
+        # 유저 매치 데이터 25개 불러오기
         response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25", headers=headers)
         matches = response.json() if response.ok else []
-
-        # matches가 빈 리스트인 경우 바로 렌더링
         if not matches:
-            return render_template(
-                'result.html', 
-                my_data={},  # my_data에 빈 딕셔너리를 기본값으로 설정
-                match_data=[],  # match_data에 빈 리스트를 기본값으로 설정
-                level_data=level_data, 
-                match_type=match_type, 
-                max_data=[],  # max_data에 빈 리스트를 기본값으로 설정
-                min_data=[],  # min_data에 빈 리스트를 기본값으로 설정
-                data_label=[],  # data_label에 빈 리스트를 기본값으로 설정
-                jp_num=0,  # jp_num 기본값 설정
-                play_style={},  # play_style에 빈 딕셔너리를 기본값으로 설정
-                no_recent_matches=True  # no_recent_matches 값 전달
-            )
-
+            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+                                   max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
+                                   players=df_final.to_dict(orient="records"))
+        
         # match 데이터 가져오기
         match_data_list = get_match_data(matches, headers)
-
         if not match_data_list:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
 
         result_list = []
         imp_data = []
+        controller_stats = {"🎮": 0, "⌨️": 0, "탈주": 0}
 
-        # 유저 컨트롤러 통계를 저장할 리스트 추가
-        controller_stats = {"🎮": 0, "⌨️": 0, "오류": 0}
-
-        # 각 매치 데이터 처리
         for data in match_data_list:
             date = calculate_time_difference(data['matchDate'])
             my_data = me(data, character_name)
@@ -259,118 +324,105 @@ def result(character_name=None, match_type_name=None):
             imp = data_list(my_data)
             imp2 = data_list(your_data)
 
-            # 컨트롤러 값 가져오기
-            my_controller = my_data['matchDetail'].get('controller', 'Unknown')  # 기본값 "Unknown"
+            my_controller = my_data['matchDetail'].get('controller', 'Unknown')
             your_controller = your_data['matchDetail'].get('controller', 'Unknown')
 
-            # None 값을 "오류"로 처리 및 매핑
             if my_controller is None:
-                my_controller = "오류"
-            elif my_controller == 'gamepad':  # 'is' 대신 '=='
+                my_controller = "탈주"
+            elif my_controller == 'gamepad':
                 my_controller = '🎮'
             elif my_controller == 'keyboard':
                 my_controller = '⌨️'
 
             if your_controller is None:
-                your_controller = "오류"
+                your_controller = "탈주"
             elif your_controller == 'gamepad':
                 your_controller = '🎮'
             elif your_controller == 'keyboard':
                 your_controller = '⌨️'
 
-            # 컨트롤러 통계 업데이트
             if my_controller in controller_stats:
                 controller_stats[my_controller] += 1
 
             w_l = my_data['matchDetail']['matchResult']
-
-            # 비정상 게임 3:0으로 처리
             my_goal_total = my_data['shoot']['goalTotal'] if my_data['shoot']['goalTotal'] is not None else 0
             your_goal_total = your_data['shoot']['goalTotal'] if your_data['shoot']['goalTotal'] is not None else 0
 
-            match_data = {
+            match_data_item = {
                 '매치 날짜': date,
                 '결과': w_l,
                 '플레이어 1 vs 플레이어 2': f'{my_data["nickname"]} vs {your_data["nickname"]}',
                 '스코어': f'{my_goal_total} : {your_goal_total}',
                 '컨트롤러': f"{my_controller} : {your_controller}"
             }
-            result_list.append(match_data)
+            result_list.append(match_data_item)
 
-            if imp == None or imp2 == None:
+            if imp is None or imp2 is None:
                 continue
-
-            # 중요 정보 저장용
             imp_data.append(imp)
 
-        # 가장 많이 사용된 my_controller 추출
         most_common_controller = max(controller_stats, key=controller_stats.get)
-
         if len(imp_data) == 0:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
         
-        # 숫자 데이터만 필터링
         filtered_imp_data = [[value for value in row if isinstance(value, (int, float))] for row in imp_data]
-
-        # 평균 계산
-        filtered_imp_data = np.array(filtered_imp_data, dtype=float)  # 숫자 데이터만 포함
+        filtered_imp_data = np.array(filtered_imp_data, dtype=float)
         my_avg = np.nanmean(filtered_imp_data, axis=0)
-
-        # 전체 유저 중요 지표 평균 불러오기
         cl_data = np.array(data_list_cl(avg_data(match_type)))
        
-        # 상위/하위 10개 중요 지표 선정
-        jp_num = 20  # 먼저 10개의 지표를 가져옴
-        threshold = 0.9  # 극단적인 차이를 제외하기 위한 임계값 설정
+        jp_num = 20
+        threshold = 0.9
 
-        # 상위 지표에서 10개 추출 후 임계값 적용한 필터링
         max_diff = (my_avg - cl_data) / cl_data
         max_idx, max_values = top_n_argmax(max_diff, jp_num)
-
-        # 상위 5개만 남기기
         filtered_max_idx = max_idx[:5]
         filtered_max_values = max_values[:5]
 
-        # 하위 지표에서 10개 추출 후 임계값 적용한 필터링
         min_diff = (my_avg - cl_data) / cl_data
         min_idx, min_values = top_n_argmin(min_diff, jp_num)
-
-        # 극단적인 값을 필터링한 후 하위 5개만 남기기
-        filtered_min_idx = []
-        filtered_min_values = []
-
         filtered_min_idx = [idx for idx, value in zip(min_idx, min_values) if abs(value) < threshold][:5]
         filtered_min_values = [value for value in min_values if abs(value) < threshold][:5]
 
-        # zip을 리스트로 변환하여 여러 번 사용할 수 있게 함
         max_data = list(zip(filtered_max_idx, filtered_max_values))
         min_data = list(zip(filtered_min_idx, filtered_min_values))
-
-        # 플레이스타일 결정
         play_style = determine_play_style(max_data, min_data)
 
-        return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type = match_type,
-                            max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
-                            play_style=play_style, most_common_controller=most_common_controller)
-
+        return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type=match_type,
+                               max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
+                               play_style=play_style, most_common_controller=most_common_controller, players=df_final.to_dict(orient="records"))
     except Exception:
         try:
-            # 문제가 발생하면 result.html 먼저 시도
-            return render_template(
-                'result.html', 
-                my_data={},  # my_data에 빈 딕셔너리를 기본값으로 설정
-                match_data=[],  # match_data에 빈 리스트를 기본값으로 설정
-                level_data=level_data, 
-                match_type=match_type, 
-                max_data=[],  # max_data에 빈 리스트를 기본값으로 설정
-                min_data=[],  # min_data에 빈 리스트를 기본값으로 설정
-                data_label=[],  # data_label에 빈 리스트를 기본값으로 설정
-                jp_num=0,  # jp_num 기본값 설정
-                play_style={},  # play_style에 빈 딕셔너리를 기본값으로 설정
-                no_recent_matches=True  # no_recent_matches 값 전달
-            )
+            # 문제가 발생하면 최근 경기의 선수 정보를 다시 시도하여 포함시킵니다.
+            url_recent_matches = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=1"
+            recent_matches = requests.get(url_recent_matches, headers=headers).json()
+            if not recent_matches:
+                return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+                                       max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
+                                       players=df_final.to_dict(orient="records"))
+            recent_match_id = recent_matches[0]
+            url_match_detail = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={recent_match_id}"
+            match_data = requests.get(url_match_detail, headers=headers).json()
+            player_list = []
+            for match in match_data.get("matchInfo", []):
+                if match.get("nickname", "").strip().lower() == character_name.lower():
+                    for player in match.get("player", []):
+                        if player.get("spPosition") != 28:
+                            player_list.append({
+                                "spId": player.get("spId"),
+                                "spPosition": player.get("spPosition")
+                            })
+            df_match_players = pd.DataFrame(player_list)
+            SPID_URL = "https://open.api.nexon.com/static/fconline/meta/spid.json"
+            player_data = requests.get(SPID_URL, headers=headers).json()
+            df_player = pd.DataFrame(player_data)
+            df_player.rename(columns={"id": "spId", "name": "name"}, inplace=True)
+            df_final = df_match_players.merge(df_player, on="spId", how="left") if not df_match_players.empty else pd.DataFrame()
+            if not df_final.empty:
+                df_final["sd_image"] = df_final["spId"].apply(lambda spId: f"https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p{spId}.png")
+            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+                                   max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
+                                   players=[[df_final.to_dict(orient="records")]])
         except Exception:
-            # result.html이 안 되면 home.html로 이동
             flash("닉네임이 존재하지 않거나 경기 수가 부족하여 검색이 불가능합니다.")
             return render_template('home.html')
 
