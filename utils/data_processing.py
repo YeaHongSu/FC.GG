@@ -67,9 +67,7 @@ def determine_play_style(max_data, min_data):
             counters[label_to_counter[label]] += 1
 
     # 세분화된 플레이 스타일 결정
-    if counters['setpiece_master'] >= 3:
-        return "프리킥 딸깍의 신"
-    elif counters['offside'] >= 1:
+    if counters['offside'] >= 1:
         return "옵사를 사랑하는 플레이어"
     elif counters['lob_pass_master'] >= 2:
         return "공이 공중에만 있는 플레이어"
@@ -113,6 +111,8 @@ def determine_play_style(max_data, min_data):
         return "드리블 마스터"
     elif counters['card_collector'] >= 1:
         return "악질 카드 수집가"
+    elif counters['setpiece_master'] >= 3:
+        return "프리킥 딸깍의 신"
     else:
         return "굴리트급 육각형 플레이어"
 
