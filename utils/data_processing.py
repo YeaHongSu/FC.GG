@@ -60,7 +60,7 @@ def determine_play_style(max_data, min_data):
     elif counters['long_pass_master'] >= 2:
         return "하늘 가르는 롱패 장인"
     elif counters['corner_master'] >= 1 and counters['lob_pass_master'] >= 2:
-        return "무조건 크로스충"
+        return "무조건 크로스하는 플레이어"
     elif counters['tackler'] >= 2 and counters['card_collector'] >= 1:
         return "태클이 아니라 격투"
     elif counters['short_pass_master'] >= 1 and counters['playmaker'] >= 1 and counters['dribbler'] >= 1:
@@ -90,7 +90,7 @@ def determine_play_style(max_data, min_data):
     elif counters['setpiece_master'] >= 1 and counters['header_specialist'] >= 1:
         return "헤더와 프리킥 날먹의 신"
     elif counters['penalty_specialist'] >= 1 and counters['long_shot_master'] >= 1:
-        return "다재다능 공격 플레이어"
+        return "신규 메타 적응의 신"
     elif counters['tackler'] >= 2:
         return "태클키 없으면 게임 못 하는 플레이어"
     elif counters['defense'] >= 2:
@@ -108,7 +108,7 @@ def determine_play_style(max_data, min_data):
     elif counters['dribbler'] >= 1:
         return "드리블 마스터"
     elif counters['card_collector'] >= 1:
-        return "악질 카드 수집가"
+        return "악질 옐로우 카드 수집가"
     elif counters['setpiece_master'] >= 3:
         return "프리킥 딸깍의 신"
     else:
