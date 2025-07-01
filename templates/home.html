@@ -282,6 +282,7 @@
         <p>NH농협은행 302-1363-7499-71</p>
         <p>-------------------------------------</p>
         <p>후원해 주신 분들 목록</p>
+        <p>뼈로만든나라일</p>
     </div>
     
     <div id="popupOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;"></div>
@@ -359,6 +360,12 @@
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
                         <div class="notice-item">
+                            <p id="notice14-title">25/07/01 1.5.0v 업데이트 (선수 티어, 플레이스타일) <span class="notice-date" id="notice14-date"></span></p>
+                            <div id="notice14-content" class="notice-content">
+                                <p>이번 업데이트에서는 구단주님의 플레이스타일을 더 다채롭게 변화시켰으며 인게임 패치에 따른 선수 티어도 변화되었습니다. 많은 이용 부탁드립니다.</p>
+                            </div>
+                        </div>
+                        <div class="notice-item">
                             <p id="notice13-title">25/02/15 1.4.0v 업데이트 (전적 검색 서비스) <span class="notice-date" id="notice13-date"></span></p>
                             <div id="notice13-content" class="notice-content">
                                 <p>이번 업데이트에서는 전적 검색 시 구단주님의 스쿼드를 확인할 수 있도록 수정하였습니다. 많은 이용 부탁드립니다.</p>
@@ -431,6 +438,12 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming9-title">1.5.0v 편의성 개선 예정 (선수 티어, 플레이스타일) <span class="upcoming-date" id="upcoming9-date"></span></p>
+                            <div id="upcoming9-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 전적 검색 시 더 다채로운 플레이스타일을 만나보실 수 있도록 개편 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming8-title">1.4.0v 편의성 개선 예정 (전적 검색 서비스) <span class="upcoming-date" id="upcoming8-date"></span></p>
                             <div id="upcoming8-content" class="upcoming-content">
@@ -655,6 +668,7 @@
         document.getElementById("notice11-date").textContent = calculateDaysAgo("2024-12-31");
         document.getElementById("notice12-date").textContent = calculateDaysAgo("2025-01-23");
         document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
+        document.getElementById("notice14-date").textContent = calculateDaysAgo("2025-07-01");
 
 
         // 업데이트 예정사항 날짜 자동 설정
@@ -666,6 +680,7 @@
         document.getElementById("upcoming6-date").textContent = calculateDaysAgo("2024-12-26");
         document.getElementById("upcoming7-date").textContent = calculateDaysAgo("2025-01-22");
         document.getElementById("upcoming8-date").textContent = calculateDaysAgo("2025-02-10");
+        document.getElementById("upcoming9-date").textContent = calculateDaysAgo("2025-06-25");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -785,6 +800,15 @@
             }
         });
 
+        document.getElementById("notice14-title").addEventListener("click", function() {
+            const content = document.getElementById("notice14-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -850,6 +874,15 @@
 
         document.getElementById("upcoming8-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming8-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming9-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming9-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
