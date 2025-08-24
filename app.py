@@ -812,7 +812,7 @@ def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
 
-# 카카오톡 챗봇 스킬용 엔드포인트 (basicCard 버전)
+# 카카오톡 챗봇 스킬용 엔드포인트 (닉네임 크게 + 플레이스타일을 가장 위에 강조)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     try:
@@ -827,7 +827,7 @@ def kakao_skill():
 
         nick = _p("nick").strip()
         mode = _p("mode").strip()
-        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)   # 한글 → 코드(50/60/52/40)
+        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)   # 한글 모드 → 코드
 
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
@@ -868,6 +868,7 @@ def kakao_skill():
             {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
             {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"}
         ]
+
         tier_image = None
         try:
             mt = int(mode)
@@ -879,52 +880,69 @@ def kakao_skill():
         except Exception:
             pass
 
-        # 최근 25경기 → 승/패/승률
+        # 최근 25경기 → 승/패/승률 + 플레이스타일
         matches = requests.get(
             f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
             headers=headers, timeout=1.8
         ).json()
 
-        wins = 0
-        losses = 0
+        wins, losses, total = 0, 0, 0
         win_rate_text = "데이터 없음"
+        play_style_text = "플레이스타일 분석 불가"
 
         if matches:
             match_data_list = get_match_data(matches, headers)
-            results = []
+
+            imp_data, results = [], []
             for data in match_data_list:
                 my = me(data, nick)
                 results.append(my["matchDetail"]["matchResult"])
+                imp = data_list(my)
+                if imp: imp_data.append(imp)
+
+            total = len(results)
             wins = sum(1 for r in results if r == "승")
             losses = sum(1 for r in results if r == "패")
-            total = len(results)
             if total:
-                win_rate = round(wins / total * 100, 2)
-                win_rate_text = f"{win_rate}%"
+                win_rate_text = f"{round(wins / total * 100, 2)}%"
+
+            if imp_data:
+                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_data]
+                my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+                cl = np.array(data_list_cl(avg_data(mode)))
+                diff = (my_avg - cl) / cl
+                max_idx, max_vals = top_n_argmax(diff, 20)
+                min_idx, min_vals = top_n_argmin(diff, 20)
+                threshold = 0.9
+                max_data = list(zip(max_idx[:5], max_vals[:5]))
+                min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+                play_style = determine_play_style(max_data, min_data)
+                play_style_text = play_style.get("summary", str(play_style)) if isinstance(play_style, dict) else str(play_style)
 
         # 버튼 링크
         result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
 
-        # ── 여기부터 basicCard 구성 ──
-        desc_lines = []
-        # FC온라인은 LP 개념이 없으므로, 레벨/승패/승률만 명확히 표기
-        desc_lines.append(f"레벨  {lv}")
-        desc_lines.append(f"승    {wins}")
-        desc_lines.append(f"패    {losses}")
-        desc_lines.append(f"승률  {win_rate_text}")
+        # 닉네임은 기본적으로 title(가장 큰 폰트) / 플레이스타일은 description 최상단 강조
+        playstyle_line = f"【플레이스타일】 {play_style_text}"
+        stats_lines = [
+            f"레벨  {lv}",
+            f"승    {wins}",
+            f"패    {losses}",
+            f"승률  {win_rate_text}"
+        ]
+        description = playstyle_line + "\n\n" + "\n".join(stats_lines)
 
         card = {
             "basicCard": {
+                "title": nick,  # ← 가장 큰 텍스트(닉네임 크게)
+                "description": description,  # ← 첫 줄에 플레이스타일 굵게 대체(강조 기호 사용)
                 "thumbnail": {"imageUrl": tier_image} if tier_image else None,
-                "title": nick,
-                "description": "\n".join(desc_lines),
                 "buttons": [
                     {"label": "자세히 보기", "action": "webLink", "webLinkUrl": result_url},
                     {"label": "최근 전적 보기", "action": "webLink", "webLinkUrl": result_url}
                 ]
             }
         }
-        # Kakao 스펙: None 필드가 있으면 오류날 수 있으니 제거
         if card["basicCard"]["thumbnail"] is None:
             del card["basicCard"]["thumbnail"]
 
@@ -939,8 +957,6 @@ def kakao_skill():
                 ]
             }
         })
-
-
 
 
 
