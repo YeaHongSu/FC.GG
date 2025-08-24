@@ -17,6 +17,7 @@ import warnings
 import asyncio
 import aiohttp
 import sqlite3
+from flask import jsonify
 
 # 데이터베이스 초기화 함수
 def init_db():
@@ -809,6 +810,40 @@ def fun_new():
 @app.route('/fun.html', methods=['GET', 'POST'])
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
+
+# 카카오톡 챗봇 스킬용 엔드포인트
+@app.route("/kakao/skill", methods=["POST"])
+def kakao_skill():
+    body = request.get_json(silent=True) or {}
+
+    # 오픈빌더에서 보낸 파라미터 읽기
+    def _p(key):
+        return (
+            (body.get("action", {}).get("params", {}) or {}).get(key)
+            or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
+            or ""
+        )
+
+    nick = _p("nick")
+    mode = _p("mode")
+
+    # 결과 페이지 URL
+    result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
+
+    # 카카오 스킬 응답 JSON
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {"simpleText": {"text": f"닉네임: {nick}\n모드: {mode}\n결과 페이지로 이동해 주세요."}}
+            ],
+            "quickReplies": [
+                {"label": "결과 보기", "action": "webLink", "webLinkUrl": result_url}
+            ]
+        }
+    }
+    return jsonify(resp)
+
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
