@@ -18,6 +18,8 @@ import asyncio
 import aiohttp
 import sqlite3
 from flask import jsonify
+import re
+
 
 # 데이터베이스 초기화 함수
 def init_db():
