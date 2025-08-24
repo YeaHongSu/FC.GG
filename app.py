@@ -811,24 +811,78 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
-
-# 카카오톡 챗봇 스킬용 엔드포인트 (닉네임 크게 + 플레이스타일을 가장 위에 강조)
+# 카카오톡 챗봇 스킬용 엔드포인트 (발화 파싱 지원)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     try:
         body = request.get_json(silent=True) or {}
+        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+
+        # 0) 모드 동의어 → 코드 매핑 (서버 파싱용)
+        MODE_SYNONYMS = {
+            "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
+            "60": ["60", "친선경기", "친선", "클래식", "클겜"],
+            "52": ["52", "감독모드", "감독", "감모"],
+            "40": ["40", "커스텀매치", "커스텀", "커겜"],
+        }
+        # 동의어 → 코드 역인덱스
+        WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
 
         def _p(key):
+            # 오픈빌더가 채워줬다면 그대로 사용
             return (
                 (body.get("action", {}).get("params", {}) or {}).get(key)
                 or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
                 or ""
             )
 
-        nick = _p("nick").strip()
-        mode = _p("mode").strip()
-        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)   # 한글 모드 → 코드
+        nick = (_p("nick") or "").strip()
+        mode = (_p("mode") or "").strip()
 
+        # 1) 파라미터 비었으면 발화에서 직접 추출
+        if not nick or not mode:
+            text = re.sub(r"\s+", " ", utter)             # 공백 정규화
+            text = re.sub(r"^@\S+\s*", "", text)          # @피파봇 제거
+            text = re.sub(r"^(전적검색|전적|검색)\s*", "", text)  # 명령어 제거
+
+            tokens = text.split(" ") if text else []
+
+            # 뒤에서부터 모드(동의어/숫자) 찾기
+            found_mode = ""
+            for i in range(len(tokens)-1, -1, -1):
+                t = tokens[i]
+                if t in WORD2CODE:
+                    found_mode = WORD2CODE[t]
+                    tokens.pop(i)  # 모드 토큰 제거
+                    break
+                # 숫자 그대로 들어온 경우
+                if t in MODE_SYNONYMS:
+                    found_mode = t
+                    tokens.pop(i)
+                    break
+
+            # 남은 토큰 전부를 닉네임으로(공백 포함 허용)
+            found_nick = " ".join(tokens).strip()
+
+            nick = nick or found_nick
+            mode = mode or found_mode
+
+        # 2) 모드가 한글로 왔을 수도 있으니 최종 맵핑 한번 더
+        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
+
+        # 3) 필수 체크
+        if not nick or not mode:
+            ex = "예) 전적검색 모설 공식경기 / 전적검색 모설 50"
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {"simpleText": {"text": f"닉네임과 모드를 인식하지 못했어요.\n{ex} 형태로 입력해 주세요."}}
+                    ]
+                }
+            })
+
+        # ------------------ 아래부터는 기존 요약/카드 생성 로직 동일 ------------------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
         # 기본정보
@@ -847,7 +901,6 @@ def kakao_skill():
             f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
             headers=headers, timeout=1.8
         ).json()
-
         division_mapping = [
             {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
             {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
@@ -866,9 +919,8 @@ def kakao_skill():
             {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
             {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
             {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
-            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"}
+            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
         ]
-
         tier_image = None
         try:
             mt = int(mode)
@@ -886,14 +938,13 @@ def kakao_skill():
             headers=headers, timeout=1.8
         ).json()
 
-        wins, losses, total = 0, 0, 0
+        wins = losses = 0
         win_rate_text = "데이터 없음"
         play_style_text = "플레이스타일 분석 불가"
 
         if matches:
             match_data_list = get_match_data(matches, headers)
-
-            imp_data, results = [], []
+            results, imp_data = [], []
             for data in match_data_list:
                 my = me(data, nick)
                 results.append(my["matchDetail"]["matchResult"])
@@ -904,7 +955,7 @@ def kakao_skill():
             wins = sum(1 for r in results if r == "승")
             losses = sum(1 for r in results if r == "패")
             if total:
-                win_rate_text = f"{round(wins / total * 100, 2)}%"
+                win_rate_text = f"{round(wins/total*100, 2)}%"
 
             if imp_data:
                 filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_data]
@@ -919,23 +970,12 @@ def kakao_skill():
                 play_style = determine_play_style(max_data, min_data)
                 play_style_text = play_style.get("summary", str(play_style)) if isinstance(play_style, dict) else str(play_style)
 
-        # 버튼 링크
         result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
-
-        # 닉네임은 기본적으로 title(가장 큰 폰트) / 플레이스타일은 description 최상단 강조
-        playstyle_line = f"【플레이스타일】 {play_style_text}"
-        stats_lines = [
-            f"레벨  {lv}",
-            f"승    {wins}",
-            f"패    {losses}",
-            f"승률  {win_rate_text}"
-        ]
-        description = playstyle_line + "\n\n" + "\n".join(stats_lines)
 
         card = {
             "basicCard": {
-                "title": nick,  # ← 가장 큰 텍스트(닉네임 크게)
-                "description": description,  # ← 첫 줄에 플레이스타일 굵게 대체(강조 기호 사용)
+                "title": nick,
+                "description": f"【플레이스타일】 {play_style_text}\n\n레벨  {lv}\n승    {wins}\n패    {losses}\n승률  {win_rate_text}",
                 "thumbnail": {"imageUrl": tier_image} if tier_image else None,
                 "buttons": [
                     {"label": "자세히 보기", "action": "webLink", "webLinkUrl": result_url},
@@ -943,7 +983,7 @@ def kakao_skill():
                 ]
             }
         }
-        if card["basicCard"]["thumbnail"] is None:
+        if not tier_image:
             del card["basicCard"]["thumbnail"]
 
         return jsonify({"version": "2.0", "template": {"outputs": [card]}})
@@ -951,12 +991,9 @@ def kakao_skill():
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": {
-                "outputs": [
-                    {"simpleText": {"text": "분석 도중 오류가 발생했어요. 닉네임/모드를 확인하고 다시 시도해 주세요."}}
-                ]
-            }
+            "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
+
 
 
 
