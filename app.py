@@ -811,164 +811,119 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
-def summarize_user(character_name: str, match_type: str, timeout=1.5):
-    """결과 페이지에서 하던 계산을 요약형으로 뽑아 카톡에서 보여줄 데이터만 반환"""
-    headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
-    # 1) 기본정보 (닉네임→ouid→레벨/최고티어 이미지)
-    ouid = requests.get(
-        f"https://open.api.nexon.com/fconline/v1/id?nickname={character_name}",
-        headers=headers, timeout=timeout
-    ).json()["ouid"]
-
-    lv = requests.get(
-        f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}",
-        headers=headers, timeout=timeout
-    ).json()["level"]
-
-    division_info = requests.get(
-        f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
-        headers=headers, timeout=timeout
-    ).json()
-
-    # 티어 이미지 추출 (네 코드의 division_mapping 그대로 사용)
-    division_mapping = [
-        {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
-        {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
-        {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
-        {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
-        {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
-        {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
-        {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
-        {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
-        {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
-        {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
-        {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
-        {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
-        {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
-        {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
-        {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
-        {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
-        {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
-        {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"}
-    ]
-    mt = int(match_type)
-    mt_info = next((i for i in division_info if i.get("matchType") == mt), None)
-    tier_image = None
-    if mt_info:
-        div = mt_info.get("division")
-        m = next((d for d in division_mapping if d["divisionId"] == div), None)
-        tier_image = (m or {}).get("divisionName")
-
-    # 2) 최근 25경기 승/패 및 플레이스타일 (네 유틸 재사용)
-    matches = requests.get(
-        f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={match_type}&limit=25",
-        headers=headers, timeout=timeout
-    ).json()
-
-    # 안전장치
-    if not matches:
-        return {
-            "nickname": character_name, "level": lv,
-            "tier_image": tier_image, "win_rate": None,
-            "play_style_text": "최근 전적이 없어 분석 불가",
-        }
-
-    # 상세 다건 조회(너 코드의 get_match_data 재사용)
-    match_data_list = get_match_data(matches, headers)
-
-    # 너가 쓰는 유틸 그대로 사용해서 요약 계산
-    imp_data, w_l_flags = [], []
-    for data in match_data_list:
-        my = me(data, character_name)
-        w_l_flags.append(my["matchDetail"]["matchResult"])
-        imp = data_list(my)
-        if imp: imp_data.append(imp)
-
-    # 승률
-    total = len(w_l_flags)
-    win = sum(1 for r in w_l_flags if r == "승")
-    win_rate = round(win / total * 100, 2) if total else None
-
-    # 플레이스타일 텍스트
-    if imp_data:
-        # 평균값 → 클러스터 기준과 비교 → determine_play_style 이용
-        filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_data]
-        my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
-        cl = np.array(data_list_cl(avg_data(match_type)))
-        diff = (my_avg - cl) / cl
-        max_idx, max_vals = top_n_argmax(diff, 20)
-        min_idx, min_vals = top_n_argmin(diff, 20)
-        threshold = 0.9
-        max_data = list(zip(max_idx[:5], max_vals[:5]))
-        min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
-        play = determine_play_style(max_data, min_data)
-        play_style_text = play.get("summary", "플레이스타일 분석")
-    else:
-        play_style_text = "플레이스타일 분석 불가"
-
-    return {
-        "nickname": character_name,
-        "level": lv,
-        "tier_image": tier_image,
-        "win_rate": win_rate,
-        "total_matches": total,
-        "wins": win,
-        "play_style_text": play_style_text
-    }
-
-
+# 카카오톡 챗봇 스킬용 엔드포인트 (교체 버전)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
-    body = request.get_json(silent=True) or {}
+    try:
+        body = request.get_json(silent=True) or {}
 
-    def _p(key):
-        return (
-            (body.get("action", {}).get("params", {}) or {}).get(key)
-            or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
-            or ""
-        )
+        # 1) 파라미터
+        def _p(key):
+            return (
+                (body.get("action", {}).get("params", {}) or {}).get(key)
+                or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
+                or ""
+            )
 
-    nick = _p("nick").strip()
-    mode = _p("mode").strip()  # "50"|"60"|... (만약 한글로 오면 REVERSE_MATCH_TYPE_MAP 사용해 숫자로 변환)
+        nick = _p("nick").strip()
+        mode = _p("mode").strip()  # "50"|"60"|... 또는 "공식경기" 등
+        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)  # 한글로 오면 숫자로 변환
 
-    # 한글 모드가 들어온 경우 숫자로 변환
-    mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
+        # 2) 기본정보(ouid, level)
+        headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
+        ouid = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}",
+            headers=headers, timeout=1.5
+        ).json()["ouid"]
 
-    # 요약 데이터 생성
-    summary = summarize_user(nick, mode)
+        lv = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}",
+            headers=headers, timeout=1.5
+        ).json()["level"]
 
-    # 카카오 카드 구성 (simpleText + listCard + 웹링크)
-    result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
+        # 3) 최근 25경기 가져오기
+        matches = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
+            headers=headers, timeout=1.5
+        ).json()
 
-    outputs = [
-        {"simpleText": {"text": f"[기본정보]\n닉네임: {summary['nickname']}\n레벨: {summary['level']}"}},
-        {
-            "listCard": {
-                "header": {"title": "요약"},
-                "items": [
-                    {"title": "최근 25경기 승률",
-                     "description": f"{summary['win_rate']}% ({summary['wins']}/{summary['total_matches']})" if summary['win_rate'] is not None else "데이터 없음"},
-                    {"title": "플레이 스타일", "description": summary["play_style_text"]}
-                ],
-                "buttons": [
-                    {"label": "자세히 보기", "action": "webLink", "webLinkUrl": result_url}
-                ]
+        win_rate_text = "데이터 없음"
+        wins = 0
+        total = 0
+        play_style_text = "플레이스타일 분석 불가"
+
+        if matches:
+            # 상세 데이터들 불러오기 (기존 비동기 유틸 재사용)
+            match_data_list = get_match_data(matches, headers)
+
+            # 승/패, 임팩트 데이터 계산 (기존 유틸 재사용)
+            imp_data, w_l_flags = [], []
+            for data in match_data_list:
+                my = me(data, nick)                 # 내쪽 데이터 추출
+                w_l_flags.append(my["matchDetail"]["matchResult"])
+                imp = data_list(my)                 # 분석 지표 배열
+                if imp:
+                    imp_data.append(imp)
+
+            total = len(w_l_flags)
+            wins = sum(1 for r in w_l_flags if r == "승")
+            if total:
+                win_rate = round(wins / total * 100, 2)
+                win_rate_text = f"{win_rate}% ({wins}/{total})"
+
+            # 플레이스타일 요약(기존 determine_play_style 활용)
+            if imp_data:
+                # 평균→클러스터 기준 비교(네 코드와 동일한 방식)
+                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_data]
+                my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+                cl = np.array(data_list_cl(avg_data(mode)))
+
+                diff = (my_avg - cl) / cl
+                max_idx, max_vals = top_n_argmax(diff, 20)
+                min_idx, min_vals = top_n_argmin(diff, 20)
+
+                threshold = 0.9
+                max_data = list(zip(max_idx[:5], max_vals[:5]))
+                min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+
+                play_style = determine_play_style(max_data, min_data)
+                # 함수 반환 형태가 dict라면 summary, 아니면 문자열로 처리
+                if isinstance(play_style, dict) and "summary" in play_style:
+                    play_style_text = play_style["summary"]
+                else:
+                    play_style_text = str(play_style)
+
+        # 4) 카카오 응답(JSON)
+        result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
+        outputs = [
+            {"simpleText": {"text": f"[기본정보]\n닉네임: {nick}\n레벨: {lv}"}},
+            {
+                "listCard": {
+                    "header": {"title": "요약"},
+                    "items": [
+                        {"title": "최근 25경기 승률", "description": win_rate_text},
+                        {"title": "플레이 스타일", "description": play_style_text}
+                    ],
+                    "buttons": [
+                        {"label": "자세히 보기", "action": "webLink", "webLinkUrl": result_url}
+                    ]
+                }
             }
-        }
-    ]
+        ]
+        return jsonify({"version": "2.0", "template": {"outputs": outputs}})
 
-    # 티어 이미지가 있으면 썸네일 카드 하나 추가(선택)
-    if summary.get("tier_image"):
-        outputs.insert(1, {
-            "basicCard": {
-                "title": "최고 티어",
-                "thumbnail": {"imageUrl": summary["tier_image"]},
-                "buttons": [{"label": "결과 페이지", "action": "webLink", "webLinkUrl": result_url}]
+    except Exception as e:
+        # 에러시 사용자 친화 메시지
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [
+                    {"simpleText": {"text": "분석 중 오류가 발생했어요. 닉네임과 모드를 확인하고 다시 시도해 주세요."}}
+                ]
             }
         })
 
-    return jsonify({"version": "2.0", "template": {"outputs": outputs}})
 
 
 
