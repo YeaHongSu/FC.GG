@@ -813,61 +813,61 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
+# 카카오톡 챗봇 스킬용 엔드포인트 (발화 파싱 지원)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     try:
         body = request.get_json(silent=True) or {}
-
-        # ① 사용자가 친 원문(멘션/명령어 포함) 한 줄
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
-        # ② 기존처럼 오픈빌더가 주면 우선 사용
+        # 0) 모드 동의어 → 코드 매핑 (서버 파싱용)
+        MODE_SYNONYMS = {
+            "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
+            "60": ["60", "친선경기", "친선", "클래식", "클겜"],
+            "52": ["52", "감독모드", "감독", "감모"],
+            "40": ["40", "커스텀매치", "커스텀", "커겜"],
+        }
+        # 동의어 → 코드 역인덱스
+        WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
+
         def _p(key):
+            # 오픈빌더가 채워줬다면 그대로 사용
             return (
                 (body.get("action", {}).get("params", {}) or {}).get(key)
                 or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
                 or ""
             )
-        nick = _p("nick").strip()
-        mode = _p("mode").strip()
 
-        # ③ 비어있으면 utterance에서 직접 파싱
+        nick = (_p("nick") or "").strip()
+        mode = (_p("mode") or "").strip()
+
+        # 1) 파라미터 비었으면 발화에서 직접 추출
         if not nick or not mode:
-            # 모드 동의어 테이블 (원하는 대로 추가 가능)
-            MODE_SYNONYMS = {
-                "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
-                "60": ["60", "친선경기", "친선", "클래식", "클겜"],
-                "52": ["52", "감독모드", "감독", "감모"],
-                "40": ["40", "커스텀매치", "커스텀", "커겜"],
-            }
-            WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
-
-            # "@피파봇 전적검색 모설 공식경기" → "모설 공식경기"
-            text = re.sub(r"\s+", " ", utter)
-            text = re.sub(r"^@\S+\s*", "", text)                 # @멘션 제거
+            text = re.sub(r"\s+", " ", utter)             # 공백 정규화
+            text = re.sub(r"^@\S+\s*", "", text)          # @피파봇 제거
             text = re.sub(r"^(전적검색|전적|검색)\s*", "", text)  # 명령어 제거
 
             tokens = text.split(" ") if text else []
 
             # 뒤에서부터 모드(동의어/숫자) 찾기
             found_mode = ""
-            for i in range(len(tokens) - 1, -1, -1):
+            for i in range(len(tokens)-1, -1, -1):
                 t = tokens[i]
-                if t in WORD2CODE:           # 한글 동의어 → 코드
+                if t in WORD2CODE:
                     found_mode = WORD2CODE[t]
-                    tokens.pop(i)
+                    tokens.pop(i)  # 모드 토큰 제거
                     break
-                if t in MODE_SYNONYMS:       # 숫자 코드 그대로 들어온 경우
+                # 숫자 그대로 들어온 경우
+                if t in MODE_SYNONYMS:
                     found_mode = t
                     tokens.pop(i)
                     break
 
+            # 남은 토큰 전부를 닉네임으로(공백 포함 허용)
             found_nick = " ".join(tokens).strip()
 
-            if not nick:
-                nick = found_nick
-            if not mode:
-                mode = found_mode
+            nick = nick or found_nick
+            mode = mode or found_mode
 
         # 2) 모드가 한글로 왔을 수도 있으니 최종 맵핑 한번 더
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
@@ -995,7 +995,6 @@ def kakao_skill():
             "version": "2.0",
             "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
-
 
 
 
