@@ -1194,14 +1194,15 @@ def kakao_skill2_tierlist():
             items.append(item)
 
         # 5) 버튼(웹 상세 보기)
-        view_url = f"https://fcgg.kr/선수티어/{pos_code}"
+        # view_url = f"https://fcgg.kr/선수티어/{pos_code}"
+        view_url = f"https://fcgg.kr/선수티어"
         card = {
             "listCard": {
                 "header": {"title": f"선수 티어리스트 · {pos_code}"},
                 "items": items,
                 "buttons": [
-                    {"label": "자세히 보기", "action": "webLink", "webLinkUrl": view_url},
-                    {"label": "더 보기",   "action": "webLink", "webLinkUrl": view_url}
+                    {"label": "자세히 보기", "action": "webLink", "webLinkUrl": view_url}
+                    # {"label": "더 보기",   "action": "webLink", "webLinkUrl": view_url}
                 ]
             }
         }
