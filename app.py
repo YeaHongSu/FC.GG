@@ -991,7 +991,7 @@ def kakao_skill():
 
         # ---------- 4) 링크 구성 (전적검색 VS 승률개선) ----------
         result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-        imp_url    = f"https://fcgg.kr/승률개선/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
+        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
 
         # ---------- 5) 카드 구성 ----------
         title = f"{nick} · Lv.{lv}"
