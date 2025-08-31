@@ -816,13 +816,14 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
+# 카카오톡 챗봇 스킬용 엔드포인트 (전적검색/승률개선 모두 지원 + 카드 본문에 예상승률/개선지표 표시)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     try:
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
-        # ---------------- 공통 테이블 ----------------
+        # ---------- 공통 매핑 ----------
         MODE_SYNONYMS = {
             "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
             "60": ["60", "친선경기", "친선", "클래식", "클겜"],
@@ -831,10 +832,9 @@ def kakao_skill():
         }
         WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
 
-        # ✅ 명령어 동의어(앞단 키워드)
         CMD_SYNONYMS = {
             "전적검색": ["전적검색", "전적", "검색"],
-            "승률개선": ["승률개선", "승개", "개선", "승률", "개선검색"]
+            "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"],
         }
         WORD2CMD = {w: cmd for cmd, words in CMD_SYNONYMS.items() for w in words}
 
@@ -845,28 +845,26 @@ def kakao_skill():
                 or ""
             )
 
+        # ---------- 1) 파라미터/발화 파싱 ----------
         nick = (_p("nick") or "").strip()
         mode = (_p("mode") or "").strip()
 
-        # ---------- 1) 발화에서 [명령어/닉/모드] 파싱 ----------
-        # 예) "@피파봇 승률개선 모설 공식경기"
+        # 발화 전처리
         text = re.sub(r"\s+", " ", utter)
         text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
-
         tokens = text.split(" ") if text else []
 
-        # (a) 명령어 먼저 찾아보기 (앞/뒤 어디든)
+        # 명령어 탐지
         found_cmd = ""
         for i, t in enumerate(list(tokens)):
             if t in WORD2CMD:
                 found_cmd = WORD2CMD[t]
                 tokens.pop(i)
                 break
-        # 기본값: 전적검색
         if not found_cmd:
             found_cmd = "전적검색"
 
-        # (b) 모드는 뒤에서부터 동의어/숫자 탐색
+        # 모드(뒤에서부터)
         found_mode = ""
         for i in range(len(tokens)-1, -1, -1):
             t = tokens[i]
@@ -874,37 +872,30 @@ def kakao_skill():
                 found_mode = WORD2CODE[t]
                 tokens.pop(i)
                 break
-            if t in MODE_SYNONYMS:  # 숫자("50" 등)
+            if t in MODE_SYNONYMS:  # 숫자 그대로
                 found_mode = t
                 tokens.pop(i)
                 break
 
-        # (c) 남은 것은 닉네임(공백 포함 허용)
+        # 남은 토큰 = 닉네임(공백 허용)
         found_nick = " ".join(tokens).strip()
 
-        # 폼 파라미터가 우선, 없으면 발화 파싱값 사용
         nick = nick or found_nick
         mode = mode or found_mode
+        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)  # 한글 → 코드
 
-        # 최종 맵핑 (한글 모드가 들어온 경우)
-        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
-
-        # ---------- 2) 필수 체크 ----------
         if not nick or not mode:
             ex1 = "전적검색 모설 공식경기 / 전적검색 모설 50"
             ex2 = "승률개선 모설 공식경기 / 승률개선 모설 50"
             return jsonify({
                 "version": "2.0",
-                "template": {
-                    "outputs": [
-                        {"simpleText": {"text": f"닉네임/모드를 인식하지 못했어요.\n예) {ex1}\n예) {ex2}"}}
-                    ]
-                }
+                "template": {"outputs": [
+                    {"simpleText": {"text": f"닉네임/모드를 인식하지 못했어요.\n예) {ex1}\n예) {ex2}"}}
+                ]}
             })
 
-        # ---------- 3) 공통 요약 (레벨·승패·플레이스타일) ----------
+        # ---------- 2) 기본 정보 ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
-
         ouid = requests.get(
             f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}",
             headers=headers, timeout=1.8
@@ -915,11 +906,11 @@ def kakao_skill():
             headers=headers, timeout=1.8
         ).json()["level"]
 
+        # 티어 이미지(매치타입별 최고)
         division_info = requests.get(
             f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
             headers=headers, timeout=1.8
         ).json()
-
         division_mapping = [
             {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
             {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
@@ -951,33 +942,43 @@ def kakao_skill():
         except Exception:
             pass
 
+        # ---------- 3) 최근 25경기 로드 ----------
         matches = requests.get(
             f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
             headers=headers, timeout=1.8
         ).json()
 
-        wins = losses = 0
+        # 기본값
         win_rate_text = "데이터 없음"
         play_style_text = "플레이스타일 분석 불가"
+        original_win_rate = modified_win_rate = win_rate_improvement = None
+        improved_features_text = ""
 
-        imp_data = []
+        # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
             match_data_list = get_match_data(matches, headers)
-            results = []
+
+            results = []        # 승/패 텍스트
+            w_l_data = []       # calculate_win_improvement 인풋
+            imp_rows = []       # 지표 행들
+
             for data in match_data_list:
                 my = me(data, nick)
-                results.append(my["matchDetail"]["matchResult"])
-                imp = data_list(my)
-                if imp: imp_data.append(imp)
+                res = my["matchDetail"]["matchResult"]  # "승"/"패"
+                results.append(res)
+                w_l_data.append(res)                    # 함수가 내부에서 처리(문자 그대로 사용)하도록 기존 로직 유지
+                row = data_list(my)
+                if row:
+                    imp_rows.append(row)
 
             total = len(results)
             wins = sum(1 for r in results if r == "승")
-            losses = sum(1 for r in results if r == "패")
             if total:
                 win_rate_text = f"{round(wins/total*100, 2)}%"
 
-            if imp_data:
-                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_data]
+            # 평균/클러스터 비교로 플레이스타일
+            if imp_rows:
+                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
                 my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
                 cl = np.array(data_list_cl(avg_data(mode)))
                 diff = (my_avg - cl) / cl
@@ -986,30 +987,73 @@ def kakao_skill():
                 threshold = 0.9
                 max_data = list(zip(max_idx[:5], max_vals[:5]))
                 min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
-                play_style = determine_play_style(max_data, min_data)
-                play_style_text = play_style.get("summary", str(play_style)) if isinstance(play_style, dict) else str(play_style)
+                style = determine_play_style(max_data, min_data)
+                play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
 
-        # ---------- 4) 링크 구성 (전적검색 VS 승률개선) ----------
+                # ---- 예상 승률 계산 ----
+                padded_imp = np.array(filt, dtype=float)
+                try:
+                    top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = \
+                        calculate_win_improvement(padded_imp, w_l_data, data_label)
+                except Exception:
+                    # 계산 실패 시 안전한 표기
+                    original_win_rate = modified_win_rate = win_rate_improvement = None
+                    improved_features_text = ""
+
+        # ---------- 5) 카드 본문 구성 ----------
+        # 링크들
         result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
         imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
 
-        # ---------- 5) 카드 구성 ----------
-        title = f"{nick} · Lv.{lv}"
-        desc_common = f"승률  {win_rate_text}\n【플레이스타일】 {play_style_text}"
-
+        # 승률개선 전용 본문 (요구 포맷)
         if found_cmd == "승률개선":
+            # 숫자 포맷팅
+            if original_win_rate is not None and modified_win_rate is not None and win_rate_improvement is not None:
+                head = f"{nick}  Lv.{lv}"
+                body_lines = [
+                    "",
+                    "[개선 시 승률]",
+                    f"{round(original_win_rate, 2)}% -> {round(modified_win_rate, 2)}% (＋{round(win_rate_improvement, 2)}%p)",
+                    "",
+                    "[개선해야하는 지표]"
+                ]
+
+                # improved_features_text 가 긴 경우 앞부분만 표시(예: 3~5개)
+                if improved_features_text:
+                    feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
+                    # 너무 길면 앞 5개로 제한
+                    feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
+                    body_lines.extend(feat_lines)
+                else:
+                    body_lines.append("분석 데이터가 부족합니다.")
+
+                description = head + "\n" + "\n".join(body_lines)
+            else:
+                # 데이터 부족/실패시 대체 문구
+                description = (
+                    f"{nick}  Lv.{lv}\n\n"
+                    "[개선 시 승률]\n"
+                    "분석 데이터가 부족합니다.\n\n"
+                    "[개선해야하는 지표]\n"
+                    "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+                )
+
             card = {
                 "basicCard": {
-                    "title": title,
-                    "description": f"{desc_common}\n\n📈 승률개선 솔루션으로 이동합니다.",
+                    "title": "승률개선 솔루션",
+                    "description": description,
                     "thumbnail": {"imageUrl": tier_image} if tier_image else None,
                     "buttons": [
-                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
-                        {"label": "전적 요약",   "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
+                        {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
                     ]
                 }
             }
-        else:  # 전적검색
+
+        else:
+            # 전적검색 기본 카드(참고용 + 승률개선 링크 배치)
+            title = f"{nick} · Lv.{lv}"
+            desc_common = f"승률  {win_rate_text}\n【플레이스타일】 {play_style_text}"
             card = {
                 "basicCard": {
                     "title": title,
@@ -1021,6 +1065,7 @@ def kakao_skill():
                     ]
                 }
             }
+
         if not tier_image:
             card["basicCard"].pop("thumbnail", None)
 
@@ -1029,8 +1074,11 @@ def kakao_skill():
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+            "template": {"outputs": [
+                {"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}
+            ]}
         })
+
 
 
 
