@@ -1079,6 +1079,139 @@ def kakao_skill():
             ]}
         })
 
+# -------------------------------------------
+# [NEW] 티어리스트 전용 Kakao 스킬 엔드포인트: /kakao/skill2
+# - 오픈빌더에서 이 URL만 새 스킬로 연결하면 동작
+# - 파라미터: position(선택, 예: ST/공격수/공미/수미/GK 등), top(선택, 기본 5)
+# - 발화 예: "티어리스트 ST", "티어리스트 공격수", "티어 ST"
+# -------------------------------------------
+
+# === helpers: position normalize & top-n extraction ===
+POS_SYNONYMS = {
+    "ST": ["ST", "공격수", "스트라이커", "포워드", "원톱", "투톱"],
+    "CF": ["CF", "세컨톱"],
+    "LW": ["LW", "레프트윙", "왼윙"],
+    "RW": ["RW", "라이트윙", "오윙"],
+    "CAM": ["CAM", "공미", "공격형미드"],
+    "CM": ["CM", "중미", "중앙미드"],
+    "CDM": ["CDM", "수미", "수비형미드"],
+    "LB": ["LB", "레프트백", "왼쪽풀백"],
+    "RB": ["RB", "라이트백", "오른쪽풀백"],
+    "CB": ["CB", "센터백", "중앙수비"],
+    "GK": ["GK", "골키퍼", "키퍼"],
+}
+WORD2POS = {alias: pos for pos, aliases in POS_SYNONYMS.items() for alias in aliases}
+
+# 티어 노출 우선순위
+TIER_ORDER = ["0티어", "1티어", "2티어", "3티어", "4티어"]
+
+def normalize_position(text: str, default="ST"):
+    if not text:
+        return default
+    # 영문 대문자 우선 처리
+    t = text.strip().upper()
+    if t in WORD2POS:
+        return WORD2POS[t]
+    # 한글 별칭 그대로 들어온 경우
+    return WORD2POS.get(text.strip(), default)
+
+def get_top_players(position_code: str, top_n: int = 5):
+    """tier[position]에서 상위 티어 순으로 최대 top_n명 추출"""
+    data = tier.get(position_code, {})
+    rows = []
+    for tier_name in TIER_ORDER:
+        for p in data.get(tier_name, []):
+            rows.append({
+                "tier_name": tier_name,
+                "name": p.get("선수 이름", ""),
+                "mini": p.get("미니페이스온", ""),
+                "season": p.get("시즌", ""),
+                "score": p.get("FC스코어", ""),
+                "apps": p.get("출전", "")
+            })
+            if len(rows) >= top_n:
+                return rows
+    return rows
+
+@app.route("/kakao/skill2", methods=["POST"])
+def kakao_skill2_tierlist():
+    try:
+        body = request.get_json(silent=True) or {}
+        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+
+        def _p(key):
+            return (
+                (body.get("action", {}).get("params", {}) or {}).get(key)
+                or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
+                or ""
+            )
+
+        # 1) 파라미터 우선
+        param_pos = (_p("position") or "").strip()
+        param_top = (_p("top") or "").strip()
+
+        # 2) 발화에서 포지션 추정 (예: "티어리스트 ST", "티어 공격수")
+        import re
+        text = re.sub(r"\s+", " ", utter)
+        text = re.sub(r"^@\S+\s*", "", text)  # @봇 제거
+        tokens = text.split(" ") if text else []
+
+        found_pos = ""
+        for i, t in enumerate(list(tokens)):
+            tt = t.strip()
+            if tt in WORD2POS:
+                found_pos = WORD2POS[tt]
+                break
+
+        # 최종 포지션/탑N
+        pos_code = normalize_position(param_pos or found_pos or "ST")
+        try:
+            top_n = int(param_top) if param_top else 5
+            top_n = max(1, min(top_n, 8))  # listCard 너무 길지 않게 1~8 제한
+        except Exception:
+            top_n = 5
+
+        # 3) 데이터 추출
+        rows = get_top_players(pos_code, top_n=top_n)
+        if not rows:
+            return jsonify({
+                "version": "2.0",
+                "template": {"outputs": [
+                    {"simpleText": {"text": "해당 포지션의 티어 데이터를 찾지 못했어요."}}
+                ]}
+            })
+
+        # 4) listCard 구성
+        items = []
+        for i, r in enumerate(rows, 1):
+            title = f"{i}. {r['name']}"
+            desc  = f"{r['tier_name']} / 승률지표:{r['score']} / 출전:{r['apps']}"
+            image = r["mini"] or r["season"] or None
+            item = {"title": title, "description": desc}
+            if image:
+                item["imageUrl"] = image
+                item["imageTitle"] = r["name"]
+            items.append(item)
+
+        # 5) 버튼(웹 상세 보기)
+        view_url = f"https://fcgg.kr/선수티어/{pos_code}"
+        card = {
+            "listCard": {
+                "header": {"title": f"선수 티어리스트 · {pos_code}"},
+                "items": items,
+                "buttons": [
+                    {"label": "자세히 보기", "action": "webLink", "webLinkUrl": view_url},
+                    {"label": "더 보기",   "action": "webLink", "webLinkUrl": view_url}
+                ]
+            }
+        }
+        return jsonify({"version": "2.0", "template": {"outputs": [card]}})
+
+    except Exception:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": "티어리스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+        })
 
 
 
