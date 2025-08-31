@@ -813,25 +813,29 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
-# 카카오톡 챗봇 스킬용 엔드포인트 (발화 파싱 지원)
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     try:
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
-        # 0) 모드 동의어 → 코드 매핑 (서버 파싱용)
+        # ---------------- 공통 테이블 ----------------
         MODE_SYNONYMS = {
             "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
             "60": ["60", "친선경기", "친선", "클래식", "클겜"],
             "52": ["52", "감독모드", "감독", "감모"],
             "40": ["40", "커스텀매치", "커스텀", "커겜"],
         }
-        # 동의어 → 코드 역인덱스
         WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
 
+        # ✅ 명령어 동의어(앞단 키워드)
+        CMD_SYNONYMS = {
+            "전적검색": ["전적검색", "전적", "검색"],
+            "승률개선": ["승률개선", "승개", "개선", "승률", "개선검색"]
+        }
+        WORD2CMD = {w: cmd for cmd, words in CMD_SYNONYMS.items() for w in words}
+
         def _p(key):
-            # 오픈빌더가 채워줬다면 그대로 사용
             return (
                 (body.get("action", {}).get("params", {}) or {}).get(key)
                 or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
@@ -841,53 +845,63 @@ def kakao_skill():
         nick = (_p("nick") or "").strip()
         mode = (_p("mode") or "").strip()
 
-        # 1) 파라미터 비었으면 발화에서 직접 추출
-        if not nick or not mode:
-            text = re.sub(r"\s+", " ", utter)             # 공백 정규화
-            text = re.sub(r"^@\S+\s*", "", text)          # @피파봇 제거
-            text = re.sub(r"^(전적검색|전적|검색)\s*", "", text)  # 명령어 제거
+        # ---------- 1) 발화에서 [명령어/닉/모드] 파싱 ----------
+        # 예) "@피파봇 승률개선 모설 공식경기"
+        text = re.sub(r"\s+", " ", utter)
+        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
 
-            tokens = text.split(" ") if text else []
+        tokens = text.split(" ") if text else []
 
-            # 뒤에서부터 모드(동의어/숫자) 찾기
-            found_mode = ""
-            for i in range(len(tokens)-1, -1, -1):
-                t = tokens[i]
-                if t in WORD2CODE:
-                    found_mode = WORD2CODE[t]
-                    tokens.pop(i)  # 모드 토큰 제거
-                    break
-                # 숫자 그대로 들어온 경우
-                if t in MODE_SYNONYMS:
-                    found_mode = t
-                    tokens.pop(i)
-                    break
+        # (a) 명령어 먼저 찾아보기 (앞/뒤 어디든)
+        found_cmd = ""
+        for i, t in enumerate(list(tokens)):
+            if t in WORD2CMD:
+                found_cmd = WORD2CMD[t]
+                tokens.pop(i)
+                break
+        # 기본값: 전적검색
+        if not found_cmd:
+            found_cmd = "전적검색"
 
-            # 남은 토큰 전부를 닉네임으로(공백 포함 허용)
-            found_nick = " ".join(tokens).strip()
+        # (b) 모드는 뒤에서부터 동의어/숫자 탐색
+        found_mode = ""
+        for i in range(len(tokens)-1, -1, -1):
+            t = tokens[i]
+            if t in WORD2CODE:
+                found_mode = WORD2CODE[t]
+                tokens.pop(i)
+                break
+            if t in MODE_SYNONYMS:  # 숫자("50" 등)
+                found_mode = t
+                tokens.pop(i)
+                break
 
-            nick = nick or found_nick
-            mode = mode or found_mode
+        # (c) 남은 것은 닉네임(공백 포함 허용)
+        found_nick = " ".join(tokens).strip()
 
-        # 2) 모드가 한글로 왔을 수도 있으니 최종 맵핑 한번 더
+        # 폼 파라미터가 우선, 없으면 발화 파싱값 사용
+        nick = nick or found_nick
+        mode = mode or found_mode
+
+        # 최종 맵핑 (한글 모드가 들어온 경우)
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
 
-        # 3) 필수 체크
+        # ---------- 2) 필수 체크 ----------
         if not nick or not mode:
-            ex = "예) 전적검색 모설 공식경기 / 전적검색 모설 50"
+            ex1 = "전적검색 모설 공식경기 / 전적검색 모설 50"
+            ex2 = "승률개선 모설 공식경기 / 승률개선 모설 50"
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": f"닉네임과 모드를 인식하지 못했어요.\n{ex} 형태로 입력해 주세요."}}
+                        {"simpleText": {"text": f"닉네임/모드를 인식하지 못했어요.\n예) {ex1}\n예) {ex2}"}}
                     ]
                 }
             })
 
-        # ------------------ 아래부터는 기존 요약/카드 생성 로직 동일 ------------------
+        # ---------- 3) 공통 요약 (레벨·승패·플레이스타일) ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
-        # 기본정보
         ouid = requests.get(
             f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}",
             headers=headers, timeout=1.8
@@ -898,11 +912,11 @@ def kakao_skill():
             headers=headers, timeout=1.8
         ).json()["level"]
 
-        # 티어 이미지
         division_info = requests.get(
             f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
             headers=headers, timeout=1.8
         ).json()
+
         division_mapping = [
             {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
             {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
@@ -934,7 +948,6 @@ def kakao_skill():
         except Exception:
             pass
 
-        # 최근 25경기 → 승/패/승률 + 플레이스타일
         matches = requests.get(
             f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
             headers=headers, timeout=1.8
@@ -944,9 +957,10 @@ def kakao_skill():
         win_rate_text = "데이터 없음"
         play_style_text = "플레이스타일 분석 불가"
 
+        imp_data = []
         if matches:
             match_data_list = get_match_data(matches, headers)
-            results, imp_data = [], []
+            results = []
             for data in match_data_list:
                 my = me(data, nick)
                 results.append(my["matchDetail"]["matchResult"])
@@ -972,21 +986,40 @@ def kakao_skill():
                 play_style = determine_play_style(max_data, min_data)
                 play_style_text = play_style.get("summary", str(play_style)) if isinstance(play_style, dict) else str(play_style)
 
-        result_url = f"https://fcgg.kr/result.html?character_name={nick}&match_type={mode}"
+        # ---------- 4) 링크 구성 (전적검색 VS 승률개선) ----------
+        result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
+        imp_url    = f"https://fcgg.kr/승률개선/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
 
-        card = {
-            "basicCard": {
-                "title": nick,
-                "description": f"【플레이스타일】 {play_style_text}\n\n레벨  {lv}\n승    {wins}\n패    {losses}\n승률  {win_rate_text}",
-                "thumbnail": {"imageUrl": tier_image} if tier_image else None,
-                "buttons": [
-                    {"label": "자세히 보기", "action": "webLink", "webLinkUrl": result_url},
-                    {"label": "최근 전적 보기", "action": "webLink", "webLinkUrl": result_url}
-                ]
+        # ---------- 5) 카드 구성 ----------
+        title = f"{nick} · Lv.{lv}"
+        desc_common = f"승률  {win_rate_text}\n【플레이스타일】 {play_style_text}"
+
+        if found_cmd == "승률개선":
+            card = {
+                "basicCard": {
+                    "title": title,
+                    "description": f"{desc_common}\n\n📈 승률개선 솔루션으로 이동합니다.",
+                    "thumbnail": {"imageUrl": tier_image} if tier_image else None,
+                    "buttons": [
+                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                        {"label": "전적 요약",   "action": "webLink", "webLinkUrl": result_url},
+                    ]
+                }
             }
-        }
+        else:  # 전적검색
+            card = {
+                "basicCard": {
+                    "title": title,
+                    "description": f"{desc_common}\n\n최근 25경기 기반 요약입니다.",
+                    "thumbnail": {"imageUrl": tier_image} if tier_image else None,
+                    "buttons": [
+                        {"label": "자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                    ]
+                }
+            }
         if not tier_image:
-            del card["basicCard"]["thumbnail"]
+            card["basicCard"].pop("thumbnail", None)
 
         return jsonify({"version": "2.0", "template": {"outputs": [card]}})
 
