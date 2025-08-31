@@ -957,26 +957,49 @@ def kakao_skill():
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
             match_data_list = get_match_data(matches, headers)
-
-            results = []        # 승/패 텍스트
-            w_l_data = []       # calculate_win_improvement 인풋
-            imp_rows = []       # 지표 행들
-
+        
+            results = []            # 전체 승/패 (표시용)
+            w_l_data = []           # ※ imp 있는 경기만 push (승률개선 계산 표본)
+            imp_rows = []           # 내 지표 행들(숫자만 나중에 필터)
+            sample_details = []     # 텍스트로 찍을 매칭 요약
+            used_cnt = 0            # imp가 있는, 즉 분석에 사용된 경기 수
+            total_cnt = len(match_data_list)
+        
             for data in match_data_list:
-                my = me(data, nick)
-                res = my["matchDetail"]["matchResult"]  # "승"/"패"
+                my  = me(data, nick)
+                opp = you(data, nick)
+        
+                res = my["matchDetail"]["matchResult"]   # "승" / "패"
                 results.append(res)
-                w_l_data.append(res)                    # 함수가 내부에서 처리(문자 그대로 사용)하도록 기존 로직 유지
+        
+                # 스코어 / 컨트롤러
+                mg = my['shoot']['goalTotal']  if my['shoot']['goalTotal']  is not None else 0
+                og = opp['shoot']['goalTotal'] if opp['shoot']['goalTotal'] is not None else 0
+                def ctrl_symbol(v):
+                    if v is None: return "탈주"
+                    return "🎮" if v == "gamepad" else ("⌨️" if v == "keyboard" else "??")
+                myc  = ctrl_symbol(my['matchDetail'].get('controller'))
+                oppc = ctrl_symbol(opp['matchDetail'].get('controller'))
+        
+                # 매칭 요약 1라인 생성 (닉네임/스코어/결과/컨트롤러)
+                sample_details.append(
+                    f"vs {opp['nickname']}  {mg}:{og} ({res})  {myc}:{oppc}"
+                )
+        
+                # 지표가 있는 경기만 '분석 표본'으로 사용
                 row = data_list(my)
                 if row:
                     imp_rows.append(row)
-
+                    w_l_data.append(res)
+                    used_cnt += 1
+        
+            # 표기용 현재 승률
             total = len(results)
-            wins = sum(1 for r in results if r == "승")
+            wins  = sum(1 for r in results if r == "승")
             if total:
                 win_rate_text = f"{round(wins/total*100, 2)}%"
-
-            # 평균/클러스터 비교로 플레이스타일
+        
+            # 평균/클러스터 비교 + 예상 승률 계산
             if imp_rows:
                 filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
                 my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
@@ -989,25 +1012,21 @@ def kakao_skill():
                 min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
                 style = determine_play_style(max_data, min_data)
                 play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
-
-                # ---- 예상 승률 계산 ----
+        
+                # ---- 예상 승률 계산 (imp 표본만) ----
                 padded_imp = np.array(filt, dtype=float)
                 try:
-                    top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = \
+                    top_n, increase_ratio, improved_features_text, \
+                    original_win_rate, modified_win_rate, win_rate_improvement = \
                         calculate_win_improvement(padded_imp, w_l_data, data_label)
                 except Exception:
-                    # 계산 실패 시 안전한 표기
                     original_win_rate = modified_win_rate = win_rate_improvement = None
                     improved_features_text = ""
 
-        # ---------- 5) 카드 본문 구성 ----------
-        # 링크들
-        result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
 
-        # 승률개선 전용 본문 (요구 포맷)
+        # ---------- 5) 카드 본문 구성 ----------
+        # ...
         if found_cmd == "승률개선":
-            # 숫자 포맷팅
             if original_win_rate is not None and modified_win_rate is not None and win_rate_improvement is not None:
                 head = f"{nick}  Lv.{lv}"
                 body_lines = [
@@ -1015,29 +1034,37 @@ def kakao_skill():
                     "[개선 시 승률]",
                     f"{round(original_win_rate, 2)}% -> {round(modified_win_rate, 2)}% (＋{round(win_rate_improvement, 2)}%p)",
                     "",
+                    f"[표본] 최근 25경기 중 사용 {used_cnt}경기 / 전체 {total_cnt}경기",
+                    "",
                     "[개선해야하는 지표]"
                 ]
-
-                # improved_features_text 가 긴 경우 앞부분만 표시(예: 3~5개)
+        
+                # 지표 리스트 (과하면 상위 5개)
                 if improved_features_text:
                     feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
-                    # 너무 길면 앞 5개로 제한
-                    feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
-                    body_lines.extend(feat_lines)
+                    body_lines.extend(feat_lines[:5])
                 else:
                     body_lines.append("분석 데이터가 부족합니다.")
-
+        
+                # 상대 매칭 요약 (카카오 본문 길이 고려해 8줄 제한)
+                if sample_details:
+                    body_lines.append("")
+                    body_lines.append("[상대 매칭 요약]")
+                    body_lines.extend(sample_details[:8])
+                    if len(sample_details) > 8:
+                        body_lines.append(f"... 외 {len(sample_details)-8}경기")
+        
                 description = head + "\n" + "\n".join(body_lines)
             else:
-                # 데이터 부족/실패시 대체 문구
                 description = (
                     f"{nick}  Lv.{lv}\n\n"
                     "[개선 시 승률]\n"
                     "분석 데이터가 부족합니다.\n\n"
+                    f"[표본] 최근 25경기 중 사용 0경기 / 전체 {len(matches) if matches else 0}경기\n\n"
                     "[개선해야하는 지표]\n"
                     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
                 )
-
+        
             card = {
                 "basicCard": {
                     "title": "승률개선 솔루션",
@@ -1050,21 +1077,6 @@ def kakao_skill():
                 }
             }
 
-        else:
-            # 전적검색 기본 카드(참고용 + 승률개선 링크 배치)
-            title = f"{nick} · Lv.{lv}"
-            desc_common = f"승률  {win_rate_text}\n【플레이스타일】 {play_style_text}"
-            card = {
-                "basicCard": {
-                    "title": title,
-                    "description": f"{desc_common}\n\n최근 25경기 기반 요약입니다.",
-                    "thumbnail": {"imageUrl": tier_image} if tier_image else None,
-                    "buttons": [
-                        {"label": "자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
-                    ]
-                }
-            }
 
         if not tier_image:
             card["basicCard"].pop("thumbnail", None)
