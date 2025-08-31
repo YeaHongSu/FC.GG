@@ -499,13 +499,14 @@ def wr_result(character_name=None, match_type_name=None):
             imp = data_list(my_data)
             imp2 = data_list(you(data, character_name))
 
+            
+            if imp is None or imp2 is None:
+                continue
+            
             w_l = my_data['matchDetail']['matchResult']
             match_data = {'결과': w_l}
             result_list.append(match_data)
             w_l_data.append(w_l)
-
-            if imp is None or imp2 is None:
-                continue
 
             imp_data.append(imp)
 
