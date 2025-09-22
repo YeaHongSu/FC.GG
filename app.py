@@ -1218,6 +1218,87 @@ def kakao_skill2_tierlist():
             "template": {"outputs": [{"simpleText": {"text": "티어리스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
 
+# 승부차기 미니게임
+@app.route("/kakao/penalty", methods=["POST"])
+def kakao_penalty():
+    try:
+        body = request.get_json(silent=True) or {}
+        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+
+        import re, random
+        text = re.sub(r"\s+", " ", utter)
+        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+        tokens = text.split(" ") if text else []
+
+        # --- 전역 상태 (예: redis나 DB로 관리하는 게 바람직) ---
+        global PENALTY_STATE
+        if "PENALTY_STATE" not in globals():
+            PENALTY_STATE = {"shots": 0, "max": 5, "results": []}
+
+        # 1) "승부차기" 시작 명령
+        if "승부차기" in tokens:
+            PENALTY_STATE = {"shots": 0, "max": 5, "results": []}
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {"simpleText": {
+                            "text": "📣 승부차기가 시작됩니다! 기회는 5번!\n- 왼쪽 가운데 오른쪽 중에 하나를 입력해주세요."
+                        }}
+                    ]
+                }
+            })
+
+        # 2) 방향 입력
+        if any(t in ["왼쪽", "가운데", "오른쪽"] for t in tokens):
+            direction = [t for t in tokens if t in ["왼쪽", "가운데", "오른쪽"]][0]
+            user_name = body.get("userRequest", {}).get("user", {}).get("nickname", "사용자")
+
+            if PENALTY_STATE["shots"] >= PENALTY_STATE["max"]:
+                return jsonify({
+                    "version": "2.0",
+                    "template": {"outputs": [
+                        {"simpleText": {"text": "이미 게임이 종료되었습니다."}}
+                    ]}
+                })
+
+            # 랜덤 골/노골
+            is_goal = random.choice([True, False])
+            result = "⭕️" if is_goal else "❌️"
+            PENALTY_STATE["results"].append(result)
+            PENALTY_STATE["shots"] += 1
+
+            score_display = "".join(PENALTY_STATE["results"]) + "⬜️" * (PENALTY_STATE["max"] - PENALTY_STATE["shots"])
+            shot_num = PENALTY_STATE["shots"]
+
+            text_resp = f"@{user_name} {'골' if is_goal else '노골'}! {score_display}입니다! ({shot_num}/{PENALTY_STATE['max']}회)"
+
+            # 게임 종료 처리
+            if PENALTY_STATE["shots"] == PENALTY_STATE["max"]:
+                goals = PENALTY_STATE["results"].count("⭕️")
+                fails = PENALTY_STATE["results"].count("❌️")
+                text_resp += f"\n\n게임 종료!\n최종 스코어는 {score_display} (골 {goals} / 실축 {fails})입니다."
+
+            return jsonify({
+                "version": "2.0",
+                "template": {"outputs": [{"simpleText": {"text": text_resp}}]}
+            })
+
+        # 3) 잘못된 입력
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [
+                {"simpleText": {"text": "승부차기를 시작하려면 '@피파봇 승부차기'라고 입력해주세요."}}
+            ]}
+        })
+
+    except Exception as e:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [
+                {"simpleText": {"text": f"승부차기 처리 중 오류가 발생했습니다: {e}"}}
+            ]}
+        })
 
 
 # 포트 설정 및 웹에 띄우기
