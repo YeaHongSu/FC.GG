@@ -1245,7 +1245,7 @@ def _uname(body):
     props = ((body.get("userRequest") or {}).get("user") or {}).get("properties") or {}
     return props.get("nickname") or "사용자"
 
-def _p(body, key):
+def _p(key):
     return (
         (body.get("action", {}).get("params", {}) or {}).get(key)
         or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
