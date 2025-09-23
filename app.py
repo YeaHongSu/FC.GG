@@ -1221,19 +1221,20 @@ def kakao_skill2_tierlist():
 
 # 승부차기 미니게임
 import random, threading, re
+from flask import request, jsonify
 
-PENALTY_GAMES = {}
+PENALTY_GAMES = {}  # { user_id: {"shots":[True/False...], "max":5} }
 PG_LOCK = threading.Lock()
 
-# 방향 정규화(+동의어)
+# 방향 동의어/정규화
 DIR_MAP = {
-    "left": {"왼쪽","좌","왼","left","l"},
-    "right": {"오른쪽","우","오","right","r"},
-    "center": {"가운데","중앙","센터","center","c"},
-    "leftup": {"왼쪽위","왼위","좌상","ls","lu"},
-    "leftdown": {"왼쪽아래","왼아래","좌하","ld"},
-    "rightup": {"오른쪽위","오위","우상","rs","ru"},
-    "rightdown": {"오른쪽아래","오아래","우하","rd"},
+    "left":       {"왼쪽","좌","왼","left","l"},
+    "right":      {"오른쪽","우","오","right","r"},
+    "center":     {"가운데","중앙","센터","center","c"},
+    "leftup":     {"왼쪽위","왼위","좌상","ls","lu"},
+    "leftdown":   {"왼쪽아래","왼아래","좌하","ld"},
+    "rightup":    {"오른쪽위","오위","우상","rs","ru"},
+    "rightdown":  {"오른쪽아래","오아래","우하","rd"},
 }
 SIDE_TAGS = {"left","right","leftup","leftdown","rightup","rightdown"}
 
@@ -1244,12 +1245,19 @@ def _uname(body):
     props = ((body.get("userRequest") or {}).get("user") or {}).get("properties") or {}
     return props.get("nickname") or "사용자"
 
+def _p(body, key):
+    return (
+        (body.get("action", {}).get("params", {}) or {}).get(key)
+        or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
+        or ""
+    )
+
 def _normalize_dir(text: str) -> str:
     s = (text or "").strip().lower()
     for tag, words in DIR_MAP.items():
         if s in words:
             return tag
-    # 토큰에 섞여 들어오는 경우를 대비(예: '오른쪽으로')
+    # 토큰에 섞여 들어오는 어형(예: '오른쪽으로') 처리
     for tag, words in DIR_MAP.items():
         if any(w in s for w in words):
             return tag
@@ -1260,6 +1268,7 @@ def _board(shots, total=5):
     return marks + "⬜️" * (total - len(shots))
 
 def _kick_prob(tag: str) -> float:
+    # 왼/오/사분면=66%, 가운데=33%
     return 0.33 if tag == "center" else 0.66
 
 def _start_game(uid):
@@ -1288,84 +1297,79 @@ def _record_kick(uid, success: bool):
             return final, True
         return st["shots"][:], False
 
+
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
-        import re, random
-        text = re.sub(r"\s+", " ", utter)
-        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
-        tokens = text.split(" ") if text else []
+        uid = _uid(body)
+        uname = _uname(body)
 
-        # --- 전역 상태 (예: redis나 DB로 관리하는 게 바람직) ---
-        global PENALTY_STATE
-        if "PENALTY_STATE" not in globals():
-            PENALTY_STATE = {"shots": 0, "max": 5, "results": []}
+        # 관리자센터 파라미터 우선 (예: dir)
+        choice_raw = _p(body, "dir") or _p(body, "direction")
 
-        # 1) "승부차기" 시작 명령
-        if "승부차기" in tokens:
-            PENALTY_STATE = {"shots": 0, "max": 5, "results": []}
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [
-                        {"simpleText": {
-                            "text": "📣 승부차기가 시작됩니다! 기회는 5번!\n- 왼쪽 가운데 오른쪽 중에 하나를 입력해주세요."
-                        }}
-                    ]
-                }
-            })
+        # 발화에서 @봇 제거 후 남은 토큰으로 방향 추정 보조
+        if not choice_raw and utter:
+            text = re.sub(r"\s+", " ", utter)
+            text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+            choice_raw = text
 
-        # 2) 방향 입력
-        if any(t in ["왼쪽", "가운데", "오른쪽"] for t in tokens):
-            direction = [t for t in tokens if t in ["왼쪽", "가운데", "오른쪽"]][0]
-            user_name = body.get("userRequest", {}).get("user", {}).get("nickname", "사용자")
+        # 게임 미시작이면 시작 멘트 보내고 대기
+        if not _has_game(uid):
+            _start_game(uid)
+            msg = (
+                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
+                "왼쪽, 오른쪽, 가운데 중에 골라주세요."
+            )
+            return jsonify({"version": "2.0", "template": {"outputs": [
+                {"simpleText": {"text": msg}}
+            ]}})
 
-            if PENALTY_STATE["shots"] >= PENALTY_STATE["max"]:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {"outputs": [
-                        {"simpleText": {"text": "이미 게임이 종료되었습니다."}}
-                    ]}
-                })
+        # 진행 중인데 입력이 비었으면 현재 보드/안내
+        if not choice_raw:
+            st = _game_state(uid)
+            board = _board(st["shots"], st["max"])
+            n = len(st["shots"]) + 1
+            msg = f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+            return jsonify({"version": "2.0", "template": {"outputs": [
+                {"simpleText": {"text": msg}}
+            ]}})
 
-            # 랜덤 골/노골
-            is_goal = random.choice([True, False])
-            result = "⭕️" if is_goal else "❌️"
-            PENALTY_STATE["results"].append(result)
-            PENALTY_STATE["shots"] += 1
+        # 방향 정규화
+        tag = _normalize_dir(choice_raw)
+        if not tag:
+            msg = "입력을 이해하지 못했어요. '왼쪽/오른쪽/가운데' 또는 '왼쪽위/왼쪽아래/오른쪽위/오른쪽아래' 중 하나를 말해주세요."
+            return jsonify({"version": "2.0", "template": {"outputs": [
+                {"simpleText": {"text": msg}}
+            ]}})
 
-            score_display = "".join(PENALTY_STATE["results"]) + "⬜️" * (PENALTY_STATE["max"] - PENALTY_STATE["shots"])
-            shot_num = PENALTY_STATE["shots"]
+        # 확률 판정 및 기록
+        success = (random.random() < _kick_prob(tag))
+        shots, done = _record_kick(uid, success)
 
-            text_resp = f"@{user_name} {'골' if is_goal else '노골'}! {score_display}입니다! ({shot_num}/{PENALTY_STATE['max']}회)"
+        board = _board(shots, 5)
+        n = len(shots)
+        goal_txt = "골!" if success else "노골!"
+        prefix = f"@{uname} {goal_txt} {board}입니다! ({n}/5회)"
 
-            # 게임 종료 처리
-            if PENALTY_STATE["shots"] == PENALTY_STATE["max"]:
-                goals = PENALTY_STATE["results"].count("⭕️")
-                fails = PENALTY_STATE["results"].count("❌️")
-                text_resp += f"\n\n게임 종료!\n최종 스코어는 {score_display} (골 {goals} / 실축 {fails})입니다."
+        if done:
+            total = sum(1 for s in shots if s)
+            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말하세요."
+            return jsonify({"version": "2.0", "template": {"outputs": [
+                {"simpleText": {"text": prefix + summary}}
+            ]}})
+        else:
+            return jsonify({"version": "2.0", "template": {"outputs": [
+                {"simpleText": {"text": prefix}}
+            ]}})
 
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": text_resp}}]}
-            })
-
-        # 3) 잘못된 입력
+    except Exception:
         return jsonify({
             "version": "2.0",
             "template": {"outputs": [
-                {"simpleText": {"text": "승부차기를 시작하려면 '@피파봇 승부차기'라고 입력해주세요."}}
-            ]}
-        })
-
-    except Exception as e:
-        return jsonify({
-            "version": "2.0",
-            "template": {"outputs": [
-                {"simpleText": {"text": f"승부차기 처리 중 오류가 발생했습니다: {e}"}}
+                {"simpleText": {"text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요."}}
             ]}
         })
 
