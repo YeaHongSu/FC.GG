@@ -1218,7 +1218,76 @@ def kakao_skill2_tierlist():
             "template": {"outputs": [{"simpleText": {"text": "티어리스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
 
+
 # 승부차기 미니게임
+import random, threading, re
+
+PENALTY_GAMES = {}
+PG_LOCK = threading.Lock()
+
+# 방향 정규화(+동의어)
+DIR_MAP = {
+    "left": {"왼쪽","좌","왼","left","l"},
+    "right": {"오른쪽","우","오","right","r"},
+    "center": {"가운데","중앙","센터","center","c"},
+    "leftup": {"왼쪽위","왼위","좌상","ls","lu"},
+    "leftdown": {"왼쪽아래","왼아래","좌하","ld"},
+    "rightup": {"오른쪽위","오위","우상","rs","ru"},
+    "rightdown": {"오른쪽아래","오아래","우하","rd"},
+}
+SIDE_TAGS = {"left","right","leftup","leftdown","rightup","rightdown"}
+
+def _uid(body):
+    return (((body.get("userRequest") or {}).get("user") or {}).get("id")) or "unknown"
+
+def _uname(body):
+    props = ((body.get("userRequest") or {}).get("user") or {}).get("properties") or {}
+    return props.get("nickname") or "사용자"
+
+def _normalize_dir(text: str) -> str:
+    s = (text or "").strip().lower()
+    for tag, words in DIR_MAP.items():
+        if s in words:
+            return tag
+    # 토큰에 섞여 들어오는 경우를 대비(예: '오른쪽으로')
+    for tag, words in DIR_MAP.items():
+        if any(w in s for w in words):
+            return tag
+    return ""
+
+def _board(shots, total=5):
+    marks = "".join("⭕️" if s else "❌️" for s in shots)
+    return marks + "⬜️" * (total - len(shots))
+
+def _kick_prob(tag: str) -> float:
+    return 0.33 if tag == "center" else 0.66
+
+def _start_game(uid):
+    with PG_LOCK:
+        PENALTY_GAMES[uid] = {"shots": [], "max": 5}
+
+def _has_game(uid):
+    with PG_LOCK:
+        return uid in PENALTY_GAMES
+
+def _game_state(uid):
+    with PG_LOCK:
+        return PENALTY_GAMES.get(uid)
+
+def _record_kick(uid, success: bool):
+    with PG_LOCK:
+        st = PENALTY_GAMES.get(uid)
+        if not st:  # 안전장치
+            PENALTY_GAMES[uid] = {"shots": [], "max": 5}
+            st = PENALTY_GAMES[uid]
+        st["shots"].append(success)
+        done = len(st["shots"]) >= st["max"]
+        if done:
+            final = st["shots"][:]
+            del PENALTY_GAMES[uid]
+            return final, True
+        return st["shots"][:], False
+
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
