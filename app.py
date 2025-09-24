@@ -1220,23 +1220,23 @@ def kakao_skill2_tierlist():
 
 
 # 승부차기 미니게임
-import random, threading, re
+# penalty_endpoint.py
+import random, threading
 from flask import request, jsonify
 
+# --- In-memory 상태 (운영에선 Redis 권장) ---
 PENALTY_GAMES = {}  # { user_id: {"shots":[True/False...], "max":5} }
 PG_LOCK = threading.Lock()
 
-# 방향 동의어/정규화
-DIR_MAP = {
-    "left":       {"왼쪽","좌","왼","left","l"},
-    "right":      {"오른쪽","우","오","right","r"},
-    "center":     {"가운데","중앙","센터","center","c"},
-    "leftup":     {"왼쪽위","왼위","좌상","ls","lu"},
-    "leftdown":   {"왼쪽아래","왼아래","좌하","ld"},
-    "rightup":    {"오른쪽위","오위","우상","rs","ru"},
-    "rightdown":  {"오른쪽아래","오아래","우하","rd"},
+# 방향 정규화(관리자센터에서 그대로 오니 간단히 매핑)
+DIR_ALIASES = {
+    "왼쪽": "side", "오른쪽": "side", "가운데": "center",
+    "왼쪽위": "side", "왼쪽아래": "side", "오른쪽위": "side", "오른쪽아래": "side",
+    # 영어/약어도 혹시 대비
+    "left": "side", "right": "side", "center": "center",
+    "l": "side", "r": "side", "c": "center"
 }
-SIDE_TAGS = {"left","right","leftup","leftdown","rightup","rightdown"}
+SIDE_WORDS = {"왼쪽","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래", "left","right","l","r"}
 
 def _uid(body):
     return (((body.get("userRequest") or {}).get("user") or {}).get("id")) or "unknown"
@@ -1245,109 +1245,98 @@ def _uname(body):
     props = ((body.get("userRequest") or {}).get("user") or {}).get("properties") or {}
     return props.get("nickname") or "사용자"
 
-def _p(key):
+def _p(body, key):
     return (
         (body.get("action", {}).get("params", {}) or {}).get(key)
         or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
         or ""
     )
 
-def _normalize_dir(text: str) -> str:
-    s = (text or "").strip().lower()
-    for tag, words in DIR_MAP.items():
-        if s in words:
-            return tag
-    # 토큰에 섞여 들어오는 어형(예: '오른쪽으로') 처리
-    for tag, words in DIR_MAP.items():
-        if any(w in s for w in words):
-            return tag
-    return ""
+def _kick_prob(dir_text: str) -> float:
+    # '가운데'면 33%, 그 외(왼/오/사분면)면 66%
+    is_center = (DIR_ALIASES.get(dir_text.lower(), "") == "center") or (dir_text == "가운데")
+    return 0.33 if is_center else 0.66
 
 def _board(shots, total=5):
     marks = "".join("⭕️" if s else "❌️" for s in shots)
     return marks + "⬜️" * (total - len(shots))
 
-def _kick_prob(tag: str) -> float:
-    # 왼/오/사분면=66%, 가운데=33%
-    return 0.33 if tag == "center" else 0.66
-
-def _start_game(uid):
+def _start(uid):
     with PG_LOCK:
         PENALTY_GAMES[uid] = {"shots": [], "max": 5}
 
-def _has_game(uid):
-    with PG_LOCK:
-        return uid in PENALTY_GAMES
-
-def _game_state(uid):
+def _state(uid):
     with PG_LOCK:
         return PENALTY_GAMES.get(uid)
 
-def _record_kick(uid, success: bool):
+def _record(uid, success: bool):
     with PG_LOCK:
-        st = PENALTY_GAMES.get(uid)
-        if not st:  # 안전장치
-            PENALTY_GAMES[uid] = {"shots": [], "max": 5}
-            st = PENALTY_GAMES[uid]
+        st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
         st["shots"].append(success)
-        done = len(st["shots"]) >= st["max"]
+        done = (len(st["shots"]) >= st["max"])
         if done:
             final = st["shots"][:]
             del PENALTY_GAMES[uid]
             return final, True
         return st["shots"][:], False
 
+def _quick_replies():
+    # 관리자센터가 되묻기를 해도, 버튼을 같이 주면 사용자가 편함
+    opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
+    return [{"action": "message", "label": o, "messageText": f"@피파봇 {o}"} for o in opts]
 
+
+# ---------- 별도 엔드포인트 ----------
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
         body = request.get_json(silent=True) or {}
-        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
-
         uid = _uid(body)
         uname = _uname(body)
 
-       
-        choice_raw = (_p("dir") or "").strip()
+        # 관리자센터가 되묻기로 채워주는 필수 파라미터
+        dir_text = (_p(body, "dir") or _p(body, "direction")).strip()
 
-        # 발화에서 @봇 제거 후 남은 토큰으로 방향 추정 보조
-        if not choice_raw and utter:
-            text = re.sub(r"\s+", " ", utter)
-            text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
-            choice_raw = text
+        # 1) 최초 진입: 게임 시작만 알리고, 계산은 하지 않음
+        if not _state(uid):
+            _start(uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": (
+                                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
+                                "방향을 선택해주세요: 왼쪽 / 가운데 / 오른쪽\n"
+                            )
+                        }
+                    }],
+                    "quickReplies": _quick_replies()
+                }
+            })
 
-        # 게임 미시작이면 시작 멘트 보내고 대기
-        if not _has_game(uid):
-            _start_game(uid)
-            msg = (
-                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
-                "왼쪽, 오른쪽, 가운데 중에 골라주세요."
-            )
-            return jsonify({"version": "2.0", "template": {"outputs": [
-                {"simpleText": {"text": msg}}
-            ]}})
-
-        # 진행 중인데 입력이 비었으면 현재 보드/안내
-        if not choice_raw:
-            st = _game_state(uid)
+        # 2) 진행 중: dir 값이 꼭 들어온다는 가정(관리자센터가 되묻기)
+        if not dir_text:
+            # 혹시 파라미터가 빈 경우—현재 상태만 안내
+            st = _state(uid)
             board = _board(st["shots"], st["max"])
             n = len(st["shots"]) + 1
-            msg = f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
-            return jsonify({"version": "2.0", "template": {"outputs": [
-                {"simpleText": {"text": msg}}
-            ]}})
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                        }
+                    }],
+                    "quickReplies": _quick_replies()
+                }
+            })
 
-        # 방향 정규화
-        tag = _normalize_dir(choice_raw)
-        if not tag:
-            msg = "입력을 이해하지 못했어요. '왼쪽/오른쪽/가운데' 또는 '왼쪽위/왼쪽아래/오른쪽위/오른쪽아래' 중 하나를 말해주세요."
-            return jsonify({"version": "2.0", "template": {"outputs": [
-                {"simpleText": {"text": msg}}
-            ]}})
-
-        # 확률 판정 및 기록
-        success = (random.random() < _kick_prob(tag))
-        shots, done = _record_kick(uid, success)
+        # 3) 킥 판정
+        p = _kick_prob(dir_text)
+        success = (random.random() < p)
+        shots, done = _record(uid, success)
 
         board = _board(shots, 5)
         n = len(shots)
@@ -1356,14 +1345,26 @@ def kakao_penalty():
 
         if done:
             total = sum(1 for s in shots if s)
-            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말하세요."
-            return jsonify({"version": "2.0", "template": {"outputs": [
-                {"simpleText": {"text": prefix + summary}}
-            ]}})
-        else:
-            return jsonify({"version": "2.0", "template": {"outputs": [
-                {"simpleText": {"text": prefix}}
-            ]}})
+            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {"text": prefix + summary}
+                    }]
+                }
+            })
+
+        # 계속 진행—관리자센터가 같은 인텐트로 다시 dir 되묻기
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{
+                    "simpleText": {"text": prefix}
+                }],
+                "quickReplies": _quick_replies()
+            }
+        })
 
     except Exception:
         return jsonify({
@@ -1372,6 +1373,7 @@ def kakao_penalty():
                 {"simpleText": {"text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요."}}
             ]}
         })
+
 
 
 # 포트 설정 및 웹에 띄우기
