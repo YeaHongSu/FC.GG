@@ -1223,56 +1223,72 @@ def kakao_skill2_tierlist():
 import random, threading
 from flask import request, jsonify
 
-# --- In-memory 상태 (운영에선 Redis 권장) ---
-PENALTY_GAMES = {}  # { user_id: {"shots":[True/False...], "max":5} }
+PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
 PG_LOCK = threading.Lock()
 
-# 방향 정규화(관리자센터에서 그대로 오니 간단히 매핑)
-DIR_ALIASES = {
-    "왼쪽": "side", "오른쪽": "side", "가운데": "center",
-    "왼쪽위": "side", "왼쪽아래": "side", "오른쪽위": "side", "오른쪽아래": "side",
-    # 영어/약어도 혹시 대비
-    "left": "side", "right": "side", "center": "center",
-    "l": "side", "r": "side", "c": "center"
-}
-SIDE_WORDS = {"왼쪽","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래", "left","right","l","r"}
+# ---- Payload helpers ---------------------------------------------------------
+def _uid(body: dict) -> str:
+    """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    uid = (user.get("id") or "").strip()
+    # 그래도 없으면 plusfriendUserKey / appUserId 보조
+    props = user.get("properties") or {}
+    uid = uid or (props.get("plusfriendUserKey") or props.get("appUserId") or "")
+    return uid or "unknown"
 
-def _uid(body):
-    return (((body.get("userRequest") or {}).get("user") or {}).get("id")) or "unknown"
+def _uname(body: dict) -> str:
+    """카카오 문서에는 nickname 필드가 보장되지 않음 → 표시명은 uid로 대체."""
+    # 필요 시 너희 쪽 DB/쿠키로 별명 매핑 가능
+    return _uid(body)
 
-def _uname(body):
-    props = ((body.get("userRequest") or {}).get("user") or {}).get("properties") or {}
-    return props.get("nickname") or "사용자"
+def _param_from_action(body: dict, key: str) -> str:
+    """action.params 우선, 없으면 action.detailParams[key].value"""
+    action = body.get("action") or {}
+    params = action.get("params") or {}
+    if key in params and params[key] is not None:
+        return str(params[key])
+    dparams = action.get("detailParams") or {}
+    if key in dparams and dparams[key] is not None:
+        val = (dparams[key] or {}).get("value")
+        if val is not None:
+            return str(val)
+    return ""
 
-def _p(body, key):
-    return (
-        (body.get("action", {}).get("params", {}) or {}).get(key)
-        or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
-        or ""
-    )
+def _get_kick_input(body: dict, cur_idx: int) -> str:
+    """
+    1) 다중 슬롯: dir{cur_idx} (예: dir0, dir1 ...)
+    2) 단일 슬롯: dir
+    둘 다 없으면 빈 문자열
+    """
+    key = f"dir{cur_idx}"
+    v = _param_from_action(body, key)
+    if v:
+        return v
+    return _param_from_action(body, "dir")
 
-def _kick_prob(dir_text: str) -> float:
-    # '가운데'면 33%, 그 외(왼/오/사분면)면 66%
-    is_center = (DIR_ALIASES.get(dir_text.lower(), "") == "center") or (dir_text == "가운데")
-    return 0.33 if is_center else 0.66
-
+# ---- Game helpers ------------------------------------------------------------
 def _board(shots, total=5):
     marks = "".join("⭕️" if s else "❌️" for s in shots)
     return marks + "⬜️" * (total - len(shots))
 
-def _start(uid):
+def _kick_prob(direction_text: str) -> float:
+    s = (direction_text or "").strip().lower()
+    # 가운데(센터)만 33%, 그 외(왼/오/사분면 포함) 66%
+    return 0.33 if s in {"가운데", "center", "c"} else 0.66
+
+def _start(uid: str):
     with PG_LOCK:
         PENALTY_GAMES[uid] = {"shots": [], "max": 5}
 
-def _state(uid):
+def _state(uid: str):
     with PG_LOCK:
         return PENALTY_GAMES.get(uid)
 
-def _record(uid, success: bool):
+def _record(uid: str, success: bool):
     with PG_LOCK:
         st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
         st["shots"].append(success)
-        done = (len(st["shots"]) >= st["max"])
+        done = len(st["shots"]) >= st["max"]
         if done:
             final = st["shots"][:]
             del PENALTY_GAMES[uid]
@@ -1280,67 +1296,83 @@ def _record(uid, success: bool):
         return st["shots"][:], False
 
 def _quick_replies():
-    # 관리자센터가 되묻기를 해도, 버튼을 같이 주면 사용자가 편함
     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
-    return [{"action": "message", "label": o, "messageText": f"@피파봇 {o}"} for o in opts]
+    # Kakao QuickReply(message) 포맷
+    return [{"action": "message", "label": o, "messageText": o} for o in opts]
 
-    
-
-# ---------- 별도 엔드포인트 ----------
+# ---- Endpoint ----------------------------------------------------------------
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
         body = request.get_json(silent=True) or {}
-        uid = ((body.get("userRequest") or {}).get("user").get("id") or "").strip()
+        uid = _uid(body)
+        uname = _uname(body)
 
-        st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
-        # 관리자센터가 되묻기로 채워주는 필수 파라미터
-        dir_text = (_p(body, f"dir{len(st["shots"])}")).strip()
-
-
-        # 2) 진행 중: dir 값이 꼭 들어온다는 가정(관리자센터가 되묻기)
-        if dir_text not in DIR_ALIASES.keys():
+        # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
+        st = _state(uid)
+        if not st:
+            _start(uid)
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": f"방향을 선택해주세요.(왼쪽, 오른쪽, 가운데)"
+                            "text": (
+                                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
+                                "방향을 선택해주세요: 왼쪽 / 가운데 / 오른쪽\n"
+                                "(또는 왼쪽위·왼쪽아래·오른쪽위·오른쪽아래)"
+                            )
                         }
                     }],
                     "quickReplies": _quick_replies()
                 }
             })
 
-        # 3) 킥 판정
-        p = _kick_prob(dir_text)
-        success = (random.random() < p)
+        # 2) 현재 회차 인덱스
+        st = _state(uid)
+        cur_idx = len(st["shots"])
+
+        # 3) 슬롯에서 현재 회차 입력 꺼내기 (dir{cur_idx} 또는 dir)
+        dir_text = _get_kick_input(body, cur_idx)
+
+        # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
+        if not dir_text:
+            board = _board(st["shots"], st["max"])
+            n = cur_idx + 1
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                        }
+                    }],
+                    "quickReplies": _quick_replies()
+                }
+            })
+
+        # 4) 판정
+        success = (random.random() < _kick_prob(dir_text))
         shots, done = _record(uid, success)
 
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = f"@{uid} {goal_txt} {board}입니다! ({n}/5회)"
+        prefix = f"@{uname} {goal_txt} {board}입니다! ({n}/5회)"
 
+        # 5) 종료/진행
         if done:
             total = sum(1 for s in shots if s)
-            summary = f"\n게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
+            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '승부차기'라고 말해주세요."
             return jsonify({
                 "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {"text": prefix + summary}
-                    }]
-                }
+                "template": { "outputs": [{ "simpleText": { "text": prefix + summary } }] }
             })
 
-        # 계속 진행—관리자센터가 같은 인텐트로 다시 dir 되묻기
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{
-                    "simpleText": {"text": prefix}
-                }],
+                "outputs": [{ "simpleText": { "text": prefix } }],
                 "quickReplies": _quick_replies()
             }
         })
@@ -1348,9 +1380,7 @@ def kakao_penalty():
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": {"outputs": [
-                {"simpleText": {"text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요."}}
-            ]}
+            "template": { "outputs": [{ "simpleText": { "text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요." } }] }
         })
 
 
