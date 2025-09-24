@@ -1308,26 +1308,6 @@ def kakao_penalty():
         uid = _uid(body)
         uname = _uname(body)
 
-        # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
-        st = _state(uid)
-        if not st:
-            _start(uid)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
-                                "방향을 선택해주세요: 왼쪽 / 가운데 / 오른쪽\n"
-                                "(또는 왼쪽위·왼쪽아래·오른쪽위·오른쪽아래)"
-                            )
-                        }
-                    }],
-                    "quickReplies": _quick_replies()
-                }
-            })
-
         # 2) 현재 회차 인덱스
         st = _state(uid)
         cur_idx = len(st["shots"])
