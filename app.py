@@ -1307,8 +1307,8 @@ def kakao_penalty():
         uid = _uid(body)
         uname = _uname(body)
 
-        # 관리자센터 파라미터 우선 (예: dir)
-        choice_raw = _p("dir") or _p("direction")
+       
+        choice_raw = (_p("dir") or "").strip()
 
         # 발화에서 @봇 제거 후 남은 토큰으로 방향 추정 보조
         if not choice_raw and utter:
