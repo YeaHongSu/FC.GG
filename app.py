@@ -1220,7 +1220,6 @@ def kakao_skill2_tierlist():
 
 
 # 승부차기 미니게임
-# penalty_endpoint.py
 import random, threading
 from flask import request, jsonify
 
@@ -1285,48 +1284,28 @@ def _quick_replies():
     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
     return [{"action": "message", "label": o, "messageText": f"@피파봇 {o}"} for o in opts]
 
+    
 
 # ---------- 별도 엔드포인트 ----------
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
         body = request.get_json(silent=True) or {}
-        uid = _uid(body)
-        uname = _uname(body)
+        uid = ((body.get("userRequest") or {}).get("user").get("id") or "").strip()
 
+        st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
         # 관리자센터가 되묻기로 채워주는 필수 파라미터
-        dir_text = (_p(body, "dir") or _p(body, "direction")).strip()
+        dir_text = (_p(body, f"dir{len(st["shots"])}")).strip()
 
-        # 1) 최초 진입: 게임 시작만 알리고, 계산은 하지 않음
-        if not _state(uid):
-            _start(uid)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                "승부차기 미니게임을 시작합니다. 총 5회 진행됩니다.\n"
-                                "방향을 선택해주세요: 왼쪽 / 가운데 / 오른쪽\n"
-                            )
-                        }
-                    }],
-                    "quickReplies": _quick_replies()
-                }
-            })
 
         # 2) 진행 중: dir 값이 꼭 들어온다는 가정(관리자센터가 되묻기)
-        if not dir_text:
-            # 혹시 파라미터가 빈 경우—현재 상태만 안내
-            st = _state(uid)
-            board = _board(st["shots"], st["max"])
-            n = len(st["shots"]) + 1
+        if dir_text not in DIR_ALIASES.keys():
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                            "text": f"방향을 선택해주세요.(왼쪽, 오른쪽, 가운데)"
                         }
                     }],
                     "quickReplies": _quick_replies()
@@ -1341,11 +1320,11 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = f"@{uname} {goal_txt} {board}입니다! ({n}/5회)"
+        prefix = f"@{uid} {goal_txt} {board}입니다! ({n}/5회)"
 
         if done:
             total = sum(1 for s in shots if s)
-            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
+            summary = f"\n게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
             return jsonify({
                 "version": "2.0",
                 "template": {
@@ -1373,7 +1352,6 @@ def kakao_penalty():
                 {"simpleText": {"text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요."}}
             ]}
         })
-
 
 
 # 포트 설정 및 웹에 띄우기
