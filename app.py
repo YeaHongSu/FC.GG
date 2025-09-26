@@ -1222,6 +1222,7 @@ def kakao_skill2_tierlist():
 # 승부차기 미니게임
 import random, threading
 from flask import request, jsonify
+
 PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
 PG_LOCK = threading.Lock()
 
@@ -1329,23 +1330,30 @@ def kakao_penalty():
         # 2) 현재 회차 인덱스
         st = _state(uid)
         cur_idx = len(st["shots"])
-
+        
         # 3) 슬롯에서 현재 회차 입력 꺼내기 (dir{cur_idx} 또는 dir)
         dir_text = _get_kick_input(body, cur_idx)
-
+        print(cur_idx, dir_text)
         # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
         if not dir_text:
             board = _board(st["shots"], st["max"])
-            n = cur_idx + 1
+            n = cur_idx
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": f"@{uname} 방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                            "text": f"{{#mentions.user}}방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
                         }
                     }],
-                    "quickReplies": _quick_replies()
+                },
+                "extra": {
+                    "mentions":{
+                        "user":{
+                            "type": "botUserKey",
+                            "id": uid
+                        }
+                    }
                 }
             })
 
@@ -1356,22 +1364,37 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = f"@{uname} {goal_txt} {board}입니다! ({n}/5회)"
+        prefix = f"{{#mentions.user}} {goal_txt} {board}입니다! ({n}/5회)"
 
         # 5) 종료/진행
         if done:
             total = sum(1 for s in shots if s)
-            summary = f"\n게임 종료! @{uname} {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '승부차기'라고 말해주세요."
+            summary = f"\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
             return jsonify({
                 "version": "2.0",
-                "template": { "outputs": [{ "simpleText": { "text": prefix + summary } }] }
+                "template": { "outputs": [{ "simpleText": { "text": prefix + summary } }] },
+                "extra": {
+                    "mentions":{
+                        "user":{
+                            "type": "botUserKey",
+                            "id": uid
+                        }
+                    }
+                }
             })
 
         return jsonify({
             "version": "2.0",
             "template": {
                 "outputs": [{ "simpleText": { "text": prefix } }],
-                "quickReplies": _quick_replies()
+            },
+            "extra": {
+                "mentions":{
+                    "user":{
+                        "type": "botUserKey",
+                        "id": uid
+                    }
+                }
             }
         })
 
@@ -1380,6 +1403,7 @@ def kakao_penalty():
             "version": "2.0",
             "template": { "outputs": [{ "simpleText": { "text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요." } }] }
         })
+
 
 
 # 포트 설정 및 웹에 띄우기
