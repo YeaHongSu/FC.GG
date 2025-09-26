@@ -1222,7 +1222,6 @@ def kakao_skill2_tierlist():
 # 승부차기 미니게임
 import random, threading
 from flask import request, jsonify
-
 PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
 PG_LOCK = threading.Lock()
 
@@ -1307,6 +1306,25 @@ def kakao_penalty():
         body = request.get_json(silent=True) or {}
         uid = _uid(body)
         uname = _uname(body)
+
+        # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
+        st = _state(uid)
+        if not st:
+            _start(uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": (
+                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
+                                "왼쪽 가운데 오른쪽 중에 하나를 입력해주세요.\n"
+                            )
+                        }
+                    }],
+                    "quickReplies": _quick_replies()
+                }
+            })
 
         # 2) 현재 회차 인덱스
         st = _state(uid)
