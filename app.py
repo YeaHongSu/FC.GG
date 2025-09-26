@@ -1308,9 +1308,11 @@ def kakao_penalty():
         uid = _uid(body)
         uname = _uname(body)
 
+        uter = body.get("userRequest").get("utterance") or {}
         # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
         st = _state(uid)
-        if not st:
+        
+        if not st and uter in ['승부차기', '승차']:
             _start(uid)
             return jsonify({
                 "version": "2.0",
@@ -1333,7 +1335,7 @@ def kakao_penalty():
         
         # 3) 슬롯에서 현재 회차 입력 꺼내기 (dir{cur_idx} 또는 dir)
         dir_text = _get_kick_input(body, cur_idx)
-        print(cur_idx, dir_text)
+        
         # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
         if not dir_text:
             board = _board(st["shots"], st["max"])
@@ -1343,7 +1345,7 @@ def kakao_penalty():
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": f"{{#mentions.user}}방향을 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                            "text": f"왼쪽, 가운데, 오른쪽 중에 하나를 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
                         }
                     }],
                 },
@@ -1391,7 +1393,7 @@ def kakao_penalty():
             "extra": {
                 "mentions":{
                     "user":{
-                        "type": "botUserKey",
+                        "type": "plusfriendUserKey",
                         "id": uid
                     }
                 }
