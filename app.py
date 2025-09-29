@@ -441,6 +441,16 @@ def wr_imp_new():
 def wr_imp_redirect():
     return redirect(url_for('wr_imp_new'), code=301)
 
+# 공피하기
+@app.route('/공피하기', methods=['GET', 'POST'])
+def ball_new():
+    return render_template('ball_game.html')
+
+# 기존 URL 리다이렉트
+@app.route('/ball_game.html', methods=['GET', 'POST'])
+def ball_redirect():
+    return redirect(url_for('ball_new'), code=301)
+
 
 
 # 승률 개선 솔루션 결과 페이지
