@@ -1321,7 +1321,9 @@ def kakao_penalty():
         uter = body.get("userRequest").get("utterance") or {}
         # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
         st = _state(uid)
-        
+
+        if uter in ['종료', '나가기', '홈으로']:
+            
         if not st and uter in ['승부차기', '승차']:
             _start(uid)
             return jsonify({
@@ -1347,7 +1349,7 @@ def kakao_penalty():
         dir_text = _get_kick_input(body, cur_idx)
         
         # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
-        if not dir_text:
+        if not dir_text or dir_text in ['승부차기', '승차']:
             board = _board(st["shots"], st["max"])
             n = cur_idx
             return jsonify({
@@ -1361,7 +1363,7 @@ def kakao_penalty():
                 },
                 "extra": {
                     "mentions":{
-                        "user":{
+                        "user1":{
                             "type": "botUserKey",
                             "id": uid
                         }
@@ -1376,7 +1378,7 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = f"{{#mentions.user}} {goal_txt} {board}입니다! ({n}/5회)"
+        prefix = f"{{#mentions.user1}} {goal_txt} {board}입니다! ({n}/5회)"
 
         # 5) 종료/진행
         if done:
@@ -1387,7 +1389,7 @@ def kakao_penalty():
                 "template": { "outputs": [{ "simpleText": { "text": prefix + summary } }] },
                 "extra": {
                     "mentions":{
-                        "user":{
+                        "user1":{
                             "type": "botUserKey",
                             "id": uid
                         }
@@ -1402,8 +1404,8 @@ def kakao_penalty():
             },
             "extra": {
                 "mentions":{
-                    "user":{
-                        "type": "plusfriendUserKey",
+                    "user1":{
+                        "type": "appUserId",
                         "id": uid
                     }
                 }
