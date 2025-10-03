@@ -1327,7 +1327,7 @@ def kakao_penalty():
         uter = body.get("userRequest").get("utterance") or {}
         # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
         st = _state(uid)
-
+        print(body)
         if uter in ['종료', '나가기', '홈으로']:
             _reset(uid)
             return jsonify({
@@ -1365,7 +1365,7 @@ def kakao_penalty():
         dir_text = _get_kick_input(body, cur_idx)
         
         # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
-        if not dir_text or dir_text in ['승부차기', '승차']:
+        if not dir_text or uter in ['승부차기', '승차']:
             board = _board(st["shots"], st["max"])
             n = cur_idx
             return jsonify({
@@ -1421,7 +1421,7 @@ def kakao_penalty():
             "extra": {
                 "mentions":{
                     "user1":{
-                        "type": "appUserId",
+                        "type": "accountId",
                         "id": uid
                     }
                 }
