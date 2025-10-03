@@ -1392,7 +1392,7 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = "{{#mentions.user1}}" + f"{goal_txt} {board}입니다! ({n}/5회)"
+        prefix = "{{#mentions.user1}}" + f" {goal_txt} {board}입니다! ({n}/5회)"
 
         # 5) 종료/진행
         if done:
