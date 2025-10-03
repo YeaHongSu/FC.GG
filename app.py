@@ -1241,7 +1241,7 @@ def _uid(body: dict) -> str:
     """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
     user = ((body.get("userRequest") or {}).get("user") or {})
     uid = (user.get("id") or "").strip()
-    print(uid)
+    
     return uid or "unknown"
 
 def _uname(body: dict) -> str:
