@@ -1294,6 +1294,12 @@ def _state(uid: str):
     with PG_LOCK:
         return PENALTY_GAMES.get(uid)
 
+def _reset(uid: str):
+    """현재 사용자 게임 상태 완전 초기화"""
+    with PG_LOCK:
+        if uid in PENALTY_GAMES:
+            del PENALTY_GAMES[uid]
+
 def _record(uid: str, success: bool):
     with PG_LOCK:
         st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
@@ -1323,7 +1329,17 @@ def kakao_penalty():
         st = _state(uid)
 
         if uter in ['종료', '나가기', '홈으로']:
-            
+            _reset(uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": "승부차기 종료! 다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                        }
+                    }]
+                }
+            })
         if not st and uter in ['승부차기', '승차']:
             _start(uid)
             return jsonify({
