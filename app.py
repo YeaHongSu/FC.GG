@@ -1241,9 +1241,7 @@ def _uid(body: dict) -> str:
     """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
     user = ((body.get("userRequest") or {}).get("user") or {})
     uid = (user.get("id") or "").strip()
-    # 그래도 없으면 plusfriendUserKey / appUserId 보조
-    props = user.get("properties") or {}
-    uid = uid or (props.get("plusfriendUserKey") or props.get("appUserId") or "")
+    print(uid)
     return uid or "unknown"
 
 def _uname(body: dict) -> str:
@@ -1327,7 +1325,7 @@ def kakao_penalty():
         uter = body.get("userRequest").get("utterance") or {}
         # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
         st = _state(uid)
-        print(body)
+        
         if uter in ['종료', '나가기', '홈으로']:
             _reset(uid)
             return jsonify({
@@ -1335,7 +1333,7 @@ def kakao_penalty():
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": "승부차기 종료! 다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                            "text": "📣 승부차기 종료!\n 다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
                         }
                     }]
                 }
@@ -1394,7 +1392,7 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         goal_txt = "골!" if success else "노골!"
-        prefix = f"{{#mentions.user1}} {goal_txt} {board}입니다! ({n}/5회)"
+        prefix = "{{#mentions.user1}}" + f"{goal_txt} {board}입니다! ({n}/5회)"
 
         # 5) 종료/진행
         if done:
@@ -1421,7 +1419,7 @@ def kakao_penalty():
             "extra": {
                 "mentions":{
                     "user1":{
-                        "type": "accountId",
+                        "type": "botUserKey",
                         "id": uid
                     }
                 }
