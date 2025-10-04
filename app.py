@@ -971,48 +971,73 @@ def kakao_skill():
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
             match_data_list = get_match_data(matches, headers)
-
-            results = []        # 승/패 텍스트
-            w_l_data = []       # calculate_win_improvement 인풋
-            imp_rows = []       # 지표 행들
-
+        
+            results = []        # "승"/"패"(필요시 "무")
+            w_l_data = []       # calculate_win_improvement 라벨 인풋
+            imp_rows = []       # 내 지표 행(수치만 뽑아 계산에 사용)
+        
             for data in match_data_list:
                 my = me(data, nick)
-                res = my["matchDetail"]["matchResult"]  # "승"/"패"
+                opp = you(data, nick)
+        
+                # 내/상대 지표 모두 변환
+                row = data_list(my)              # 내 지표
+                opp_row = data_list(opp)         # 상대 지표
+        
+                # 페이지(wr_result.html)와 동일: 둘 중 하나라도 없으면 제외
+                if row is None or opp_row is None:
+                    continue
+        
+                res = my["matchDetail"]["matchResult"]  # "승"/"패"/"무" 가능
+        
+                # (선택) 무승부를 학습/예측에서 제외하려면 아래 주석 해제
+                # if res not in ("승", "패"):
+                #     continue
+        
                 results.append(res)
-                w_l_data.append(res)                    # 함수가 내부에서 처리(문자 그대로 사용)하도록 기존 로직 유지
-                row = data_list(my)
-                if row:
-                    imp_rows.append(row)
-
+                w_l_data.append(res)     # 함수에서 라벨로 사용
+                imp_rows.append(row)
+        
+            # 현재 승률(챗봇 카드 상단 요약용)
             total = len(results)
             wins = sum(1 for r in results if r == "승")
             if total:
-                win_rate_text = f"{round(wins/total*100, 2)}%"
-
-            # 평균/클러스터 비교로 플레이스타일
+                win_rate_text = f"{wins / total * 100:.2f}%"
+        
+            # 평균/클러스터 비교로 플레이스타일 + 예상 승률 계산
             if imp_rows:
+                # 숫자만 필터링
                 filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
                 my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+        
                 cl = np.array(data_list_cl(avg_data(mode)))
                 diff = (my_avg - cl) / cl
+        
                 max_idx, max_vals = top_n_argmax(diff, 20)
                 min_idx, min_vals = top_n_argmin(diff, 20)
                 threshold = 0.9
                 max_data = list(zip(max_idx[:5], max_vals[:5]))
                 min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+        
                 style = determine_play_style(max_data, min_data)
                 play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
-
+        
                 # ---- 예상 승률 계산 ----
                 padded_imp = np.array(filt, dtype=float)
                 try:
-                    top_n, increase_ratio, improved_features_text, original_win_rate, modified_win_rate, win_rate_improvement = \
-                        calculate_win_improvement(padded_imp, w_l_data, data_label)
+                    (
+                        top_n,
+                        increase_ratio,
+                        improved_features_text,
+                        original_win_rate,
+                        modified_win_rate,
+                        win_rate_improvement,
+                    ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
                 except Exception:
-                    # 계산 실패 시 안전한 표기
+                    # 계산 실패 시 안전 표기
                     original_win_rate = modified_win_rate = win_rate_improvement = None
                     improved_features_text = ""
+
 
         # ---------- 5) 카드 본문 구성 ----------
         # 링크들
