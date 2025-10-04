@@ -1026,10 +1026,10 @@ def kakao_skill():
                 head = f"{nick}  Lv.{lv}"
                 body_lines = [
                     "",
-                    "[개선 시 승률]",
+                    "【개선 시 승률】",
                     f"{round(original_win_rate, 2)}% -> {round(modified_win_rate, 2)}% (＋{round(win_rate_improvement, 2)}%p)",
                     "",
-                    "[개선해야하는 지표]"
+                    "【개선해야하는 지표】"
                 ]
 
                 # improved_features_text 가 긴 경우 앞부분만 표시(예: 3~5개)
@@ -1067,7 +1067,7 @@ def kakao_skill():
         else:
             # 전적검색 기본 카드(참고용 + 승률개선 링크 배치)
             title = f"{nick} · Lv.{lv}"
-            desc_common = f"승률  {win_rate_text}\n【플레이스타일】 {play_style_text}"
+            desc_common = f"승률  {win_rate_text}\n【플레이스타일】\n {play_style_text}"
             card = {
                 "basicCard": {
                     "title": title,
