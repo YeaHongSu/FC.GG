@@ -1027,7 +1027,7 @@ def kakao_skill():
                 body_lines = [
                     "",
                     "【개선 시 승률】",
-                    f"{round(original_win_rate, 2)}% -> {round(modified_win_rate, 2)}% (＋{round(win_rate_improvement, 2)}%p)",
+                    f"{round(original_win_rate, 2)}% ➜ {round(modified_win_rate, 2)}% (＋{round(win_rate_improvement, 2)}%p)",
                     "",
                     "【개선해야하는 지표】"
                 ]
