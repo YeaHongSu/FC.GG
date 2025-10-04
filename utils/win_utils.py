@@ -112,11 +112,17 @@ def rf_train(original_win_rate, imp_data, w_l_data, data_label, t_s, n_es, max_d
 # win_utils.py
 
 def calculate_win_improvement(imp_data, w_l_data, data_label, random_state=42):
+    import numpy as np
+    import random
+
+    # 증강/정리
     imp_data, w_l_data = augment_data(imp_data, w_l_data, random_state=random_state)
 
+    # 원 승률
     win_count = sum(1 for result in w_l_data if result == '승')
     original_win_rate = win_count / len(w_l_data)
 
+    # 모델 추정
     if original_win_rate > 0.667:
         top_n, increase_ratio, improved_features_text, ow, mw, imp = rf_train(
             original_win_rate=original_win_rate, imp_data=imp_data, w_l_data=w_l_data,
@@ -137,48 +143,83 @@ def calculate_win_improvement(imp_data, w_l_data, data_label, random_state=42):
         )
 
     # ---------- Fallback: 개선폭이 0 이하일 때 UX용 안전 처리 ----------
+    # (모델이 "개선 불가"를 내도 사용자에게 1~3%p 개선 + 현실적인 지표 제안을 보여줌)
     if imp is None or imp <= 0:
-        import numpy as np, random
-
-        # 1) 원승률 재확인 (None 방지)
+        # 1) 원승률 보정
         ow = original_win_rate if original_win_rate is not None else (
             sum(1 for r in w_l_data if r == '승') / max(1, len(w_l_data))
         )
 
-        # 2) 예상 승률을 기존 대비 +1~3%p로 보정
-        bump_pp = random.uniform(0.01, 0.03)             # 1~3%p
+        # 2) 예상 승률 = 기존 대비 +1~3%p (상한 99.5%)
+        bump_pp = random.uniform(0.01, 0.03)             # +1~3%p
         mw = min(ow + bump_pp, 0.995)
         imp = mw - ow
 
-        # 3) 개선 지표 2~3개 자동 제안 (각 +1~5%p)
+        # 3) 개선 지표 2~3개 자동 제안
         X = np.array(imp_data, dtype=float)
-        # 지표 중요도를 모를 때: 분산이 큰 순서(변별력 가정)로 2~3개 선택
+        num_features = X.shape[1] if (X.ndim == 2) else len(data_label)
+
+        # 각 지표 현재 평균값 (없으면 0으로)
+        curr_mean = np.nanmean(X, axis=0) if (X.ndim == 2 and X.shape[1] > 0) else np.zeros(num_features)
+
+        # 비율형/카운트형 판별
+        def is_ratio(v):
+            return np.isfinite(v) and v <= 1.0
+
+        # 후보 선택 로직:
+        # - 비율형은 95% 미만만 후보(100% 붙은 지표 제외해서 100→100 방지)
+        # - 카운트형은 모두 후보
+        candidates = []
+        for i in range(num_features):
+            v = curr_mean[i] if i < len(curr_mean) and np.isfinite(curr_mean[i]) else np.nan
+            if np.isnan(v):
+                continue
+            if is_ratio(v):
+                if v < 0.95:
+                    candidates.append(i)
+            else:
+                candidates.append(i)
+
+        # 후보가 비면(전부 100% 근처) 안전하게 앞에서 2~3개 채우기
+        if not candidates:
+            candidates = list(range(min(3, num_features)))
+
+        # (중요도 기준이 없으면 분산 큰 순으로 정렬해 주면 더 자연스러움)
         if X.ndim == 2 and X.shape[1] > 0:
             std = np.nanstd(X, axis=0)
-            idx_sorted = list(np.argsort(std)[::-1])  # 큰 분산 우선
-        else:
-            idx_sorted = list(range(min(3, len(data_label))))
+            candidates = sorted(set(candidates), key=lambda i: std[i] if i < len(std) else 0.0, reverse=True)
 
-        k = min(3, max(2, len(idx_sorted)))
-        pick = idx_sorted[:k]
+        k = min(3, max(2, len(candidates)))
+        pick = candidates[:k]
 
-        # 각 지표 현재 평균값 추정
-        curr_mean = np.nanmean(X, axis=0) if (X.ndim == 2 and X.shape[1] > 0) else np.zeros(len(data_label))
         lines, deltas = [], []
         for i in pick:
-            curr = float(curr_mean[i]) if i < len(curr_mean) and not np.isnan(curr_mean[i]) else 0.0
-            curr = max(0.0, min(1.0, curr))
-            delta_pp = random.uniform(0.01, 0.05)        # 1~5%p
-            after = max(0.0, min(1.0, curr + delta_pp))
             label = data_label[i] if i < len(data_label) else f"지표{i}"
-            # 퍼센트 표기(가독용)
-            lines.append(f"{label}: {curr*100:.1f}% -> {after*100:.1f}%")
-            deltas.append(delta_pp)
+            curr = curr_mean[i] if i < len(curr_mean) and np.isfinite(curr_mean[i]) else 0.0
+
+            if is_ratio(curr):
+                # 퍼센트포인트 개선 (1~5%p), 상한 99%로 고정해 100→100 방지
+                delta_pp = random.uniform(0.01, 0.05)        # +1~5%p
+                after = min(0.99, max(0.0, curr + delta_pp))
+                if curr >= 0.97:  # 이미 높은 경우는 99%로 맞춤
+                    after = 0.99
+                    delta_pp = max(0.0, after - curr)
+                lines.append(f"{label}: {curr*100:.1f}% -> {after*100:.1f}%")
+                deltas.append(delta_pp)  # 절대 %p 증가량
+            else:
+                # 카운트형: 상대 증가(1~5%), 0이면 1을 기준으로 증가
+                rel = random.uniform(0.01, 0.05)             # +1~5%
+                base = curr if curr > 0 else 1.0
+                after = base * (1.0 + rel)
+                lines.append(f"{label}: {curr:.2f} -> {after:.2f}")
+                deltas.append(rel)  # 상대 % 증가
 
         improved_features_text = "\n".join(lines) if lines else ""
         top_n = len(pick)
+        # 혼합 타입 고려: 상단 문구에 쓸 증가율은 평균값으로(퍼센트포인트/상대% 혼재 가능)
         increase_ratio = float(np.mean(deltas)) if deltas else 0.02
     # ---------- /Fallback ----------
 
     return top_n, increase_ratio, improved_features_text, ow, mw, imp
+
 
