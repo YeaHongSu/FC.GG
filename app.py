@@ -1054,7 +1054,7 @@ def kakao_skill():
 
             card = {
                 "basicCard": {
-                    "title": "승률개선 솔루션",
+                    "title": "승률 개선 솔루션",
                     "description": description,
                     "thumbnail": {"imageUrl": tier_image} if tier_image else None,
                     "buttons": [
