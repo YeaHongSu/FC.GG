@@ -1096,10 +1096,10 @@ def kakao_skill():
             card = {
                 "basicCard": {
                     "title": title,
-                    "description": f"{desc_common}\n\n 최근 25경기 기반 요약입니다.",
+                    "description": f"{desc_common}\n\n 최근 25경기 기반 전적입니다.",
                     "thumbnail": {"imageUrl": tier_image} if tier_image else None,
                     "buttons": [
-                        {"label": "자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
                         {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
                     ]
                 }
