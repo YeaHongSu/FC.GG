@@ -1199,7 +1199,7 @@ def kakao_skill2_tierlist():
         items = []
         for i, r in enumerate(rows, 1):
             title = f"{i}. {r['name']}"
-            desc  = f"{r['tier_name']} / FC스코어:{r['score']} / 출전:{r['apps']}"
+            desc  = f"{r['tier_name']} | FC스코어:{r['score']} | 출전:{r['apps']}"
             image = r["mini"] or r["season"] or None
             item = {"title": title, "description": desc}
             if image:
