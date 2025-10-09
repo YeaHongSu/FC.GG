@@ -887,10 +887,10 @@ def kakao_skill():
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
         MODE_SYNONYMS = {
-            "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
-            "60": ["60", "친선경기", "친선", "클래식", "클겜"],
-            "52": ["52", "감독모드", "감독", "감모"],
-            "40": ["40", "커스텀매치", "커스텀", "커겜"],
+            "공식경기": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
+            "친선경기": ["60", "친선경기", "친선", "클래식", "클겜"],
+            "감독모드": ["52", "감독모드", "감독", "감모"],
+            "커스텀매치": ["40", "커스텀매치", "커스텀", "커겜"],
         }
         WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
 
@@ -943,7 +943,9 @@ def kakao_skill():
         found_nick = " ".join(tokens).strip()
 
         nick = nick or found_nick
-        mode = mode or found_mode
+        mode_key = next((key for key, synonyms in MODE_SYNONYMS.items() if mode in synonyms), None)
+
+        mode = mode_key or found_mode
 
         # 한글 → 코드 (글로벌에 정의되어 있으면 사용)
         REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
