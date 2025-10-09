@@ -958,7 +958,7 @@ def kakao_skill():
 
         # ---------- 3) 최근 25경기 로드 ----------
         matches = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
+            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=10",
             headers=headers, timeout=1.8
         ).json()
 
