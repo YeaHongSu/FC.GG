@@ -848,7 +848,7 @@ def kakao_skill():
 
         # ---- 튜닝 파라미터 ----
         API_TIMEOUT = 1.2   # 각 외부 API 호출 타임아웃(초)
-        MAX_DETAIL  = 8     # match-detail 최대 조회 건수 (경량)
+        MAX_DETAIL  = 10     # match-detail 최대 조회 건수 (경량)
         TIME_BUDGET = 4.2   # 전체 시간 예산(초) — 5초 제한 대비 여유
 
         # ---- 유틸(로컬) ----
