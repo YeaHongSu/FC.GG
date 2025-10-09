@@ -47,17 +47,38 @@ def save_nickname_search(nickname, lv, tier_image):
     conn.close()
 
 
-async def fetch_match_data(session, match_id, headers):
-    url = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={match_id}"
-    async with session.get(url, headers=headers) as response:
-        return await response.json()
+import aiohttp
+import asyncio
+
+# ✓ 1) 개별 요청에 타임아웃
+REQ_TIMEOUT = aiohttp.ClientTimeout(sock_connect=1.0, sock_read=1.0)
+# ✓ 2) 전체 동시성 제한
+CONCURRENCY = 8
+
+async def fetch_match_data(session, match_id, headers, sem):
+    url = "https://open.api.nexon.com/fconline/v1/match-detail"
+    async with sem:
+        try:
+            async with session.get(url, headers=headers, params={"matchid": match_id}) as resp:
+                # 200 아니면 스킵 (분석 로직이 예외로 뻗지 않게)
+                if resp.status != 200:
+                    return None
+                return await resp.json()
+        except Exception:
+            return None  # 느린/이상 응답은 과감히 제외
 
 async def fetch_all_match_data(matches, headers):
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_match_data(session, match_id, headers) for match_id in matches]
-        return await asyncio.gather(*tasks)
+    sem = asyncio.Semaphore(CONCURRENCY)
+    # 세션에 타임아웃만 부여 (전역 데드라인은 걸지 않음 = 기존 잘 되던 케이스 보존)
+    async with aiohttp.ClientSession(timeout=REQ_TIMEOUT) as session:
+        tasks = [fetch_match_data(session, mid, headers, sem) for mid in matches]
+        # 개별 태스크의 예외는 None으로 처리 (return_exceptions=False 기본)
+        results = await asyncio.gather(*tasks, return_exceptions=False)
+        # 유효 json만 통과
+        return [r for r in results if isinstance(r, dict)]
 
 def get_match_data(matches, headers):
+    # 기존 시그니처 유지
     return asyncio.run(fetch_all_match_data(matches, headers))
    
 # Flask 선언
@@ -911,19 +932,21 @@ def kakao_skill():
         # ---------- 2) 기본 정보 ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         ouid = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}",
-            headers=headers, timeout=1.8
+            "https://open.api.nexon.com/fconline/v1/id",
+            headers=headers, timeout=1.8,
+            params={"nickname": nick}
         ).json()["ouid"]
-
+        
         lv = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}",
-            headers=headers, timeout=1.8
+            "https://open.api.nexon.com/fconline/v1/user/basic",
+            headers=headers, timeout=1.8,
+            params={"ouid": ouid}
         ).json()["level"]
-
-        # 티어 이미지(매치타입별 최고)
+        
         division_info = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
-            headers=headers, timeout=1.8
+            "https://open.api.nexon.com/fconline/v1/user/maxdivision",
+            headers=headers, timeout=1.8,
+            params={"ouid": ouid}
         ).json()
         division_mapping = [
             {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
@@ -958,8 +981,9 @@ def kakao_skill():
 
         # ---------- 3) 최근 25경기 로드 ----------
         matches = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
-            headers=headers, timeout=1.8
+            "https://open.api.nexon.com/fconline/v1/user/match",
+            headers=headers, timeout=1.8,
+            params={"ouid": ouid, "matchtype": mode, "limit": 25}
         ).json()
 
         # 기본값
