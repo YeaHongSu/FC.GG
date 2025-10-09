@@ -1454,7 +1454,7 @@ def kakao_penalty():
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": { "outputs": [{ "simpleText": { "text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요." } }] }
+            "template": { "outputs": [{ "simpleText": { "text": "죄송해요. 이해하지 못했어요. 자세한 내용은 도움말을 참고해주세요." } }] }
         })
 
 
