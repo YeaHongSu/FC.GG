@@ -837,9 +837,9 @@ def fun_redirect():
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     """
-    - 모든 모드 별칭을 즉시 숫자 코드(50/60/52/40)로 정규화
-    - '친선경기/친선/클래식/클겜'과 '커스텀매치/커스텀/커겜' 제대로 동작
-    - 전적검색/승률개선 공통, 5초 제약 대비 경량화 유지
+    - 모드 별칭을 숫자 코드(50/60/52/40)로 최대한 강제 정규화
+    - 어떤 실패 케이스든 '불가합니다!' 카드로 폴백 (무응답 방지)
+    - 전적검색/승률개선 겸용
     """
     try:
         import time, re
@@ -861,8 +861,13 @@ def kakao_skill():
             except Exception:
                 return {}
 
-        def kakao_text(msg):
-            return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":msg}}]}})
+        def kakao_text(msg, quicks=None):
+            tpl = {"outputs": [{"simpleText": {"text": msg}}]}
+            if quicks:
+                tpl["quickReplies"] = [
+                    {"label": q[0], "action": "message", "messageText": q[1]} for q in quicks
+                ]
+            return jsonify({"version":"2.0","template": tpl})
 
         def pick_tier_image(division_info, mode_code):
             try:
@@ -925,10 +930,10 @@ def kakao_skill():
         for i in range(len(tokens)-1, -1, -1):
             t = tokens[i]
             if t in WORD2CODE:
-                found_mode = WORD2CODE[t]
+                found_mode = WORD2CODE[t]  # ← 별칭→코드
                 tokens.pop(i)
                 break
-            if t in MODE_SYNONYMS:  # 숫자 그대로
+            if t in MODE_SYNONYMS:        # 숫자 그대로 들어온 케이스 (키 매칭)
                 found_mode = t
                 tokens.pop(i)
                 break
@@ -937,18 +942,31 @@ def kakao_skill():
         found_nick = " ".join(tokens).strip()
 
         nick = nick or found_nick
-        mode_key = next((key for key, synonyms in MODE_SYNONYMS.items() if mode in synonyms), None)
 
-        mode = mode_key or found_mode
-        
-        # (백업) 외부 전역 매핑 존재시 한 번 더 숫자화 시도
-        # 하지만 이미 숫자 코드라면 이 줄은 영향 없음
+        # (1) 파라미터 모드가 별칭이면 코드로 변환
+        if mode in WORD2CODE:
+            mode = WORD2CODE[mode]
+        # (2) 그래도 없으면 토큰에서 찾은 모드 사용
+        mode = mode or found_mode
+
+        # (3) 외부 전역 매핑 존재시 한 번 더 숫자화 시도
         REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
-        print(mode)
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
-        print(mode)
-        if not nick or not mode:
-            return kakao_text("닉네임/모드를 인식하지 못했어요. 예) 전적검색 모설 공식경기")
+
+        # (4) 최종적으로도 숫자 아님 → 안내 & 퀵리플라이
+        if mode not in {"50","60","52","40"}:
+            return kakao_text(
+                "모드를 인식하지 못했어요. 아래에서 선택해 주세요.",
+                quicks=[("공식경기","공식경기"),("친선경기","친선경기"),
+                        ("감독모드","감독모드"),("커스텀매치","커스텀매치")]
+            )
+
+        if not nick:
+            return kakao_text(
+                "닉네임이 필요해요. 예) 전적검색 교로텔리 공식경기",
+                quicks=[("전적검색 교로텔리 공식경기","전적검색 교로텔리 공식경기"),
+                        ("승률개선 교로텔리 공경","승률개선 교로텔리 공경")]
+            )
 
         # ---------- 기본 정보 조회 ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
@@ -957,15 +975,30 @@ def kakao_skill():
                      {"nickname": nick}, headers)
         ouid = j.get("ouid")
         if not ouid:
-            return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
+            # 불가 카드
+            return jsonify({
+                "version":"2.0",
+                "template":{"outputs":[{
+                    "basicCard":{
+                        "title":"분석 불가",
+                        "description": f"'{nick}' 유저를 찾을 수 없어 분석이 불가합니다!",
+                        "buttons":[
+                            {"label":"공식경기 예시","action":"message","messageText":"전적검색 손흥민 공식경기"},
+                            {"label":"모드 선택","action":"message","messageText":"공식경기"},
+                        ]
+                    }
+                }]}
+            })
 
+        # 시간 예산 초과 시에도 반드시 카드 반환
         if now() - t0 > TIME_BUDGET:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            mname = globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)
+            result_url = f"https://fcgg.kr/전적검색/{nick}/{mname}"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{mname}"
             return jsonify({"version":"2.0","template":{"outputs":[{
                 "basicCard":{
                     "title": f"{nick}",
-                    "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
+                    "description":"현재 요청이 많아 간단 요약만 제공해요. 아래 버튼으로 상세 확인해 주세요!",
                     "buttons":[
                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
                         {"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url},
@@ -1005,81 +1038,99 @@ def kakao_skill():
             tier_image = pick_tier_image(divi, mode)
 
         # ---------- 최근 경기 ----------
-        if now() - t0 > TIME_BUDGET - 1.5:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
-            return jsonify({"version":"2.0","template":{"outputs":[{
-                "basicCard":{
-                    "title": f"{nick} · Lv.{lv}",
-                    "description":"요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
-                    **({"thumbnail":{"imageUrl":tier_image}} if tier_image else {}),
-                    "buttons":[
-                        {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url},
+        matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
+                           {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL}, headers)
+
+        def unavailable_card(reason: str):
+            mname = globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)
+            result_url = f"https://fcgg.kr/전적검색/{nick}/{mname}"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{mname}"
+            return {
+                "basicCard": {
+                    "title": "분석 불가",
+                    "description": f"{reason}\n\n아래 버튼으로 웹에서 더 확인할 수 있어요.",
+                    **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
+                    "buttons": [
+                        {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선 보기",  "action": "webLink", "webLinkUrl": imp_url},
                     ]
                 }
-            }]}})
+            }
 
-        matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
-                           {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL},
-                           headers)
+        # 매치가 아예 없으면 즉시 불가
+        if not matches:
+            return jsonify({"version":"2.0","template":{"outputs":[
+                unavailable_card(f"{nick} · Lv.{lv}\n요청하신 모드의 최근 경기 데이터가 없어 분석이 불가합니다!")
+            ]}})
 
         # ---------- 경량 상세/계산 ----------
         win_rate_text = "데이터 없음"
         play_style_text = "플레이스타일 분석 불가"
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
+        match_data_list = []
 
-        if matches and (now() - t0) < TIME_BUDGET - 0.3:
-            match_data_list = get_match_data(matches[:MAX_DETAIL], headers)
+        if (now() - t0) < TIME_BUDGET - 0.3:
+            match_data_list = get_match_data(matches[:MAX_DETAIL], headers) or []
 
-            results, w_l_data, imp_rows = [], [], []
-            for data in match_data_list or []:
-                my = me(data, nick)
-                opp = you(data, nick)
-                row = data_list(my)
-                opp_row = data_list(opp)
-                if row is None or opp_row is None:
-                    continue
-                res = my["matchDetail"]["matchResult"]
-                results.append(res); w_l_data.append(res); imp_rows.append(row)
+        # 상세 수집 실패 or 쓸 데이터 없음 → 불가
+        if not match_data_list:
+            return jsonify({"version":"2.0","template":{"outputs":[
+                unavailable_card(f"{nick} · Lv.{lv}\n경기 상세 데이터 수집이 지연되어 분석이 불가합니다!")
+            ]}})
 
-            total = len(results)
-            wins = sum(1 for r in results if r == "승")
-            if total:
-                win_rate_text = f"{wins / total * 100:.2f}%"
+        results, w_l_data, imp_rows = [], [], []
+        for data in match_data_list:
+            my = me(data, nick); opp = you(data, nick)
+            row = data_list(my);  opp_row = data_list(opp)
+            if row is None or opp_row is None:
+                continue
+            res = my.get("matchDetail", {}).get("matchResult")
+            if not res:
+                continue
+            results.append(res); w_l_data.append(res); imp_rows.append(row)
 
-            if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
-                import numpy as np
-                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
-                my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+        if not results:
+            return jsonify({"version":"2.0","template":{"outputs":[
+                unavailable_card(f"{nick} · Lv.{lv}\n유효한 경기 결과가 부족해 분석이 불가합니다!")
+            ]}})
 
-                cl = np.array(data_list_cl(avg_data(mode)))
-                diff = (my_avg - cl) / cl
+        # 현재 승률
+        wins = sum(1 for r in results if r == "승")
+        win_rate_text = f"{wins / len(results) * 100:.2f}%"
 
-                max_idx, max_vals = top_n_argmax(diff, 20)
-                min_idx, min_vals = top_n_argmin(diff, 20)
-                threshold = 0.9
-                max_data = list(zip(max_idx[:5], max_vals[:5]))
-                min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+        # 시간 남으면 스타일/개선
+        if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
+            import numpy as np
+            filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
+            my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
 
-                style = determine_play_style(max_data, min_data)
-                play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
+            cl = np.array(data_list_cl(avg_data(mode)))
+            diff = (my_avg - cl) / cl
 
-                if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
-                    try:
-                        padded_imp = np.array(filt, dtype=float)
-                        (
-                            top_n,
-                            increase_ratio,
-                            improved_features_text,
-                            original_win_rate,
-                            modified_win_rate,
-                            win_rate_improvement,
-                        ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
-                    except Exception:
-                        original_win_rate = modified_win_rate = win_rate_improvement = None
-                        improved_features_text = ""
+            max_idx, max_vals = top_n_argmax(diff, 20)
+            min_idx, min_vals = top_n_argmin(diff, 20)
+            threshold = 0.9
+            max_data = list(zip(max_idx[:5], max_vals[:5]))
+            min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+
+            style = determine_play_style(max_data, min_data)
+            play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
+
+            if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
+                try:
+                    padded_imp = np.array(filt, dtype=float)
+                    (
+                        top_n,
+                        increase_ratio,
+                        improved_features_text,
+                        original_win_rate,
+                        modified_win_rate,
+                        win_rate_improvement,
+                    ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
+                except Exception:
+                    original_win_rate = modified_win_rate = win_rate_improvement = None
+                    improved_features_text = ""
 
         # ---------- 카드 ----------
         MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
@@ -1117,26 +1168,13 @@ def kakao_skill():
                     }
                 }
             else:
-                # 개선 계산 실패/데이터 부족 폴백
-                description = (
-                    f"{nick}  Lv.{lv}\n\n"
-                    "[개선 시 승률]\n"
-                    "분석 데이터가 부족합니다.\n\n"
-                    "[개선해야하는 지표]\n"
-                    "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
-                )
-                card = {
-                    "basicCard": {
-                        "title": "승률 개선 솔루션",
-                        "description": description,
-                        **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
-                        "buttons": [
-                            {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        ]
-                    }
-                }
+                # 개선 계산 실패/데이터 부족 → '불가합니다!' 카드
+                return jsonify({"version":"2.0","template":{"outputs":[
+                    unavailable_card(f"{nick} · Lv.{lv}\n승률 개선 계산을 위한 데이터가 부족하여 분석이 불가합니다!")
+                ]}})
+
         else:
+            # 전적검색 카드 (항상 반환)
             title = f"{nick} · Lv.{lv}"
             desc_common = f"승률  {win_rate_text}\n【플레이스타일】\n {play_style_text}"
             card = {
@@ -1154,11 +1192,18 @@ def kakao_skill():
         return jsonify({"version":"2.0","template":{"outputs":[card]}})
 
     except Exception:
+        # 어떤 예외든 무응답 대신 '불가' 피드백 보장
         return jsonify({
             "version":"2.0",
-            "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+            "template":{"outputs":[{"basicCard":{
+                "title":"분석 불가",
+                "description":"내부 처리 중 오류로 분석이 불가합니다!\n잠시 후 다시 시도해 주세요.",
+                "buttons":[
+                    {"label":"예시 보기","action":"message","messageText":"전적검색 손흥민 공식경기"},
+                    {"label":"모드 선택","action":"message","messageText":"공식경기"},
+                ]
+            }}]}
         })
-
 
 
 # -------------------------------------------
