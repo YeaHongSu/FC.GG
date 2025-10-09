@@ -834,71 +834,34 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
-
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     """
-    카카오 스킬 5초 제한을 고려한 경량 엔드포인트.
-    - 전적검색/승률개선 둘 다 지원(발화 분기)
-    - 부분 입력(명령만/닉만/모드만) 시 즉시 피드백 + Quick Replies 제공
-    - 데이터 없음/분석 실패 시 반드시 '불가' 카드 반환
+    카카오 스킬 5초 제한을 고려해 경량화된 단일 엔드포인트.
+    - 전적검색/승률개선 둘 다 지원 (발화로 분기)
+    - 요청 체인 최소화, 전체 시간 예산(TIME_BUDGET) 내 폴백
+    - match-detail N건(최대 8)만 조회해 요약
     """
     try:
         import time, re
         t0 = time.time()
 
-        # ---- 튜닝 ----
-        API_TIMEOUT = 1.2
-        MAX_DETAIL  = 10
-        TIME_BUDGET = 4.2
+        # ---- 튜닝 파라미터 ----
+        API_TIMEOUT = 1.2   # 각 외부 API 호출 타임아웃(초)
+        MAX_DETAIL  = 10     # match-detail 최대 조회 건수 (경량)
+        TIME_BUDGET = 4.2   # 전체 시간 예산(초) — 5초 제한 대비 여유
 
-        # ---- 유틸 ----
+        # ---- 유틸(로컬) ----
         def now(): return time.time()
 
         def json_get(url, params, headers, timeout=API_TIMEOUT):
+            """params 인코딩 + 안전 .json()"""
             import requests
             try:
                 r = requests.get(url, params=params, headers=headers, timeout=timeout)
                 return r.json()
             except Exception:
                 return {}
-
-        def quick(mode_code=None, nick=None):
-            """카카오 Quick Replies 헬퍼"""
-            replies = []
-            def add(label, text):
-                replies.append({"action":"message", "label":label, "messageText":text})
-            # 기본 예시
-            if nick and mode_code:
-                # 이미 둘 다 있으면 옵션 전환 버튼
-                add("전적 자세히", f"전적검색 {nick} {MATCH_TYPE_MAP.get(mode_code, mode_code)}")
-                add("승률개선",   f"승률개선 {nick} {MATCH_TYPE_MAP.get(mode_code, mode_code)}")
-            elif nick:
-                # 닉만 있을 때 모드 제안
-                add("공식경기", f"전적검색 {nick} 공식경기")
-                add("친선경기", f"전적검색 {nick} 친선경기")
-                add("감독모드", f"전적검색 {nick} 감독모드")
-                add("커스텀매치", f"전적검색 {nick} 커스텀매치")
-                add("승률개선(공식)", f"승률개선 {nick} 공식경기")
-            elif mode_code:
-                # 모드만 있을 때 닉 제안 예시
-                pretty = MATCH_TYPE_MAP.get(mode_code, mode_code)
-                add("닉네임 입력 예시", f"전적검색 모설 {pretty}")
-                add("또는 승률개선",     f"승률개선 모설 {pretty}")
-            else:
-                # 아무것도 없을 때
-                add("예시1", "전적검색 모설 공식경기")
-                add("예시2", "승률개선 모설 공식경기")
-            return replies
-
-        def kakao_text_with_replies(msg, replies):
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{"simpleText": {"text": msg}}],
-                    "quickReplies": replies
-                }
-            })
 
         def kakao_text(msg):
             return jsonify({
@@ -907,6 +870,7 @@ def kakao_skill():
             })
 
         def pick_tier_image(division_info, mode_code):
+            """maxdivision 응답에서 현재 모드의 티어 이미지 선택"""
             try:
                 mt = int(mode_code)
                 mt_info = next((i for i in (division_info or []) if i.get("matchType") == mt), None)
@@ -917,42 +881,6 @@ def kakao_skill():
                 return (m or {}).get("divisionName")
             except Exception:
                 return None
-
-        def improve_fallback_card(nick, lv, tier_image, result_url, imp_url, reason):
-            description = (
-                f"{nick}  Lv.{lv}\n\n"
-                "[개선 시 승률]\n"
-                "분석 데이터가 부족합니다.\n\n"
-                "[개선해야하는 지표]\n"
-                f"{reason}"
-            )
-            return {
-                "basicCard": {
-                    "title": "승률 개선 솔루션",
-                    "description": description,
-                    **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
-                    "buttons": [
-                        {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
-                        {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
-                    ]
-                }
-            }
-
-        def not_supported_card(nick=None, lv=None, tier_image=None, result_url=None, imp_url=None, msg="해당 조건으로는 분석을 진행할 수 없습니다."):
-            title = f"{nick} · Lv.{lv}" if (nick and lv is not None) else "분석 불가"
-            buttons = []
-            if result_url:
-                buttons.append({"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url})
-            if imp_url:
-                buttons.append({"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url})
-            return {
-                "basicCard": {
-                    "title": title,
-                    "description": msg,
-                    **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
-                    "buttons": buttons or None
-                }
-            }
 
         # ---------- 바디/발화 파싱 ----------
         body = request.get_json(silent=True) or {}
@@ -996,10 +924,9 @@ def kakao_skill():
                 tokens.pop(i)
                 break
         if not found_cmd:
-            # 명령어 없는 단독 닉/모드 입력도 허용 (디폴트: 전적검색)
             found_cmd = "전적검색"
 
-        # 모드(뒤에서부터 탐색)
+        # 모드(뒤에서부터)
         found_mode = ""
         for i in range(len(tokens)-1, -1, -1):
             t = tokens[i]
@@ -1015,79 +942,47 @@ def kakao_skill():
         # 남은 토큰 = 닉네임(공백 허용)
         found_nick = " ".join(tokens).strip()
 
-        # 최종 확정
         nick = nick or found_nick
         mode = mode or found_mode
 
-        # 한글 → 코드 매핑
+        # 한글 → 코드 (글로벌에 정의되어 있으면 사용)
         REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
-        MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
 
-        # ---- 부분 입력 UX: 즉시 피드백 + Quick Replies ----
-        if not nick and not mode:
-            # ① 명령만 온 경우 (@피파봇 전적검색)
-            return kakao_text_with_replies(
-                "닉네임과 모드를 알려주세요. 예) 전적검색 모설 공식경기",
-                quick()
-            )
-        if nick and not mode:
-            # ② 닉만 온 경우 (@피파봇 교로텔리)
-            return kakao_text_with_replies(
-                f"'{nick}' 어떤 모드로 볼까요?",
-                quick(nick=nick)
-            )
-        if mode and not nick:
-            # ③ 모드만 온 경우 (@피파봇 커스텀 or 커스텀매치)
-            pretty = MATCH_TYPE_MAP.get(mode, mode)
-            return kakao_text_with_replies(
-                f"어떤 닉네임을 조회할까요? 예) 전적검색 모설 {pretty}",
-                quick(mode_code=mode)
-            )
+        if not nick or not mode:
+            return kakao_text("닉네임/모드를 인식하지 못했어요.")
 
-        # ---------- 외부 조회 ----------
+        # ---------- 기본 정보 조회 (안전 인코딩 + 짧은 타임아웃) ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
-
-        # 예산 초과 시 즉시 폴백(승률개선/전적검색 분리)
-        def return_budget_fallback(lv="?", tier_image=None):
-            result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-            if found_cmd == "승률개선":
-                return jsonify({"version":"2.0","template":{"outputs":[
-                    improve_fallback_card(nick, lv, tier_image, result_url, imp_url, "시간 예산을 초과했어요.")
-                ]}})
-            else:
-                return jsonify({"version":"2.0","template":{"outputs":[{
-                    "basicCard":{
-                        "title": f"{nick}",
-                        "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
-                        "buttons":[
-                            {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                            {"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url},
-                        ]
-                    }
-                }]}})
 
         # ouid
         j = json_get("https://open.api.nexon.com/fconline/v1/id",
                      {"nickname": nick}, headers)
         ouid = j.get("ouid")
         if not ouid:
-            # 존재하지 않는 닉/잘못된 닉
-            return jsonify({"version":"2.0","template":{"outputs":[
-                not_supported_card(nick=nick, msg="존재하지 않는 닉네임이거나, 조회가 불가합니다."),
-            ],
-            "quickReplies": quick(nick=nick)}})
-
-        if now() - t0 > TIME_BUDGET:
-            return return_budget_fallback()
+            return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
 
         # level
+        if now() - t0 > TIME_BUDGET:
+            # 예산 초과 시 빠른 폴백
+            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            return jsonify({"version": "2.0", "template": {"outputs": [{
+                "basicCard": {
+                    "title": f"{nick}",
+                    "description": "네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
+                    "buttons": [
+                        {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                    ]
+                }
+            }]}})
+
         basic = json_get("https://open.api.nexon.com/fconline/v1/user/basic",
                          {"ouid": ouid}, headers)
         lv = basic.get("level", "?")
 
-        # 티어 이미지 (남으면)
+        # 티어 이미지(시간 남을 때만 시도)
         tier_image = None
         if now() - t0 < TIME_BUDGET - 0.5:
             division_mapping = [
@@ -1114,26 +1009,26 @@ def kakao_skill():
                             {"ouid": ouid}, headers)
             tier_image = pick_tier_image(divi, mode)
 
+        # ---------- 최근 경기 목록 ----------
         if now() - t0 > TIME_BUDGET - 1.5:
-            return return_budget_fallback(lv=lv, tier_image=tier_image)
+            # 시간이 부족하면 상세 계산 없이 폴백 카드
+            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            return jsonify({"version": "2.0", "template": {"outputs": [{
+                "basicCard": {
+                    "title": f"{nick} · Lv.{lv}",
+                    "description": "요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
+                    **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
+                    "buttons": [
+                        {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                    ]
+                }
+            }]}})
 
-        # 최근 경기 ID
         matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
                            {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL},
-                           headers) or []
-
-        MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
-        result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-
-        # ---- 데이터 없음/비공개/초기화 케이스: 즉시 '불가' 카드 ----
-        if not matches:
-            card = not_supported_card(
-                nick=nick, lv=lv, tier_image=tier_image,
-                result_url=result_url, imp_url=imp_url,
-                msg="최근 경기 데이터가 없어 분석을 진행할 수 없습니다."
-            )
-            return jsonify({"version":"2.0","template":{"outputs":[card], "quickReplies": quick(nick=nick)}})
+                           headers)
 
         # ---------- 경량 상세/계산 ----------
         win_rate_text = "데이터 없음"
@@ -1141,40 +1036,20 @@ def kakao_skill():
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
 
-        if (now() - t0) < TIME_BUDGET - 0.3:
-            # 내부의 get_match_data는 aiohttp로 병렬 수집 (per-call timeout은 모듈 쪽에서 1.2s로)
-            match_data_list = get_match_data(matches[:MAX_DETAIL], headers) or []
-
-            if not match_data_list:
-                # 상세를 한 건도 못 가져왔으면 '불가' 카드
-                card = not_supported_card(
-                    nick=nick, lv=lv, tier_image=tier_image,
-                    result_url=result_url, imp_url=imp_url,
-                    msg="매치 상세 정보를 가져오지 못해 분석이 불가합니다."
-                )
-                return jsonify({"version":"2.0","template":{"outputs":[card], "quickReplies": quick(nick=nick)}})
+        if matches and (now() - t0) < TIME_BUDGET - 0.3:
+            # 기존 비동기 수집기 사용 (내부 타임아웃을 1.2s로 맞추는 걸 권장)
+            match_data_list = get_match_data(matches[:MAX_DETAIL], headers)
 
             results, w_l_data, imp_rows = [], [], []
-            for data in match_data_list:
-                try:
-                    my = me(data, nick)
-                    opp = you(data, nick)
-                    row = data_list(my)
-                    opp_row = data_list(opp)
-                    if row is None or opp_row is None:
-                        continue
-                    res = my["matchDetail"]["matchResult"]  # "승"/"패"/"무"
-                    results.append(res); w_l_data.append(res); imp_rows.append(row)
-                except Exception:
+            for data in match_data_list or []:
+                my = me(data, nick)
+                opp = you(data, nick)
+                row = data_list(my)
+                opp_row = data_list(opp)
+                if row is None or opp_row is None:
                     continue
-
-            if not results:
-                card = not_supported_card(
-                    nick=nick, lv=lv, tier_image=tier_image,
-                    result_url=result_url, imp_url=imp_url,
-                    msg="유효한 경기 결과가 없어 분석을 진행할 수 없습니다."
-                )
-                return jsonify({"version":"2.0","template":{"outputs":[card], "quickReplies": quick(nick=nick)}})
+                res = my["matchDetail"]["matchResult"]  # "승"/"패"/"무"
+                results.append(res); w_l_data.append(res); imp_rows.append(row)
 
             # 현재 승률
             total = len(results)
@@ -1182,28 +1057,25 @@ def kakao_skill():
             if total:
                 win_rate_text = f"{wins / total * 100:.2f}%"
 
-            # 시간 남으면만 스타일/개선
+            # 시간 남으면만 스타일/개선 계산
             if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
                 import numpy as np
-                try:
-                    filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
-                    my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
+                my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
 
-                    cl = np.array(data_list_cl(avg_data(mode)))
-                    diff = (my_avg - cl) / cl
+                cl = np.array(data_list_cl(avg_data(mode)))
+                diff = (my_avg - cl) / cl
 
-                    max_idx, max_vals = top_n_argmax(diff, 20)
-                    min_idx, min_vals = top_n_argmin(diff, 20)
-                    threshold = 0.9
-                    max_data = list(zip(max_idx[:5], max_vals[:5]))
-                    min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+                max_idx, max_vals = top_n_argmax(diff, 20)
+                min_idx, min_vals = top_n_argmin(diff, 20)
+                threshold = 0.9
+                max_data = list(zip(max_idx[:5], max_vals[:5]))
+                min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
 
-                    style = determine_play_style(max_data, min_data)
-                    play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
-                except Exception:
-                    play_style_text = "플레이스타일 분석 실패"
+                style = determine_play_style(max_data, min_data)
+                play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
 
-                # 승률개선은 요청일 때만 시도
+                # 승률개선은 '승률개선' 요청일 때만 시도
                 if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
                     try:
                         padded_imp = np.array(filt, dtype=float)
@@ -1220,6 +1092,10 @@ def kakao_skill():
                         improved_features_text = ""
 
         # ---------- 카드 구성 ----------
+        MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
+        result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
+        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
+
         if found_cmd == "승률개선":
             if (original_win_rate is not None and
                 modified_win_rate is not None and
@@ -1239,23 +1115,26 @@ def kakao_skill():
                 else:
                     body_lines.append("분석 데이터가 부족합니다.")
                 description = head + "\n" + "\n".join(body_lines)
-                card = {
-                    "basicCard": {
-                        "title": "승률 개선 솔루션",
-                        "description": description,
-                        **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
-                        "buttons": [
-                            {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        ]
-                    }
-                }
             else:
-                # ✅ 개선 실패/불가인 경우에도 반드시 '개선 실패' 카드 반환
-                card = improve_fallback_card(
-                    nick, lv, tier_image, result_url, imp_url,
-                    reason="최근 경기가 부족하거나 일부 지표가 누락되었습니다."
+                description = (
+                    f"{nick}  Lv.{lv}\n\n"
+                    "[개선 시 승률]\n"
+                    "분석 데이터가 부족합니다.\n\n"
+                    "[개선해야하는 지표]\n"
+                    "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
                 )
+
+            card = {
+                "basicCard": {
+                    "title": "승률 개선 솔루션",
+                    "description": description,
+                    **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
+                    "buttons": [
+                        {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
+                        {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
+                    ]
+                }
+            }
         else:
             title = f"{nick} · Lv.{lv}"
             desc_common = f"승률  {win_rate_text}\n【플레이스타일】\n {play_style_text}"
@@ -1271,11 +1150,7 @@ def kakao_skill():
                 }
             }
 
-        # ✅ 항상 Quick Replies 추가(다음 입력 유도)
-        return jsonify({"version": "2.0", "template": {
-            "outputs": [card],
-            "quickReplies": quick(nick=nick, mode_code=mode)
-        }})
+        return jsonify({"version": "2.0", "template": {"outputs": [card]}})
 
     except Exception:
         return jsonify({
