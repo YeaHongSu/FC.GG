@@ -47,37 +47,17 @@ def save_nickname_search(nickname, lv, tier_image):
     conn.close()
 
 
-import aiohttp
-import asyncio
-
-# 적당한 타임아웃(초)과 동시성
-REQ_TIMEOUT = aiohttp.ClientTimeout(sock_connect=1.0, sock_read=1.0)  # 각 요청 연결/읽기 1초
-CONCURRENCY = 8  # 동시 요청 수 제한(무제한 X)
-
-async def fetch_match_data(session, match_id, headers, sem):
-    url = "https://open.api.nexon.com/fconline/v1/match-detail"
-    async with sem:
-        try:
-            async with session.get(url, headers=headers, params={"matchid": match_id}) as resp:
-                if resp.status != 200:
-                    return None
-                return await resp.json()
-        except Exception:
-            # 느린/에러 응답은 과감히 제외(분석 계산에서 자동 필터)
-            return None
+async def fetch_match_data(session, match_id, headers):
+    url = f"https://open.api.nexon.com/fconline/v1/match-detail?matchid={match_id}"
+    async with session.get(url, headers=headers) as response:
+        return await response.json()
 
 async def fetch_all_match_data(matches, headers):
-    sem = asyncio.Semaphore(CONCURRENCY)
-    # ★ 세션에 타임아웃 부여
-    async with aiohttp.ClientSession(timeout=REQ_TIMEOUT) as session:
-        tasks = [fetch_match_data(session, mid, headers, sem) for mid in matches]
-        # 예외는 None으로 처리 (return_exceptions=False 기본)
-        results = await asyncio.gather(*tasks)
-        # 유효 json만 반환
-        return [r for r in results if isinstance(r, dict)]
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_match_data(session, match_id, headers) for match_id in matches]
+        return await asyncio.gather(*tasks)
 
 def get_match_data(matches, headers):
-    # 시그니처는 그대로(아래 기존 호출부 영향 없음)
     return asyncio.run(fetch_all_match_data(matches, headers))
    
 # Flask 선언
@@ -931,18 +911,19 @@ def kakao_skill():
         # ---------- 2) 기본 정보 ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
         ouid = requests.get(
-            "https://open.api.nexon.com/fconline/v1/id",
-            headers=headers, timeout=1.8, params={"nickname": nick}
+            f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}",
+            headers=headers, timeout=1.8
         ).json()["ouid"]
-        
+
         lv = requests.get(
-            "https://open.api.nexon.com/fconline/v1/user/basic",
-            headers=headers, timeout=1.8, params={"ouid": ouid}
+            f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}",
+            headers=headers, timeout=1.8
         ).json()["level"]
-        
+
+        # 티어 이미지(매치타입별 최고)
         division_info = requests.get(
-            "https://open.api.nexon.com/fconline/v1/user/maxdivision",
-            headers=headers, timeout=1.8, params={"ouid": ouid}
+            f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}",
+            headers=headers, timeout=1.8
         ).json()
         division_mapping = [
             {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
@@ -977,8 +958,8 @@ def kakao_skill():
 
         # ---------- 3) 최근 25경기 로드 ----------
         matches = requests.get(
-            "https://open.api.nexon.com/fconline/v1/user/match",
-            headers=headers, timeout=1.8, params={"ouid": ouid, "matchtype": mode, "limit": 25}
+            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
+            headers=headers, timeout=1.8
         ).json()
 
         # 기본값
@@ -1359,212 +1340,123 @@ def _quick_replies():
     return [{"action": "message", "label": o, "messageText": o} for o in opts]
 
 # ---- Endpoint ----------------------------------------------------------------
-
-
-@app.route("/kakao/temp", methods=["POST"])
-def kakao_skill_temp():
+@app.route("/kakao/penalty", methods=["POST"])
+def kakao_penalty():
     try:
         body = request.get_json(silent=True) or {}
-        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
-        params = (body.get("action") or {}).get("params") or {}
-        detail_params = (body.get("action") or {}).get("detailParams") or {}
+        uid = _uid(body)
+        uname = _uname(body)
 
-        # -------------------------------
-        # ① 닉네임 / 모드 파싱
-        # -------------------------------
-        def _p(name):
-            return (params.get(name) or "").strip() or \
-                   ((detail_params.get(name) or {}).get("value") or "").strip()
-
-        nick = _p("nick")
-        mode_name = _p("mode")
-        if not nick or not mode_name:
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {"text": "닉네임과 경기 유형을 함께 입력해주세요!\n예: 전적검색 모설 공식경기"}
-                    }]
-                }
-            })
-
-        # -------------------------------
-        # ② 모드 매핑 (ex. 공식경기 → 50)
-        # -------------------------------
-        MODE_SYNONYMS = {
-            "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
-            "60": ["60", "친선경기", "친선", "클래식", "클겜"],
-            "52": ["52", "감독모드", "감독", "감모"],
-            "40": ["40", "커스텀매치", "커스텀", "커겜"],
-        }
-        mode = next((k for k, v in MODE_SYNONYMS.items() if mode_name in v), None)
-        if not mode:
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {"text": f"‘{mode_name}’은 잘못된 경기 유형이에요.\n(예: 공식경기, 친선경기)"}
-                    }]
-                }
-            })
-
-        # -------------------------------
-        # ③ Nexon API 요청 (닉네임 → OUID)
-        # -------------------------------
-        headers = {"x-nxopen-api-key": app.config["API_KEY"]}
-        ouid_res = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}", headers=headers
-        )
-        if not ouid_res.ok:
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": "닉네임을 찾을 수 없습니다."}}]}
-            })
-
-        ouid = ouid_res.json().get("ouid")
-
-        # -------------------------------
-        # ④ 기본 정보 (레벨 / 티어)
-        # -------------------------------
-        lv = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}", headers=headers
-        ).json().get("level")
-
-        division_info = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}", headers=headers
-        ).json()
-
-        division_mapping = {
-            800: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png",
-            900: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png",
-            1000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png",
-            1100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png",
-            1200: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png",
-            1300: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png",
-            2000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png",
-            2100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png",
-            2200: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png",
-            2300: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png",
-            2400: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png",
-            2500: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png",
-            2600: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png",
-            2700: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png",
-            2800: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png",
-            2900: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png",
-            3000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png",
-            3100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png",
-        }
-
-        match_type_info = next((i for i in division_info if i["matchType"] == int(mode)), None)
-        tier_image = division_mapping.get(match_type_info.get("division")) if match_type_info else None
-
-        # -------------------------------
-        # ⑤ 최근 25경기 전적 조회
-        # -------------------------------
-        matches = requests.get(
-            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
-            headers=headers,
-        ).json()
-
-        if not matches:
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": f"{nick}님의 최근 경기가 없습니다."}}]}
-            })
-
-        # -------------------------------
-        # ⑥ 경기 데이터 분석
-        # -------------------------------
-        match_data = get_match_data(matches, headers)
-        wins, total = 0, len(match_data)
-        imp_data = []
+        uter = body.get("userRequest").get("utterance") or {}
+        # 1) 게임 미시작 → 시작 멘트만 (관리자센터가 다음 턴에 슬롯 질문)
+        st = _state(uid)
         
-        for data in match_data:
-            my_data = me(data, nick)
-            your_data = you(data, nick)
-            imp = data_list(my_data)
-            imp2 = data_list(your_data)
-            if imp == None or imp2 == None:
-               continue
-            if my_data["matchDetail"]["matchResult"] == "승":
-                wins += 1
-            imp_data.append(imp)
+        if uter in ['종료', '나가기', '홈으로']:
+            _reset(uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": "📣 승부차기 종료!\n 다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                        }
+                    }]
+                }
+            })
+        if not st and uter in ['승부차기', '승차']:
+            _start(uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": (
+                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
+                                "왼쪽 가운데 오른쪽 중에 하나를 입력해주세요.\n"
+                            )
+                        }
+                    }],
+                    "quickReplies": _quick_replies()
+                }
+            })
 
-        win_rate = round((wins / total) * 100, 1)
-
-        # 플레이스타일 계산
-        # 중요 지표 평균 계산
-        my_avg = np.nanmean(imp_data, axis=0)
-
-        # 전체 유저 중요 지표 평균 불러오기
-        cl_data = np.array(data_list_cl(avg_data(mode)))
-       
-        # 상위/하위 지표 선정
-        jp_num = 20  # 우선 후보 개수
-        threshold = 0.9  # 극단적 차이 제외
-
-        # --- (1) 지표별 상대 차이 계산 ---
-        diff_ratio = (my_avg - cl_data) / (cl_data + 1e-8)  # 0 나누기 방지
-
-        # --- (2) 상위/하위 인덱스 추출 ---
-        max_idx, max_values = top_n_argmax(diff_ratio, jp_num)
-        min_idx, min_values = top_n_argmin(diff_ratio, jp_num)
-
-        # --- (3) 임계값 기반 필터링 ---
-        filtered_max_idx, filtered_max_values = [], []
-        for idx, value in zip(max_idx, max_values):
-            if abs(value) < threshold:  # 너무 큰 값(극단적)은 제외
-                filtered_max_idx.append(idx)
-                filtered_max_values.append(value)
-
-        filtered_min_idx, filtered_min_values = [], []
-        for idx, value in zip(min_idx, min_values):
-            if abs(value) < threshold:
-                filtered_min_idx.append(idx)
-                filtered_min_values.append(value)
-
-        # --- (4) 상/하위 각각 상위 5개만 남김 ---
-        filtered_max_idx = filtered_max_idx[:5]
-        filtered_max_values = filtered_max_values[:5]
-        filtered_min_idx = filtered_min_idx[:5]
-        filtered_min_values = filtered_min_values[:5]
-
-        # --- (5) zip으로 묶기 (플레이스타일용 데이터) ---
-        max_data = list(zip(filtered_max_idx, filtered_max_values))
-        min_data = list(zip(filtered_min_idx, filtered_min_values))
-
-        # --- (6) 플레이스타일 계산 ---
-        play_style = determine_play_style(max_data, min_data)
-        print(imp_data, my_avg, max_idx, filtered_max_idx, play_style)
-        # -------------------------------
-        # ⑦ 카드 응답
-        # -------------------------------
-        return jsonify({
-            "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "basicCard": {
-                        "title": f"{nick}님의 {mode_name} 전적 요약 ⚽",
-                        "description": f"레벨: {lv}\n승률: {win_rate}%\n플레이스타일: {play_style or '분석 중'}",
-                        "thumbnail": {"imageUrl": tier_image},
-                        "buttons": [
-                            {"action": "message", "label": "승률개선 보기", "messageText": f"승률개선 {nick} {mode_name}"}
-                        ]
+        # 2) 현재 회차 인덱스
+        st = _state(uid)
+        cur_idx = len(st["shots"])
+        
+        # 3) 슬롯에서 현재 회차 입력 꺼내기 (dir{cur_idx} 또는 dir)
+        dir_text = _get_kick_input(body, cur_idx)
+        
+        # 값이 없으면 현재 보드만 안내 (카카오가 되묻기 계속)
+        if not dir_text or uter in ['승부차기', '승차']:
+            board = _board(st["shots"], st["max"])
+            n = cur_idx
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": f"왼쪽, 가운데, 오른쪽 중에 하나를 선택해주세요. (진행 {n}/{st['max']}회)\n현재: {board}"
+                        }
+                    }],
+                },
+                "extra": {
+                    "mentions":{
+                        "user1":{
+                            "type": "botUserKey",
+                            "id": uid
+                        }
                     }
-                }]
-            }
-        })
+                }
+            })
 
-    except Exception as e:
-        print("ERROR:", e)
+        # 4) 판정
+        success = (random.random() < _kick_prob(dir_text))
+        shots, done = _record(uid, success)
+
+        board = _board(shots, 5)
+        n = len(shots)
+        goal_txt = "골!" if success else "노골!"
+        prefix = "{{#mentions.user1}}" + f" {goal_txt} {board}입니다! ({n}/5회)"
+
+        # 5) 종료/진행
+        if done:
+            total = sum(1 for s in shots if s)
+            summary = f"\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
+            return jsonify({
+                "version": "2.0",
+                "template": { "outputs": [{ "simpleText": { "text": prefix + summary } }] },
+                "extra": {
+                    "mentions":{
+                        "user1":{
+                            "type": "botUserKey",
+                            "id": uid
+                        }
+                    }
+                }
+            })
+
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{
-                    "simpleText": {"text": "전적검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}
-                }]
+                "outputs": [{ "simpleText": { "text": prefix } }],
+            },
+            "extra": {
+                "mentions":{
+                    "user1":{
+                        "type": "botUserKey",
+                        "id": uid
+                    }
+                }
             }
         })
+
+    except Exception:
+        return jsonify({
+            "version": "2.0",
+            "template": { "outputs": [{ "simpleText": { "text": "게임 처리 중 오류가 발생했습니다. 다시 시도해 주세요." } }] }
+        })
+
 
 
 # 포트 설정 및 웹에 띄우기
