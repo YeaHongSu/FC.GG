@@ -967,7 +967,7 @@ def kakao_skill():
         play_style_text = "플레이스타일 분석 불가"
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
-
+        import pdb; pdb.set_trace()
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
             match_data_list = get_match_data(matches, headers)
