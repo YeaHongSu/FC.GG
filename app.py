@@ -1483,7 +1483,7 @@ def kakao_skill_temp():
         match_data = get_match_data(matches, headers)
         wins, total = 0, len(match_data)
         imp_data = []
-
+        
         for data in match_data:
             my_data = me(data, nick)
             your_data = you(data, nick)
@@ -1502,7 +1502,7 @@ def kakao_skill_temp():
         my_avg = np.nanmean(imp_data, axis=0)
 
         # 전체 유저 중요 지표 평균 불러오기
-        cl_data = np.array(data_list_cl(avg_data(match_type)))
+        cl_data = np.array(data_list_cl(avg_data(mode)))
        
         # 상위/하위 지표 선정
         jp_num = 20  # 우선 후보 개수
@@ -1540,7 +1540,7 @@ def kakao_skill_temp():
 
         # --- (6) 플레이스타일 계산 ---
         play_style = determine_play_style(max_data, min_data)
-
+        print(imp_data, my_avg, max_idx, filtered_max_idx, play_style)
         # -------------------------------
         # ⑦ 카드 응답
         # -------------------------------
@@ -1570,7 +1570,6 @@ def kakao_skill_temp():
                 }]
             }
         })
-
 
 
 # 포트 설정 및 웹에 띄우기
