@@ -944,9 +944,9 @@ def kakao_skill():
         # (백업) 외부 전역 매핑 존재시 한 번 더 숫자화 시도
         # 하지만 이미 숫자 코드라면 이 줄은 영향 없음
         REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
-        print(mode)
+   
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
-        print(mode)
+       
         if not nick or not mode:
             return kakao_text("닉네임/모드를 인식하지 못했어요. 예) 전적검색 모설 공식경기")
 
@@ -1066,7 +1066,7 @@ def kakao_skill():
                 style = determine_play_style(max_data, min_data)
                 play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
 
-                if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
+                if utter == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
                     try:
                         padded_imp = np.array(filt, dtype=float)
                         (
@@ -1086,7 +1086,7 @@ def kakao_skill():
         result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
         imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
 
-        if found_cmd == "승률개선":
+        if utter == "승률개선":
             if (original_win_rate is not None and
                 modified_win_rate is not None and
                 win_rate_improvement is not None):
