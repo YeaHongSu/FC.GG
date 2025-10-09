@@ -904,7 +904,7 @@ def kakao_skill():
             return jsonify({
                 "version": "2.0",
                 "template": {"outputs": [
-                    {"simpleText": {"text": f"닉네임/모드를 인식하지 못했어요.\n예) {ex1}\n예) {ex2}"}}
+                    {"simpleText": {"text": f"닉네임/모드를 인식하지 못했어요."}}
                 ]}
             })
 
@@ -968,6 +968,10 @@ def kakao_skill():
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
 
+        # [ADD] 최소 경기 수(하이브리드 기준)
+        MIN_MATCHES_FOR_RATE = 10           # 승률을 의미 있게 계산하기 위한 최소 경기 수
+        MIN_MATCHES_FOR_IMPROVE = 10        # 승률개선(모델) 계산을 위한 최소 경기 수
+
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
             match_data_list = get_match_data(matches, headers)
@@ -1002,7 +1006,13 @@ def kakao_skill():
             total = len(results)
             wins = sum(1 for r in results if r == "승")
             if total:
-                win_rate_text = f"{wins / total * 100:.2f}%"
+                rate = wins / total * 100.0
+                # [MOD] 최소 경기 수 기준으로 표기 분기
+                if total >= MIN_MATCHES_FOR_RATE:
+                    win_rate_text = f"{rate:.2f}% (최근 {total}경기)"
+                else:
+                    # 표본이 적으면 왜곡 가능성 안내
+                    win_rate_text = f"{rate:.2f}% (데이터 일부 누락, {total}경기)"
         
             # 평균/클러스터 비교로 플레이스타일 + 예상 승률 계산
             if imp_rows:
@@ -1024,19 +1034,26 @@ def kakao_skill():
         
                 # ---- 예상 승률 계산 ----
                 padded_imp = np.array(filt, dtype=float)
-                try:
-                    (
-                        top_n,
-                        increase_ratio,
-                        improved_features_text,
-                        original_win_rate,
-                        modified_win_rate,
-                        win_rate_improvement,
-                    ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
-                except Exception:
-                    # 계산 실패 시 안전 표기
+
+                # [ADD] 최소 경기 수 미만이면 승률개선 계산 스킵(대체 문구로 처리)
+                if len(imp_rows) < MIN_MATCHES_FOR_IMPROVE:
                     original_win_rate = modified_win_rate = win_rate_improvement = None
                     improved_features_text = ""
+                else:
+                    try:
+                        (
+                            top_n,
+                            increase_ratio,
+                            improved_features_text,
+                            original_win_rate,
+                            modified_win_rate,
+                            win_rate_improvement,
+                        ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
+                    except Exception:
+                        # 계산 실패 시 안전 표기
+                        original_win_rate = modified_win_rate = win_rate_improvement = None
+                        improved_features_text = ""
+
 
 
         # ---------- 5) 카드 본문 구성 ----------
