@@ -878,6 +878,14 @@ def kakao_skill():
         if not found_cmd:
             found_cmd = "전적검색"
 
+        # [ADD] 오픈빌더 슬롯(cmd)도 명령으로 인식 (버튼/폼 등으로 들어온 경우 커버)
+        try:
+            cmd_param = (_p("cmd") or "").strip()
+            if cmd_param and cmd_param in WORD2CMD:
+                found_cmd = WORD2CMD[cmd_param]
+        except Exception:
+            pass
+
         # 모드(뒤에서부터)
         found_mode = ""
         for i in range(len(tokens)-1, -1, -1):
@@ -967,6 +975,7 @@ def kakao_skill():
         play_style_text = "플레이스타일 분석 불가"
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
+        
 
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
@@ -1038,6 +1047,39 @@ def kakao_skill():
                     original_win_rate = modified_win_rate = win_rate_improvement = None
                     improved_features_text = ""
 
+        # [ADD] 개선 설명 공통 함수: 값 없으면 '대체 문구' 자동 생성
+        def build_imp_desc(nick_, lv_, ow, mw, imp_win, feat_text):
+            try:
+                if (ow is not None) and (mw is not None) and (imp_win is not None):
+                    head = f"{nick_}  Lv.{lv_}"
+                    body_lines = [
+                        "【개선 시 승률】",
+                        f"{ow * 100:.2f}% ➜ {mw * 100:.2f}% (＋{imp_win * 100:.2f}%p)",
+                        "",
+                        "【개선해야하는 지표】"
+                    ]
+                    if feat_text:
+                        feat_lines = [ln.strip() for ln in feat_text.splitlines() if ln.strip()]
+                        feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
+                        body_lines.extend(feat_lines if feat_lines else ["분석 데이터가 부족합니다."])
+                    else:
+                        body_lines.append("분석 데이터가 부족합니다.")
+                    return head + "\n" + "\n".join(body_lines)
+            except Exception:
+                pass
+            # 데이터 부족/실패 시 공통 대체 문구
+            return (
+                f"{nick_}  Lv.{lv_}\n"
+                "【개선 시 승률】\n"
+                "분석 데이터가 부족합니다.\n\n"
+                "【개선해야하는 지표】\n"
+                "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+            )
+
+        # [ADD] 항상 개선 설명을 만들어 둠 (전적/승개 카드 모두에서 활용)
+        imp_desc = build_imp_desc(
+            nick, lv, original_win_rate, modified_win_rate, win_rate_improvement, improved_features_text
+        )
 
         # ---------- 5) 카드 본문 구성 ----------
         # 링크들
@@ -1108,6 +1150,16 @@ def kakao_skill():
         if not tier_image:
             card["basicCard"].pop("thumbnail", None)
 
+        # [ADD] 최종 단계에서 카드 본문에 개선 설명을 항상 덧붙임
+        try:
+            desc_now = card["basicCard"].get("description", "")
+            # 승률개선 카드에도 이미 블록이 없으면 보강, 전적검색 카드는 항상 추가
+            must_attach = (found_cmd != "승률개선") or ("개선 시 승률" not in desc_now)
+            if must_attach:
+                card["basicCard"]["description"] = (desc_now + "\n\n" + imp_desc).strip()
+        except Exception:
+            pass
+
         return jsonify({"version": "2.0", "template": {"outputs": [card]}})
 
     except Exception:
@@ -1117,6 +1169,7 @@ def kakao_skill():
                 {"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}
             ]}
         })
+
 
 # -------------------------------------------
 # [NEW] 티어리스트 전용 Kakao 스킬 엔드포인트: /kakao/skill2
