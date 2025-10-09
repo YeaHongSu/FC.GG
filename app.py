@@ -880,21 +880,17 @@ def kakao_skill():
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
-        # ✅ 모든 별칭 → 코드 직매핑
-        MODE_SYNONYMS_TO_CODE = {
-            # 공식(50)
-            "50":"50","공식":"50","공식경기":"50","공경":"50","랭크":"50","랭겜":"50",
-            # 친선(60)
-            "60":"60","친선":"60","친선경기":"60","클래식":"60","클겜":"60",
-            # 감독(52)
-            "52":"52","감독":"52","감독모드":"52","감모":"52",
-            # 커스텀(40)
-            "40":"40","커스텀":"40","커스텀매치":"40","커겜":"40",
+        MODE_SYNONYMS = {
+            "공식경기": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
+            "친선경기": ["60", "친선경기", "친선", "클래식", "클겜"],
+            "감독모드": ["52", "감독모드", "감독", "감모"],
+            "커스텀매치": ["40", "커스텀매치", "커스텀", "커겜"]
         }
+        WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
 
         CMD_SYNONYMS = {
-            "전적검색": ["전적검색","전적","검색"],
-            "승률개선": ["승률개선","승개","개선","개선검색","승률"],
+            "전적검색": ["전적검색", "전적", "검색"],
+            "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"]
         }
         WORD2CMD = {w: cmd for cmd, words in CMD_SYNONYMS.items() for w in words}
 
@@ -907,63 +903,50 @@ def kakao_skill():
 
         # 파라미터
         nick = (_p("nick") or "").strip()
-        mode_in = (_p("mode") or "").strip()
+        mode = (_p("mode") or "").strip()
 
         # 발화 전처리
-        # - 특수문자 제거, @멘션 제거, 다중공백 축소
-        text = re.sub(r"[^\w가-힣 ]", " ", utter)
-        text = re.sub(r"\s+", " ", text).strip()
-        text = re.sub(r"^@\S+\s*", "", text)
-        tokens = [t for t in text.split(" ") if t]
+        text = re.sub(r"\s+", " ", utter)
+        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+        tokens = text.split(" ") if text else []
 
         # 명령어 탐지
         found_cmd = ""
-        for t in tokens:
+        for i, t in enumerate(list(tokens)):
             if t in WORD2CMD:
                 found_cmd = WORD2CMD[t]
+                tokens.pop(i)
                 break
         if not found_cmd:
             found_cmd = "전적검색"
 
-        # 모드 정규화 함수
-        def normalize_mode(s: str) -> str:
-            if not s:
-                return ""
-            s = s.strip()
-            # '친선경기' → '친선' 시도 등 접미어 '경기' 제거도 커버
-            if s.endswith("경기"):
-                base = s[:-2]
-                if base in MODE_SYNONYMS_TO_CODE:
-                    return MODE_SYNONYMS_TO_CODE[base]
-            return MODE_SYNONYMS_TO_CODE.get(s, "")
-
-        # 토큰에서 모드 찾기(어디에 있어도)
+        # 모드(뒤에서부터)
         found_mode = ""
-        for t in tokens[::-1]:
-            code = normalize_mode(t)
-            if code:
-                found_mode = code
+        for i in range(len(tokens)-1, -1, -1):
+            t = tokens[i]
+            if t in WORD2CODE:
+                found_mode = WORD2CODE[t]
+                tokens.pop(i)
+                break
+            if t in MODE_SYNONYMS:  # 숫자 그대로
+                found_mode = t
+                tokens.pop(i)
                 break
 
-        # 남은 토큰으로 닉 추정(명령어/모드 단어 제외)
-        nick_tokens = []
-        for t in tokens:
-            if t in WORD2CMD: 
-                continue
-            if normalize_mode(t): 
-                continue
-            nick_tokens.append(t)
-        found_nick = " ".join(nick_tokens).strip()
+        # 남은 토큰 = 닉네임(공백 허용)
+        found_nick = " ".join(tokens).strip()
 
-        # 최종값
         nick = nick or found_nick
-        mode = normalize_mode(mode_in) or found_mode  # ✅ 무조건 "50/60/52/40" 중 하나로
+        mode_key = next((key for key, synonyms in MODE_SYNONYMS.items() if mode in synonyms), None)
 
+        mode = mode_key or found_mode
+        
         # (백업) 외부 전역 매핑 존재시 한 번 더 숫자화 시도
         # 하지만 이미 숫자 코드라면 이 줄은 영향 없음
         REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
+        print(mode)
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
-
+        print(mode)
         if not nick or not mode:
             return kakao_text("닉네임/모드를 인식하지 못했어요. 예) 전적검색 모설 공식경기")
 
