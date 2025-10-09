@@ -52,19 +52,10 @@ async def fetch_match_data(session, match_id, headers):
     async with session.get(url, headers=headers) as response:
         return await response.json()
 
-# 변경
-import asyncio, aiohttp
-
-ASYNC_PER_REQ_TIMEOUT = 1.2  # 각 match-detail 요청 제한
-ASYNC_TOTAL_TIMEOUT   = 3.0  # 전체 병렬 수집 제한
-
-async def fetch_all_match_data(matches, headers, limit=8):
-    timeout = aiohttp.ClientTimeout(total=ASYNC_PER_REQ_TIMEOUT)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        # 너무 많이 가져오면 5초 넘김 → 8경기만
-        subset = matches[:limit]
-        tasks = [fetch_match_data(session, mid, headers) for mid in subset]
-        return await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), ASYNC_TOTAL_TIMEOUT)
+async def fetch_all_match_data(matches, headers):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_match_data(session, match_id, headers) for match_id in matches]
+        return await asyncio.gather(*tasks)
 
 def get_match_data(matches, headers):
     return asyncio.run(fetch_all_match_data(matches, headers))
@@ -320,10 +311,8 @@ def result(character_name=None, match_type_name=None):
                                    max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
                                    players=df_final.to_dict(orient="records"))
         
-        # 변경 (스킬 엔드포인트 안에서만)
-        match_data_list = asyncio.run(fetch_all_match_data(matches, headers, limit=8))
-        # 예외/실패 원소 제거
-        match_data_list = [d for d in match_data_list if isinstance(d, dict)]
+        # match 데이터 가져오기
+        match_data_list = get_match_data(matches, headers)
         if not match_data_list:
             return render_template('result.html', level_data=level_data, no_recent_matches=True)
 
