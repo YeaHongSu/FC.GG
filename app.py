@@ -1458,6 +1458,163 @@ def kakao_penalty():
         })
 
 
+@app.route("/kakao/temp", methods=["POST"])
+def kakao_skill_temp():
+    try:
+        body = request.get_json(silent=True) or {}
+        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+        params = (body.get("action") or {}).get("params") or {}
+        detail_params = (body.get("action") or {}).get("detailParams") or {}
+
+        # -------------------------------
+        # ① 닉네임 / 모드 파싱
+        # -------------------------------
+        def _p(name):
+            return (params.get(name) or "").strip() or \
+                   ((detail_params.get(name) or {}).get("value") or "").strip()
+
+        nick = _p("nick")
+        mode_name = _p("mode")
+        if not nick or not mode_name:
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {"text": "닉네임과 경기 유형을 함께 입력해주세요!\n예: 전적검색 모설 공식경기"}
+                    }]
+                }
+            })
+
+        # -------------------------------
+        # ② 모드 매핑 (ex. 공식경기 → 50)
+        # -------------------------------
+        MODE_SYNONYMS = {
+            "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
+            "60": ["60", "친선경기", "친선", "클래식", "클겜"],
+            "52": ["52", "감독모드", "감독", "감모"],
+            "40": ["40", "커스텀매치", "커스텀", "커겜"],
+        }
+        mode = next((k for k, v in MODE_SYNONYMS.items() if mode_name in v), None)
+        if not mode:
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {"text": f"‘{mode_name}’은 잘못된 경기 유형이에요.\n(예: 공식경기, 친선경기)"}
+                    }]
+                }
+            })
+
+        # -------------------------------
+        # ③ Nexon API 요청 (닉네임 → OUID)
+        # -------------------------------
+        headers = {"x-nxopen-api-key": app.config["API_KEY"]}
+        ouid_res = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/id?nickname={nick}", headers=headers
+        )
+        if not ouid_res.ok:
+            return jsonify({
+                "version": "2.0",
+                "template": {"outputs": [{"simpleText": {"text": "닉네임을 찾을 수 없습니다."}}]}
+            })
+
+        ouid = ouid_res.json().get("ouid")
+
+        # -------------------------------
+        # ④ 기본 정보 (레벨 / 티어)
+        # -------------------------------
+        lv = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/user/basic?ouid={ouid}", headers=headers
+        ).json().get("level")
+
+        division_info = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}", headers=headers
+        ).json()
+
+        division_mapping = {
+            800: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png",
+            900: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png",
+            1000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png",
+            1100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png",
+            1200: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png",
+            1300: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png",
+            2000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png",
+            2100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png",
+            2200: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png",
+            2300: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png",
+            2400: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png",
+            2500: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png",
+            2600: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png",
+            2700: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png",
+            2800: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png",
+            2900: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png",
+            3000: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png",
+            3100: "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png",
+        }
+
+        match_type_info = next((i for i in division_info if i["matchType"] == int(mode)), None)
+        tier_image = division_mapping.get(match_type_info.get("division")) if match_type_info else None
+
+        # -------------------------------
+        # ⑤ 최근 25경기 전적 조회
+        # -------------------------------
+        matches = requests.get(
+            f"https://open.api.nexon.com/fconline/v1/user/match?ouid={ouid}&matchtype={mode}&limit=25",
+            headers=headers,
+        ).json()
+
+        if not matches:
+            return jsonify({
+                "version": "2.0",
+                "template": {"outputs": [{"simpleText": {"text": f"{nick}님의 최근 경기가 없습니다."}}]}
+            })
+
+        # -------------------------------
+        # ⑥ 경기 데이터 분석
+        # -------------------------------
+        match_data = get_match_data(matches, headers)
+        wins, total = 0, len(match_data)
+        for data in match_data:
+            my_data = me(data, nick)
+            if my_data["matchDetail"]["matchResult"] == "승":
+                wins += 1
+        win_rate = round((wins / total) * 100, 1)
+
+        # 플레이스타일 계산
+        max_data, min_data = [], []
+        play_style = determine_play_style(max_data, min_data)
+
+        # -------------------------------
+        # ⑦ 카드 응답
+        # -------------------------------
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{
+                    "basicCard": {
+                        "title": f"{nick}님의 {mode_name} 전적 요약 ⚽",
+                        "description": f"레벨: {lv}\n승률: {win_rate}%\n플레이스타일: {play_style or '분석 중'}",
+                        "thumbnail": {"imageUrl": tier_image},
+                        "buttons": [
+                            {"action": "message", "label": "승률개선 보기", "messageText": f"승률개선 {nick} {mode_name}"}
+                        ]
+                    }
+                }]
+            }
+        })
+
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{
+                    "simpleText": {"text": "전적검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}
+                }]
+            }
+        })
+
+
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
