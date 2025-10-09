@@ -1141,7 +1141,7 @@ def kakao_skill():
             card = {
                 "basicCard": {
                     "title": title,
-                    "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기(경량) 기반 전적입니다.",
+                    "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
                     **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
