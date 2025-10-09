@@ -837,6 +837,13 @@ def kakao_skill():
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
+        # [ADD] 카카오 스킬 타임아웃 방지용 시간 예산(초)
+        import time
+        REPLY_BUDGET_SEC = 2.4  # 카카오 응답 제한(보통 3초) 대비 여유
+        t0 = time.time()
+        def time_left_ok(extra: float = 0.0) -> bool:
+            return (time.time() - t0 + extra) < REPLY_BUDGET_SEC
+
         # ---------- 공통 매핑 ----------
         MODE_SYNONYMS = {
             "50": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
@@ -970,8 +977,12 @@ def kakao_skill():
 
         # ---------- 4) 상세 계산(승률개선용) ----------
         if matches:
-            match_data_list = get_match_data(matches, headers)
-        
+            # [ADD] 남은 시간 빠듯하면 상세 수집(get_match_data) 스킵하여 타임아웃 방지
+            if not time_left_ok(extra=0.8):
+                match_data_list = []  # 상세 수집 생략 -> 아래 계산은 기본값/대체문구로 처리
+            else:
+                match_data_list = get_match_data(matches, headers)
+
             results = []        # "승"/"패"(필요시 "무")
             w_l_data = []       # calculate_win_improvement 라벨 인풋
             imp_rows = []       # 내 지표 행(수치만 뽑아 계산에 사용)
@@ -1108,6 +1119,35 @@ def kakao_skill():
         if not tier_image:
             card["basicCard"].pop("thumbnail", None)
 
+        # [ADD] 카드 본문에 '개선 시 승률' 블록(또는 대체 문구) 보강: 상세 수집 스킵 시에도 항상 노출
+        try:
+            if (original_win_rate is None) or (modified_win_rate is None) or (win_rate_improvement is None):
+                imp_block = (
+                    f"{nick}  Lv.{lv}\n"
+                    "【개선 시 승률】\n"
+                    "분석 데이터가 부족합니다.\n\n"
+                    "【개선해야하는 지표】\n"
+                    "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+                )
+            else:
+                feat_lines = []
+                if improved_features_text:
+                    feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
+                    feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
+                imp_block = (
+                    f"{nick}  Lv.{lv}\n"
+                    "【개선 시 승률】\n"
+                    f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+                    f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+                    "【개선해야하는 지표】\n" + ("\n".join(feat_lines) if feat_lines else "분석 데이터가 부족합니다.")
+                )
+
+            desc_now = card["basicCard"].get("description", "")
+            if "개선 시 승률" not in desc_now:
+                card["basicCard"]["description"] = (desc_now + "\n\n" + imp_block).strip()
+        except Exception:
+            pass
+
         return jsonify({"version": "2.0", "template": {"outputs": [card]}})
 
     except Exception:
@@ -1117,6 +1157,7 @@ def kakao_skill():
                 {"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}
             ]}
         })
+
 
 # -------------------------------------------
 # [NEW] 티어리스트 전용 Kakao 스킬 엔드포인트: /kakao/skill2
