@@ -1141,7 +1141,7 @@ def kakao_skill():
                     f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
                     "【개선해야하는 지표】\n" + ("\n".join(feat_lines) if feat_lines else "분석 데이터가 부족합니다.")
                 )
-
+    
             desc_now = card["basicCard"].get("description", "")
             if "개선 시 승률" not in desc_now:
                 card["basicCard"]["description"] = (desc_now + "\n\n" + imp_block).strip()
