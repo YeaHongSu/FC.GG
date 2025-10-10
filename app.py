@@ -948,7 +948,7 @@ def kakao_skill():
         mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
         print(mode)
         if not nick or not mode:
-            return kakao_text("닉네임/모드를 인식하지 못했어요. 예) 전적검색 모설 공식경기")
+            return kakao_text("닉네임/모드를 인식하지 못했어요.")
 
         # ---------- 기본 정보 조회 ----------
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
@@ -1415,7 +1415,7 @@ def kakao_penalty():
                         "simpleText": {
                             "text": (
                                 "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "왼쪽 가운데 오른쪽 중에 하나를 입력해주세요.\n"
+                                '"왼쪽, 가운데, 오른쪽" 중에 하나를 입력해주세요.\n'
                             )
                         }
                     }],
