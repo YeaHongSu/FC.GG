@@ -1087,7 +1087,7 @@ def kakao_skill():
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
-                            {"label": "전적 검색",  "action": "block", "blockId": JJ_id, 
+                            {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
                             "extra":{"params":{"nick": nick}}}
                         ]
                     }
