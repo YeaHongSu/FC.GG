@@ -330,9 +330,10 @@
       function centerInline(id) {
         const el = document.getElementById(id);
         if (!el) return;
-        // 가로 중앙 정렬
+        // ✅ 세로는 맨 위(block:'start'), 가로만 중앙(inline:'center')
         el.scrollIntoView({ block: 'start', inline: 'center', behavior: 'auto' });
       }
+
     
       function centerSafely() {
         centerInline('dodge-ball');           // 즉시
