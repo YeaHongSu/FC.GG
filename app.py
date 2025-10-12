@@ -834,6 +834,7 @@ def fun_new():
 def fun_redirect():
     return redirect(url_for('fun_new'), code=301)
 
+
 @app.route("/kakao/skill", methods=["POST"])
 def kakao_skill():
     """
@@ -879,15 +880,7 @@ def kakao_skill():
         # ---------- 바디/발화 파싱 ----------
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
-
-        MODE_SYNONYMS = {
-            "공식경기": ["50", "공식경기", "공식", "공경", "랭크", "랭겜"],
-            "친선경기": ["60", "친선경기", "친선", "클래식", "클겜"],
-            "감독모드": ["52", "감독모드", "감독", "감모"],
-            "커스텀매치": ["40", "커스텀매치", "커스텀", "커겜"]
-        }
-        WORD2CODE = {w: code for code, words in MODE_SYNONYMS.items() for w in words}
-
+        print(((body.get("userRequest")).get("block")).get("id"))
         CMD_SYNONYMS = {
             "전적검색": ["전적검색", "전적", "검색"],
             "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"]
@@ -903,7 +896,6 @@ def kakao_skill():
 
         # 파라미터
         nick = (_p("nick") or "").strip()
-        mode = (_p("mode") or "").strip()
 
         # 발화 전처리
         text = re.sub(r"\s+", " ", utter)
@@ -920,33 +912,12 @@ def kakao_skill():
         if not found_cmd:
             found_cmd = "전적검색"
 
-        # 모드(뒤에서부터)
-        found_mode = ""
-        for i in range(len(tokens)-1, -1, -1):
-            t = tokens[i]
-            if t in WORD2CODE:
-                found_mode = WORD2CODE[t]
-                tokens.pop(i)
-                break
-            if t in MODE_SYNONYMS:  # 숫자 그대로
-                found_mode = t
-                tokens.pop(i)
-                break
-
         # 남은 토큰 = 닉네임(공백 허용)
         found_nick = " ".join(tokens).strip()
 
         nick = nick or found_nick
-        mode_key = next((key for key, synonyms in MODE_SYNONYMS.items() if mode in synonyms), None)
+        mode = "50"
 
-        mode = mode_key or found_mode
-        
-        # (백업) 외부 전역 매핑 존재시 한 번 더 숫자화 시도
-        # 하지만 이미 숫자 코드라면 이 줄은 영향 없음
-        REVERSE_MATCH_TYPE_MAP = globals().get("REVERSE_MATCH_TYPE_MAP", {})
-        print(mode)
-        mode = REVERSE_MATCH_TYPE_MAP.get(mode, mode)
-        print(mode)
         if not nick or not mode:
             return kakao_text("닉네임/모드를 인식하지 못했어요.")
 
@@ -960,8 +931,8 @@ def kakao_skill():
             return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
 
         if now() - t0 > TIME_BUDGET:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
             return jsonify({"version":"2.0","template":{"outputs":[{
                 "basicCard":{
                     "title": f"{nick}",
@@ -1006,8 +977,8 @@ def kakao_skill():
 
         # ---------- 최근 경기 ----------
         if now() - t0 > TIME_BUDGET - 1.5:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{globals().get('MATCH_TYPE_MAP', {}).get(mode, mode)}"
+            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
             return jsonify({"version":"2.0","template":{"outputs":[{
                 "basicCard":{
                     "title": f"{nick} · Lv.{lv}",
@@ -1083,8 +1054,8 @@ def kakao_skill():
 
         # ---------- 카드 ----------
         MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
-        result_url = f"https://fcgg.kr/전적검색/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
-        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/{MATCH_TYPE_MAP.get(mode, mode)}"
+        result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
 
         if found_cmd == "승률개선":
             if (original_win_rate is not None and
@@ -1111,8 +1082,10 @@ def kakao_skill():
                         "description": description,
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
-                            {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
+                            {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+                            {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
+                            # {"label": "전적 요약 보기",  "action": "block", "blockId": result_url, 
+                            # "extra":{"nick":nick}},
                         ]
                     }
                 }
@@ -1131,7 +1104,7 @@ def kakao_skill():
                         "description": description,
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
-                            {"label": "승률개선 자세히", "action": "webLink", "webLinkUrl": imp_url},
+                            {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
                         ]
                     }
