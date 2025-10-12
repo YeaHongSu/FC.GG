@@ -320,16 +320,34 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-      // 페이지 로드 완료 후 좌우 중앙으로 스크롤 이동
-      window.addEventListener('load', () => {
+      // #dodge-ball 섹션을 가로 기준으로 화면 정중앙에 오게 맞춤
+      (function () {
         const se = document.scrollingElement || document.documentElement;
-        se.scrollTo({
-          left: (se.scrollWidth - se.clientWidth) / 2, // 좌우 중앙
-          top: 0,                                     // 맨 위로
-          behavior: 'auto'                            // 즉시 이동 (부드럽게 하려면 'smooth')
-        });
-      });
+    
+        function centerSectionX(id) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const rect = el.getBoundingClientRect();
+          // 요소의 화면상 좌측 + 요소의 가로 절반 - 뷰포트 가로 절반
+          const targetLeft = window.pageXOffset + rect.left + (rect.width / 2) - (se.clientWidth / 2);
+          se.scrollTo({ left: Math.max(0, targetLeft), top: 0, behavior: 'auto' });
+        }
+    
+        // 광고/폰트 로딩으로 레이아웃이 늦게 바뀔 수 있어 몇 번 보정
+        function centerSafely() {
+          centerSectionX('dodge-ball');      // 즉시
+          setTimeout(() => centerSectionX('dodge-ball'), 120);   // 폰트/광고 1차
+          setTimeout(() => centerSectionX('dodge-ball'), 400);   // 광고/이미지 2차
+        }
+    
+        // 새로고침 시 이전 스크롤 복원 방지
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    
+        window.addEventListener('load', centerSafely);
+        window.addEventListener('resize', () => setTimeout(centerSafely, 100));
+      })();
     </script>
+
 
     <!-- 게임 스크립트 -->
     <script>
