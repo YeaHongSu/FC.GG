@@ -1087,7 +1087,7 @@ def kakao_skill():
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
-                            {"label": "전적 요약 보기",  "action": "block", "blockId": JJ_id, 
+                            {"label": "전적 검색",  "action": "block", "blockId": JJ_id, 
                             "extra":{"params":{"nick": nick}}}
                         ]
                     }
@@ -1125,7 +1125,7 @@ def kakao_skill():
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
                         # {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
-                        {"label": "승률개선 보기",  "action": "block", "blockId": SL_id, 
+                        {"label": "승률개선",  "action": "block", "blockId": SL_id, 
                         "extra":{"params":{"nick": nick}}}
                     ]
                 }
