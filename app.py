@@ -880,7 +880,10 @@ def kakao_skill():
         # ---------- 바디/발화 파싱 ----------
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
-        print(((body.get("userRequest")).get("block")).get("id"))
+        # print(((body.get("userRequest")).get("block")).get("id"))
+        JJ_id = "68a44ed5d2032812d4a7df8b"
+        SL_id = "68b4464f171fb452df215e52"
+
         CMD_SYNONYMS = {
             "전적검색": ["전적검색", "전적", "검색"],
             "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"]
@@ -1083,9 +1086,9 @@ def kakao_skill():
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
-                            # {"label": "전적 요약 보기",  "action": "block", "blockId": result_url, 
-                            # "extra":{"nick":nick}},
+                            # {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
+                            {"label": "전적 요약 보기",  "action": "block", "blockId": JJ_id, 
+                            "extra":{"nick":nick}},
                         ]
                     }
                 }
@@ -1105,7 +1108,9 @@ def kakao_skill():
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
+                            # {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
+                            {"label": "전적 요약 보기",  "action": "block", "blockId": JJ_id, 
+                            "extra":{"nick":nick}}
                         ]
                     }
                 }
@@ -1119,7 +1124,9 @@ def kakao_skill():
                     **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                        # {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                        {"label": "승률개선 보기",  "action": "block", "blockId": SL_id, 
+                        "extra":{"nick":nick}}
                     ]
                 }
             }
@@ -1131,6 +1138,7 @@ def kakao_skill():
             "version":"2.0",
             "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
+
 
 
 
