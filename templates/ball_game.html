@@ -325,39 +325,34 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-      // 뒤로가기 복원 시도 방지
+      // 새로고침/뒤로가기 시 이전 스크롤 복원 방지
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     
-      // 요소(id) 기준으로 "가로만" 중앙 정렬 (세로는 항상 맨 위 유지)
-      function centerXToElement(id) {
+      // ✅ 세로(top)는 0으로 고정, 가로만 중앙 정렬
+      function centerInline(id) {
         const se = document.scrollingElement || document.documentElement;
         const el = document.getElementById(id);
         if (!el) return;
     
-        // 요소의 현재 문서 기준 좌측 좌표
         const rect = el.getBoundingClientRect();
-        const elLeft = rect.left + window.pageXOffset;   // 절대 X
-        const elWidth = rect.width;
+        const elLeft = rect.left + window.pageXOffset;   // 요소의 문서 기준 X
+        const targetLeft = Math.max(0, elLeft + rect.width / 2 - se.clientWidth / 2);
     
-        // 요소 중심이 뷰포트 중앙에 오도록 왼쪽 스크롤 목표 계산
-        const targetLeft = Math.max(0, elLeft + (elWidth / 2) - (se.clientWidth / 2));
-    
-        // ✅ 세로(top)는 0으로 고정, 가로(left)만 이동
         se.scrollTo({ left: targetLeft, top: 0, behavior: 'auto' });
       }
     
       function centerSafely() {
-        // 레이아웃/광고/웹폰트 로딩에 대비해 몇 번 보정
-        centerXToElement('dodge-ball');                  // 즉시
-        requestAnimationFrame(() => centerXToElement('dodge-ball')); // 다음 프레임
-        setTimeout(() => centerXToElement('dodge-ball'), 150);       // 폰트 적용 후
-        setTimeout(() => centerXToElement('dodge-ball'), 500);       // 광고/이미지 후
+        centerInline('dodge-ball');                                 // 즉시
+        requestAnimationFrame(() => centerInline('dodge-ball'));    // 다음 프레임
+        setTimeout(() => centerInline('dodge-ball'), 150);          // 폰트/스타일 적용 후
+        setTimeout(() => centerInline('dodge-ball'), 500);          // 광고/이미지 로드 후
       }
     
       window.addEventListener('load', centerSafely);
       window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
       window.addEventListener('resize', () => setTimeout(centerSafely, 50));
     </script>
+
 
 
 
