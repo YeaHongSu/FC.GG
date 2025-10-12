@@ -58,14 +58,10 @@
     </style>
 </head>
 <script>
-  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-  window.addEventListener('load', function () {
+  window.addEventListener('load', () => {
     const se = document.scrollingElement || document.documentElement;
-    se.scrollTo({ 
-      left: Math.max(0, (se.scrollWidth - se.clientWidth) / 2), 
-      top: 0, 
-      behavior: 'auto' 
-    });
+    se.scrollLeft = (se.scrollWidth - se.clientWidth) / 2; // 좌우 중간으로 이동
+    se.scrollTop = 0; // 맨 위로 (이건 선택)
   });
 </script>
 <body class="d-flex flex-column min-vh-100">
