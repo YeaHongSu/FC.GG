@@ -942,7 +942,7 @@ def kakao_skill():
                     "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
                     "buttons":[
                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url},
+                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
                     ]
                 }
             }]}})
@@ -989,7 +989,7 @@ def kakao_skill():
                     **({"thumbnail":{"imageUrl":tier_image}} if tier_image else {}),
                     "buttons":[
                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선 보기","action":"webLink","webLinkUrl":imp_url},
+                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
                     ]
                 }
             }]}})
@@ -1086,7 +1086,7 @@ def kakao_skill():
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            # {"label": "전적 요약 보기", "action": "webLink", "webLinkUrl": result_url},
+                            # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
                             {"label": "전적 검색",  "action": "block", "blockId": JJ_id, 
                             "extra":{"params":{"nick": nick}}}
                         ]
@@ -1108,8 +1108,8 @@ def kakao_skill():
                         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            # {"label": "전적 요약 보기",  "action": "webLink", "webLinkUrl": result_url},
-                            {"label": "전적 요약 보기",  "action": "block", "blockId": JJ_id, 
+                            # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
+                            {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
                             "extra":{"params":{"nick": nick}}}
                         ]
                     }
@@ -1124,7 +1124,7 @@ def kakao_skill():
                     **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        # {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
+                        # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
                         {"label": "승률개선",  "action": "block", "blockId": SL_id, 
                         "extra":{"params":{"nick": nick}}}
                     ]
