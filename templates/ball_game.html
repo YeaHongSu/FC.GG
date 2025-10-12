@@ -331,23 +331,26 @@
       function centerInline(id) {
         const el = document.getElementById(id);
         if (!el) return;
-        // 가로 중앙 정렬
-        el.scrollIntoView({ block: 'start', inline: 'center', behavior: 'auto' });
+    
+        // 1️⃣ 먼저 세로(top)를 맨 위로 고정
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    
+        // 2️⃣ 가로 방향만 중앙으로 정렬
+        el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
       }
     
       function centerSafely() {
-        centerInline('dodge-ball');           // 즉시
-        requestAnimationFrame(() => centerInline('dodge-ball')); // 다음 프레임
-        setTimeout(() => centerInline('dodge-ball'), 150);       // 폰트/스타일 적용 후
-        setTimeout(() => centerInline('dodge-ball'), 500);       // 광고/이미지 뒤늦은 로드
+        centerInline('dodge-ball');                                // 즉시
+        requestAnimationFrame(() => centerInline('dodge-ball'));   // 다음 프레임
+        setTimeout(() => centerInline('dodge-ball'), 150);         // 폰트/스타일 적용 후
+        setTimeout(() => centerInline('dodge-ball'), 500);         // 광고/이미지 로드 후
       }
     
       window.addEventListener('load', centerSafely);
-      // 혹시 bfcache(뒤로가기 캐시)에서 복원될 때도 보정
       window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
-      // 회전/리사이즈 시에도 유지
       window.addEventListener('resize', () => setTimeout(centerSafely, 50));
     </script>
+
 
 
 
