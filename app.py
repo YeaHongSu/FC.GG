@@ -1126,7 +1126,7 @@ def kakao_skill():
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
                         # {"label": "승률개선 보기", "action": "webLink", "webLinkUrl": imp_url},
                         {"label": "승률개선 보기",  "action": "block", "blockId": SL_id, 
-                        "extra":{"nick":nick}}
+                        "extra":{"params":{"nick": nick}}}
                     ]
                 }
             }
