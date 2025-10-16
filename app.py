@@ -1542,12 +1542,11 @@ def kakao_penalty():
             summary = (
                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
                 f"{badge}\n"
-                "다시 시작하려면 '@피파봇 승부차기'라고 말해주세요."
             )
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}], 
-                             "buttons": [{"label": "다음 게임",  "action": "block", "blockId": GM_id}]},
+                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, 
+                             "buttons": [{"label": "다음 게임",  "action": "block", "blockId": GM_id}]]},
                 "extra": {
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
                 }
