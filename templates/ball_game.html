@@ -364,7 +364,7 @@
       window.addEventListener('pageshow', e => { if (e.persisted) centerSafely(); });
       window.addEventListener('resize', () => setTimeout(centerSafely, 50));
     </script> -->
-    <script>
+    <!-- <script>
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     
       function centerOn(el) {
@@ -388,8 +388,40 @@
       window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
     
       // ❌ resize 시 자동 스크롤 제거 (버벅임 원인)
-    </script>
+    </script> -->
+    <script>
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     
+      function centerOn(el) {
+        if (!el) return;
+    
+        const rect = el.getBoundingClientRect();
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollTop  = window.pageYOffset || document.documentElement.scrollTop;
+    
+        const targetLeft = rect.left + scrollLeft + rect.width / 2 - window.innerWidth / 2;
+        const documentHeight = document.body.scrollHeight;
+        const viewportHeight = window.innerHeight;
+    
+        // 📍 전체 페이지의 중앙 위치로 이동
+        const targetTop = (documentHeight / 2) - (viewportHeight / 2);
+    
+        window.scrollTo({
+          left: Math.max(0, targetLeft),
+          top: Math.max(0, targetTop),
+          behavior: 'auto'
+        });
+      }
+    
+      function centerSafely() {
+        const target = document.getElementById('dodge-ball');
+        centerOn(target);
+      }
+    
+      window.addEventListener('load', centerSafely);
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
+    </script>
+
     
 
 
