@@ -159,7 +159,7 @@
                 data-ad-height = "90"></ins>
             <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
         </div> -->
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
+        <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
             crossorigin="anonymous"></script>
         <ins class="adsbygoogle"
             style="display:block; text-align:center;"
@@ -169,7 +169,7 @@
             data-ad-slot="5624069254"></ins>
         <script>
             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
+        </script> -->
         <div class="d-flex-custom" style="margin-top: 20px;">
             <div class="card mb-4 p-4 shadow-sm improve-card">
                 <h2 class="card-title h4 text-center title-with-border"><span class="text-success">{{ my_data.nickname }}</span>님의 예상 승률입니다!</h2>
@@ -307,6 +307,28 @@
                 </div>
             </div>
         </div>
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
+            crossorigin="anonymous"></script>
+        <ins class="adsbygoogle"
+            style="display:block; text-align:center;"
+            data-ad-layout="in-article"
+            data-ad-format="fluid"
+            data-ad-client="ca-pub-7970639123590302"
+            data-ad-slot="5624069254"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
+            crossorigin="anonymous"></script>
+        <ins class="adsbygoogle"
+            style="display:block; text-align:center;"
+            data-ad-layout="in-article"
+            data-ad-format="fluid"
+            data-ad-client="ca-pub-7970639123590302"
+            data-ad-slot="5624069254"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302"
             crossorigin="anonymous"></script>
         <ins class="adsbygoogle"
@@ -647,6 +669,32 @@
             var menu = document.getElementById("navbarNav");
             menu.classList.toggle("show");
         });
+    </script>
+    <script>
+      // 새로고침/뒤로가기 시 이전 스크롤 복원 방지
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    
+      function centerInline(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+    
+        // 1️⃣ 먼저 세로(top)를 맨 위로 고정
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    
+        // 2️⃣ 가로 방향만 중앙으로 정렬
+        el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
+      }
+    
+      function centerSafely() {
+        centerInline('dodge-ball');                                // 즉시
+        requestAnimationFrame(() => centerInline('dodge-ball'));   // 다음 프레임
+        setTimeout(() => centerInline('dodge-ball'), 150);         // 폰트/스타일 적용 후
+        setTimeout(() => centerInline('dodge-ball'), 500);         // 광고/이미지 로드 후
+      }
+    
+      window.addEventListener('load', centerSafely);
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
+      window.addEventListener('resize', () => setTimeout(centerSafely, 50));
     </script>
 </body>
 </html>
