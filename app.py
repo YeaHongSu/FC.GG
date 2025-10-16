@@ -2126,10 +2126,10 @@ def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
             dyn_idx += 1
         lines.append(line)
 
-    # 내 현재 등수
-    my_rank, total = _rank_of(uid)
-    if my_rank:
-        lines.append(f"\n내 현재 등수: {my_rank}/{total}")
+    # # 내 현재 등수
+    # my_rank, total = _rank_of(uid)
+    # if my_rank:
+    #     lines.append(f"\n내 현재 등수: {my_rank}/{total}")
 
     text = header + "\n".join(lines)
     return text, mentions
