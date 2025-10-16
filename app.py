@@ -1429,7 +1429,6 @@ def kakao_penalty():
         st = _state(uid)
         
         GM_id = ((body.get("userRequest")).get("block")).get("id") # "68c7f4b6465dc163a6375efb"
-        print(GM_id)
         
         # 종료/나가기
         if uter in ['종료', '나가기', '홈으로']:
@@ -1547,13 +1546,12 @@ def kakao_penalty():
             card = {
                 "textCard": {
                     "title": "다시 도전할까요? 😀",
-                    "buttons": [{"label": "다음 게임",  "action": "block", "blockId": GM_id}]
+                    "buttons": [{"label": "승부차기",  "action": "block", "blockId": GM_id}]
                 }
             }
             return jsonify({
                 "version": "2.0",
-                # "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
-                "template": {"outputs": [card]},                         
+                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
                 "extra": {
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
                 }
