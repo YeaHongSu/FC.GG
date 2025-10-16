@@ -1071,31 +1071,33 @@
         });
     </script>
     <script>
-      // 새로고침/뒤로가기 시 이전 스크롤 복원 방지
+      // 스크롤 위치 복원 방지
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     
-      function centerInline(id) {
-        const el = document.getElementById(id);
+      function scrollToCenter(targetId) {
+        const el = document.getElementById(targetId);
         if (!el) return;
     
-        // 1️⃣ 먼저 세로(top)를 맨 위로 고정
-        window.scrollTo({ top: 0, behavior: 'auto' });
+        const elementTop = el.getBoundingClientRect().top + window.scrollY;
+        const elementHeight = el.offsetHeight;
+        const viewportHeight = window.innerHeight;
     
-        // 2️⃣ 가로 방향만 중앙으로 정렬
-        el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
+        // 가운데 정렬 위치 계산
+        const scrollY = elementTop - (viewportHeight / 2) + (elementHeight / 2);
+        window.scrollTo({ top: scrollY, behavior: 'smooth' });
       }
     
-      function centerSafely() {
-        centerInline('dodge-ball');                                // 즉시
-        requestAnimationFrame(() => centerInline('dodge-ball'));   // 다음 프레임
-        setTimeout(() => centerInline('dodge-ball'), 150);         // 폰트/스타일 적용 후
-        setTimeout(() => centerInline('dodge-ball'), 500);         // 광고/이미지 로드 후
+      function centerOnLoad() {
+        // 여러번 시도해서 느린 로딩(이미지/폰트)에도 대응
+        setTimeout(() => scrollToCenter('player-style'), 400);
+        setTimeout(() => scrollToCenter('player-style'), 800);
+        setTimeout(() => scrollToCenter('player-style'), 1500);
       }
     
-      window.addEventListener('load', centerSafely);
-      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
-      window.addEventListener('resize', () => setTimeout(centerSafely, 50));
+      window.addEventListener('load', centerOnLoad);
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerOnLoad(); });
     </script>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
