@@ -518,5 +518,31 @@
             document.getElementById('popupOverlay').style.display = 'none';
         });
     </script>
+    <script>
+      // 새로고침/뒤로가기 시 이전 스크롤 복원 방지
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    
+      function centerInline(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+    
+        // 1️⃣ 먼저 세로(top)를 맨 위로 고정
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    
+        // 2️⃣ 가로 방향만 중앙으로 정렬
+        el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
+      }
+    
+      function centerSafely() {
+        centerInline('dodge-ball');                                // 즉시
+        requestAnimationFrame(() => centerInline('dodge-ball'));   // 다음 프레임
+        setTimeout(() => centerInline('dodge-ball'), 150);         // 폰트/스타일 적용 후
+        setTimeout(() => centerInline('dodge-ball'), 500);         // 광고/이미지 로드 후
+      }
+    
+      window.addEventListener('load', centerSafely);
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
+      window.addEventListener('resize', () => setTimeout(centerSafely, 50));
+    </script>
 </body>
 </html>
