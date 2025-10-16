@@ -1476,7 +1476,7 @@ def kakao_penalty():
 
         # 입력 파싱
         dir_text = _get_kick_input(body, cur_idx)
-
+        print(dir_text)
         # 입력 없으면 현재 보드만 안내
         if not dir_text or uter in ['승부차기', '승차']:
             board = _board(st["shots"], st["max"])
