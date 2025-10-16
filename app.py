@@ -2131,7 +2131,7 @@ def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
     # my_rank, total = _rank_of(uid)
     # if my_rank:
     #     lines.append(f"\n내 현재 등수: {my_rank}/{total}")
-    # lines.append("\n\n랭킹은 주기적으로 갱신됩니다.")
+    lines.append("\n\n랭킹은 주기적으로 갱신됩니다.")
 
     text = header + "\n".join(lines)
     return text, mentions
