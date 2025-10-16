@@ -372,25 +372,25 @@
         const rect = el.getBoundingClientRect();
         const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
         const targetLeft = rect.left + scrollLeft + rect.width / 2 - window.innerWidth / 2;
-        window.scrollTo({ left: Math.max(0, targetLeft), top: 0, behavior: 'auto' });
+        window.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' });
       }
     
       function centerSafely() {
         const target = document.getElementById('dodge-ball');
+        if (!target) return;
         centerOn(target);
-        requestAnimationFrame(() => centerOn(target));
-        setTimeout(() => centerOn(target), 150);
-        setTimeout(() => centerOn(target), 500);
       }
     
+      // ✅ 딱 한 번만 실행 (load 시에만)
       window.addEventListener('load', centerSafely);
-      window.addEventListener('pageshow', e => { if (e.persisted) centerSafely(); });
-      window.addEventListener('resize', () => setTimeout(centerSafely, 50));
+    
+      // ✅ 페이지 복귀 시 한 번만 (브라우저 캐시 복귀용)
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
+    
+      // ❌ resize 시 자동 스크롤 제거 (버벅임 원인)
     </script>
-
-
-
-
+    
+    
 
 
 
