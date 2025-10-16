@@ -1641,11 +1641,11 @@ def _format_leaderboard(uid: str, limit: int = 10) -> str:
     """결과보기 출력용 포맷"""
     items = _leaders()
     if not items:
-        return "아직 누적 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
+        return "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
 
     # 1등 헤더
     top_uid, top_rate, top_goals, top_shots = items[0]
-    header = "승부차기 누적 평균 성공률 결과\n\n" \
+    header = "승부차기 평균 성공률 결과\n\n" \
              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
 
     lines = []
@@ -1658,14 +1658,7 @@ def _format_leaderboard(uid: str, limit: int = 10) -> str:
             line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
         lines.append(line)
 
-    # 내 등수(리스트에 없으면 전체 랭크 표기만)
-    my_rank, total = _rank_of(uid)
-    if my_rank is None:
-        tail = f"\n\n내 기록이 아직 없어요. (전체 {total}명)"
-    else:
-        tail = f"\n\n내 현재 등수: {my_rank}/{total}"
-
-    return header + "\n".join(lines) + tail
+    return header + "\n".join(lines)
 # ----------------------------------------------------------------------------
 
 
