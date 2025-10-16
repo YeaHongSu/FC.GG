@@ -1533,7 +1533,7 @@ def kakao_penalty():
             ])
 
         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "@여홍수 골! ✅ ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
+        # 예: "@여홍수 골! ✅ ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍♂️ vs 🧤  |  현재 스코어 2"
         prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍♂️ vs 🧤  |  현재 스코어 {total}골"
         reaction = f"\n{vibe}\n{gk_line}"
 
