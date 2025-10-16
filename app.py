@@ -1551,7 +1551,7 @@ def kakao_penalty():
             }
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]}                             
+                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}], card}                             
                 "extra": {
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
                 }
