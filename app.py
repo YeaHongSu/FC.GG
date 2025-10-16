@@ -1428,7 +1428,7 @@ def kakao_penalty():
         uter = (body.get("userRequest") or {}).get("utterance") or ""
         st = _state(uid)
         
-        GM_id = "68c7f4b6465dc163a6375efb"
+        GM_id = ((body.get("userRequest")).get("block")).get("id") # "68c7f4b6465dc163a6375efb"
         
         # 종료/나가기
         if uter in ['종료', '나가기', '홈으로']:
@@ -1551,6 +1551,7 @@ def kakao_penalty():
             }
             return jsonify({
                 "version": "2.0",
+                # "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
                 "template": {"outputs": [card]},                         
                 "extra": {
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
