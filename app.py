@@ -1360,6 +1360,271 @@ def _record(uid: str, success: bool):
             return final, True
         return st["shots"][:], False
 
+# def _quick_replies():
+#     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
+#     # Kakao QuickReply(message) 포맷
+#     return [{"action": "message", "label": o, "messageText": o} for o in opts]
+
+# # ---- Endpoint ----------------------------------------------------------------
+# @app.route("/kakao/penalty", methods=["POST"])
+# def kakao_penalty():
+#     try:
+#         import random
+
+#         # ---------------- 멘트/연출 유틸 ----------------
+#         def _streak_tail(shots, val):
+#             """shots의 끝에서부터 val(True/False)와 같은 값이 몇 번 연속인지 카운트"""
+#             c = 0
+#             for s in reversed(shots):
+#                 if s is val: c += 1
+#                 else: break
+#             return c
+
+#         def _pick(arr):
+#             return random.choice(arr) if arr else ""
+
+#         # 골/노골 기본 멘트 풀
+#         GOAL_BASE = [
+#             "🔥 절정의 컨디션!",
+#             "💥 강슛이네요!",
+#             "🥳 완벽한 코스!",
+#             "😎 침착했다!",
+#             "🎯 정확도 미쳤다!",
+#             "🚀 골망이 찢어지겠어!"
+#         ]
+#         MISS_BASE = [
+#             "😰 긴장했나 봐요!",
+#             "🧤 골키퍼 선방!",
+#             "🙈 아깝다, 포스트!",
+#             "😵 살짝 빗나갔어요.",
+#             "😬 다음엔 더 과감하게!",
+#             "🌪️ 페인트에 걸렸나?"
+#         ]
+
+#         # 연속 상황 멘트 (상황별로 우선 적용)
+#         def goal_streak_msg(st):
+#             if st >= 5: return "🔥🔥🔥 5연속 골! 오늘은 당신의 날!"
+#             if st == 4: return "🔥🔥 4연속 골! 멈출 수 없다!"
+#             if st == 3: return "🔥 3연속 골! 흐름 제대로 탔다!"
+#             if st == 2: return "⚡ 2연속 골! 페이스 좋아요!"
+#             return ""
+
+#         def miss_streak_msg(st):
+#             if st >= 3: return "🧊 연속 실축… 호흡 가다듬고 다시!"
+#             if st == 2: return "🧊 2연속 실축… 코스 바꿔볼까요?"
+#             return ""
+
+#         # 엔딩 보상/칭호
+#         def end_badge(total):
+#             if total == 5: return "🏆 5골 입니다. 퍼펙트 키커!"
+#             if total == 4: return "🥇 4골 입니다. 엘리트 스트라이커!"
+#             if total == 3: return "🥈 3골 입니다. 안정적인 피니셔!"
+#             if total == 2: return "🥉 2골 입니다. 아직 워밍업이네요!"
+#             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
+
+#         # ----------------------------------------------
+#         body = request.get_json(silent=True) or {}
+#         uid = _uid(body)
+#         uname = _uname(body)
+
+#         uter = (body.get("userRequest") or {}).get("utterance") or ""
+#         st = _state(uid)
+        
+#         GM_id = ((body.get("userRequest")).get("block")).get("id") # "68c7f4b6465dc163a6375efb"
+        
+#         # 종료/나가기
+#         if uter in ['종료', '나가기', '홈으로']:
+#             _reset(uid)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+#                         }
+#                     }]
+#                 }
+#             })
+
+#         # 시작 트리거
+#         if not st and uter in ['승부차기', '승차']:
+#             _start(uid)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": (
+#                                 "📣 승부차기가 시작됩니다! 기회는 5번!\n"
+#                                 "🧍‍ vs 🧤\n"
+#                                 "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
+#                             )
+#                         }
+#                     }],
+#                     "quickReplies": _quick_replies()
+#                 }
+#             })
+
+#         # 현재 상태/회차
+#         st = _state(uid)
+#         if not st:
+#             # 잘못된 진입 보호
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [{"simpleText": {"text": "먼저 '@피파봇 승부차기'로 시작해 주세요!"}}]}
+#             })
+
+#         cur_idx = len(st["shots"])
+
+#         # 입력 파싱
+#         dir_text = _get_kick_input(body, cur_idx)
+#         print(dir_text)
+#         # 입력 없으면 현재 보드만 안내
+#         if not dir_text or uter in ['승부차기', '승차']:
+#             board = _board(st["shots"], st["max"])
+#             n = cur_idx
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": (
+#                                 f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
+#                                 f"현재: {board}\n"
+#                                 f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
+#                             )
+#                         }
+#                     }]
+#                 },
+#                 "extra": {
+#                     "mentions": {
+#                         "user1": {"type": "botUserKey", "id": uid}
+#                     }
+#                 }
+#             })
+
+#         # 판정
+#         success = (random.random() < _kick_prob(dir_text))
+#         shots, done = _record(uid, success)
+
+#         # 보드/스코어/연출
+#         board = _board(shots, 5)
+#         n = len(shots)
+#         total = sum(1 for s in shots if s)
+
+#         # 연속 카운트 계산
+#         g_streak = _streak_tail(shots, True)   # 연속 골
+#         m_streak = _streak_tail(shots, False)  # 연속 노골
+
+#         # 멘트 조립
+#         if success:
+#             head = "골! "
+#             vibe = goal_streak_msg(g_streak) or _pick(GOAL_BASE)
+#             gk_line = _pick([
+#                 "🧤 골키퍼가 움직이기도 전에 훅!",
+#                 "🧤 골키퍼가 반대편으로 뛰었네요!",
+#                 "🧤 완벽하게 속였습니다!"
+#             ])
+#         else:
+#             head = "노골! "
+#             vibe = miss_streak_msg(m_streak) or _pick(MISS_BASE)
+#             gk_line = _pick([
+#                 "🧤 골키퍼가 읽었어요!",
+#                 "🧤 손끝에 살짝 걸렸습니다!",
+#                 "🧤 코스가 들켰나 봐요!"
+#             ])
+
+#         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
+#         # 예: "@여홍수 골! ✅ ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
+#         prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍ vs 🧤  |  현재 스코어 {total}골"
+#         reaction = f"\n{vibe}\n{gk_line}"
+
+#         if done:
+#             badge = end_badge(total)
+#             summary = (
+#                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
+#                 f"{badge}\n"
+#             )
+#             card = {
+#                 "textCard": {
+#                     "title": "다시 도전할까요? 😀",
+#                     "buttons": [{"label": "승부차기",  "action": "block", "blockId": GM_id}]
+#                 }
+#             }
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
+#                 "extra": {
+#                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
+#                 }
+#             })
+
+#         # 진행 중이면 다음 입력 유도
+#         return jsonify({
+#             "version": "2.0",
+#             "template": {
+#                 "outputs": [{"simpleText": {"text": prefix + reaction}}],
+#                 "quickReplies": _quick_replies()
+#             },
+#             "extra": {
+#                 "mentions": {"user1": {"type": "botUserKey", "id": uid}}
+#             }
+#         })
+
+#     except Exception:
+#         return jsonify({
+#             "version": "2.0",
+#             "template": {
+#                 "outputs": [{
+#                     "simpleText": {
+#                         "text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."
+#                     }
+#                 }]
+#             }
+#         })
+
+# ------ 추가: 랭킹 저장용 Redis 유틸 ------
+import redis
+
+def _r():
+    # 필요시 환경변수로 관리해도 OK
+    return redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+
+LEADERS_ZSET = "penalty:leaders"                     # 커리어 성공률 랭킹(ZSET)
+def _career_key(uid): return f"penalty:career:{uid}"  # HSET goals, shots
+
+def _career_rate(uid):
+    """누적 성공률(0~1) 반환. 기록 없으면 None"""
+    r = _r()
+    k = _career_key(uid)
+    goals = int(r.hget(k, "goals") or 0)
+    shots = int(r.hget(k, "shots") or 0)
+    if shots == 0:
+        return None
+    return goals / shots
+
+def _career_add(uid, goals, shots):
+    """이번 게임 기록을 커리어에 누적하고, ZSET 랭킹 갱신 후 최신 성공률(0~1) 반환"""
+    r = _r()
+    k = _career_key(uid)
+    if shots > 0:
+        r.hincrby(k, "goals", goals)
+        r.hincrby(k, "shots", shots)
+    rate = _career_rate(uid) or 0.0
+    r.zadd(LEADERS_ZSET, {uid: rate})
+    return rate
+
+def _rank_of(uid):
+    """(현재 등수, 전체 인원) 반환. 기록 없으면 (None, 총원)"""
+    r = _r()
+    total = r.zcard(LEADERS_ZSET)
+    rank = r.zrevrank(LEADERS_ZSET, uid)  # 높은 점수일수록 앞순위
+    if rank is None:
+        return (None, total)
+    return (rank + 1, total)
+# -----------------------------------------
+
+
 def _quick_replies():
     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
     # Kakao QuickReply(message) 포맷
@@ -1449,6 +1714,15 @@ def kakao_penalty():
         # 시작 트리거
         if not st and uter in ['승부차기', '승차']:
             _start(uid)
+
+            # --- 추가: 시작 시점 커리어 랭킹 안내 ---
+            start_rate = _career_rate(uid)
+            start_rank, start_total = _rank_of(uid)
+            if start_rate is None:
+                rank_line = "\n🏅 커리어 랭킹: 신규 참가자 (기록 없음)"
+            else:
+                rank_line = f"\n🏅 커리어 랭킹: {start_rank}/{start_total} (성공률 {start_rate*100:.1f}%)"
+
             return jsonify({
                 "version": "2.0",
                 "template": {
@@ -1456,8 +1730,9 @@ def kakao_penalty():
                         "simpleText": {
                             "text": (
                                 "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "🧍‍ vs 🧤\n"
+                                "🧍‍♂️ vs 🧤\n"
                                 "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
+                                + rank_line
                             )
                         }
                     }],
@@ -1478,7 +1753,7 @@ def kakao_penalty():
 
         # 입력 파싱
         dir_text = _get_kick_input(body, cur_idx)
-        print(dir_text)
+
         # 입력 없으면 현재 보드만 안내
         if not dir_text or uter in ['승부차기', '승차']:
             board = _board(st["shots"], st["max"])
@@ -1489,7 +1764,7 @@ def kakao_penalty():
                     "outputs": [{
                         "simpleText": {
                             "text": (
-                                f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
+                                f"🧍‍♂️ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
                                 f"현재: {board}\n"
                                 f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
                             )
@@ -1535,15 +1810,21 @@ def kakao_penalty():
             ])
 
         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "@여홍수 골! ✅ ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
-        prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍ vs 🧤  |  현재 스코어 {total}골"
+        # 예: "@여홍수 골! ✅ ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍♂️ vs 🧤  |  현재 스코어 2"
+        prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍♂️ vs 🧤  |  현재 스코어 {total}골"
         reaction = f"\n{vibe}\n{gk_line}"
 
         if done:
             badge = end_badge(total)
+
+            # --- 추가: 커리어 누적 & 최종 랭킹 계산 ---
+            final_rate = _career_add(uid, total, len(shots))  # 5회 기록 누적
+            final_rank, final_total = _rank_of(uid)
+
             summary = (
                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
                 f"{badge}\n"
+                f"🏁 최종 커리어 랭킹: {final_rank}/{final_total} (성공률 {final_rate*100:.1f}%)\n"
             )
             card = {
                 "textCard": {
