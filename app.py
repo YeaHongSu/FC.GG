@@ -848,7 +848,7 @@ def kakao_skill():
 
         # ---- 튜닝 ----
         API_TIMEOUT = 1.2
-        MAX_DETAIL  = 20
+        MAX_DETAIL  = 25
         TIME_BUDGET = 4.2
 
         # ---- 유틸 ----
