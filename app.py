@@ -1652,13 +1652,41 @@ def _format_leaderboard(uid: str, limit: int = 10) -> str:
     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
         # 현재 유저인 경우 멘션 표기를 넣어 강조
         if k == uid:
-            line = f"{i}. {{#mentions.user1}} {round(rate*100)}%"
+            # ✅ f-string 안에서 {{ }}가 한 겹 사라지므로 4겹 또는 문자열 연결 방식 사용
+            line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
+            # 또는 같은 효과:
+            # line = f"{i}. {{{{#mentions.user1}}}} {round(rate*100)}%"
         else:
             # 다른 유저는 @축약 uid 표기
             line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
         lines.append(line)
 
     return header + "\n".join(lines)
+
+
+# def _format_leaderboard(uid: str, limit: int = 10) -> str:
+#     """결과보기 출력용 포맷"""
+#     items = _leaders()
+#     if not items:
+#         return "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
+
+#     # 1등 헤더
+#     top_uid, top_rate, top_goals, top_shots = items[0]
+#     header = "승부차기 평균 성공률 결과\n\n" \
+#              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
+
+#     lines = []
+#     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
+#         # 현재 유저인 경우 멘션 표기를 넣어 강조
+#         if k == uid:
+#             line = f"{i}. {{#mentions.user1}} {round(rate*100)}%"
+#         else:
+#             # 다른 유저는 @축약 uid 표기
+#             line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
+#         lines.append(line)
+
+#     return header + "\n".join(lines)
+
 # ----------------------------------------------------------------------------
 
 
