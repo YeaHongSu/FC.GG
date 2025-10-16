@@ -1543,10 +1543,15 @@ def kakao_penalty():
                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
                 f"{badge}\n"
             )
+            card = {
+                "basicCard": {
+                    "title": "다시 도전할까요? 😀",
+                    "buttons": ]{"label": "다음 게임",  "action": "block", "blockId": GM_id}]
+                }
+            }
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, 
-                             {"buttons": {"label": "다음 게임",  "action": "block", "blockId": GM_id}}]},
+                "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]}                             
                 "extra": {
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
                 }
