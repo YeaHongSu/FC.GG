@@ -1093,27 +1093,28 @@ def kakao_skill():
                     }
                 }
             else:
-                # 개선 계산 실패/데이터 부족 폴백
-                description = (
-                    f"{nick}  Lv.{lv}\n\n"
-                    "[개선 시 승률]\n"
-                    "분석 데이터가 부족합니다.\n\n"
-                    "[개선해야하는 지표]\n"
-                    "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
-                )
-                card = {
-                    "basicCard": {
-                        "title": "승률 개선 솔루션",
-                        "description": description,
-                        **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
-                        "buttons": [
-                            {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
-                            {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-                            "extra":{"params":{"nick": nick}}}
-                        ]
-                    }
-                }
+                return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
+                # # 개선 계산 실패/데이터 부족 폴백
+                # description = (
+                #     f"{nick}  Lv.{lv}\n\n"
+                #     "[개선 시 승률]\n"
+                #     "분석 데이터가 부족합니다.\n\n"
+                #     "[개선해야하는 지표]\n"
+                #     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+                # )
+                # card = {
+                #     "basicCard": {
+                #         "title": "승률 개선 솔루션",
+                #         "description": description,
+                #         **({"thumbnail": {"imageUrl": tier_image}} if tier_image else {}),
+                #         "buttons": [
+                #             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+                #             # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
+                #             {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
+                #             "extra":{"params":{"nick": nick}}}
+                #         ]
+                #     }
+                # }
         else:
             if len(matches) == 0:
                 return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
