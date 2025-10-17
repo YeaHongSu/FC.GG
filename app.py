@@ -1083,7 +1083,7 @@ def kakao_skill():
                     "basicCard": {
                         "title": "승률 개선 솔루션",
                         "description": description,
-                        "thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600} if tier_image else {},
+                        "thumbnail": {"imageUrl": tier_image, "width":16,"height":16} if tier_image else {},
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
@@ -1124,7 +1124,7 @@ def kakao_skill():
                 "basicCard": {
                     "title": title,
                     "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    **({"thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600}} if tier_image else {}),
+                    **({"thumbnail": {"imageUrl": tier_image, "width":16,"height":16}} if tier_image else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
                         # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
