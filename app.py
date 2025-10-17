@@ -1080,10 +1080,10 @@ def kakao_skill():
                     body_lines.append("분석 데이터가 부족합니다.")
                 description = head + "\n" + "\n".join(body_lines)
                 card = {
-                    "itemCard": {
+                    "basicCard": {
                         "title": "승률 개선 솔루션",
                         "description": description,
-                        "thumbnail": {"imageUrl": tier_image, "width":16,"height":16} if tier_image else {},
+                        "thumbnail": {"imageUrl": tier_image, "fixedRatio":true} if tier_image else {},
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
