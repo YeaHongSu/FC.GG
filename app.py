@@ -869,13 +869,6 @@ def kakao_skill():
     try:
         import time, re
 
-        badge_url = None
-        if tier_image:
-            public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
-            # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
-            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=320&bgw=1000&bgh=600"
-
-
         t0 = time.time()
 
         # ---- 튜닝 ----
@@ -1009,6 +1002,12 @@ def kakao_skill():
             divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
                             {"ouid": ouid}, headers)
             tier_image = pick_tier_image(divi, mode)
+
+        badge_url = None
+        if tier_image:
+            public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+            # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
+            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=320&bgw=1000&bgh=600"
 
         # ---------- 최근 경기 ----------
         if now() - t0 > TIME_BUDGET - 1.5:
