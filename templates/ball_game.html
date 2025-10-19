@@ -83,26 +83,6 @@
       #db-start{ font-weight:700; }
       #db-restart{ font-weight:600; }
     </style>
-    <style>
-      /* 데스크탑에서만 축소 (원하면 1024 대신 992/1200 등으로 조절) */
-      @media (min-width: 1024px) {
-        /* 크롬/엣지 등 */
-        html { zoom: .75; }
-    
-        /* Safari 폴백: zoom 미지원이면 wrapper에만 scale */
-        @supports not (zoom: 1) {
-          /* body에 걸지 말고 wrapper에만! (sticky/fixed 이슈 방지) */
-          #scale-root {
-            transform: scale(.75);
-            transform-origin: top center;
-            /* 스케일로 줄어든 폭을 보정해 가로 여백/스크롤 방지 */
-            width: calc(100% / .75); /* = 133.333...% */
-          }
-        }
-      }
-    </style>
-
-
 
 
 </head>
