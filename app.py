@@ -1395,71 +1395,530 @@ def kakao_skill2_tierlist():
 
 #     return header + "\n".join(lines)
 
+# # ------------------------------------------------------------
+# # 승부차기 미니게임 - 결과보기(리더보드)에서 다수 멘션 토큰 지원 완성본
+# # ------------------------------------------------------------
+# import random, threading
+# from flask import request, jsonify
+
+# # 전역 게임 상태
+# PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
+# PG_LOCK = threading.Lock()
+
+# # 전역 누적(커리어) 성공률 저장
+# CAREER = {}  # { uid: {"goals": int, "shots": int} }
+# C_LOCK = threading.Lock()
+
+# # (선택) 닉네임 캐싱 - 멘션이 불가한 경우 fallback로 쓸 수 있음
+# NAMEBOOK = {}  # { uid: "nickname" }
+# N_LOCK = threading.Lock()
+
+
+# # ========================= 누적/리더보드 유틸 =========================
+# def _career_add(uid: str, goals: int, shots: int):
+#     """이번 게임 성적을 커리어에 누적."""
+#     if shots <= 0:
+#         return
+#     with C_LOCK:
+#         st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
+#         st["goals"] += goals
+#         st["shots"] += shots
+
+# def _career_rate(uid: str):
+#     """uid의 누적 성공률(0~1). 없으면 None."""
+#     with C_LOCK:
+#         st = CAREER.get(uid)
+#         if not st or st["shots"] <= 0:
+#             return None
+#         return st["goals"] / st["shots"]
+
+# def _leaders():
+#     """
+#     성공률 기준 내림차순 정렬 리스트 반환
+#     [(uid, rate, goals, shots), ...]
+#     """
+#     with C_LOCK:
+#         items = []
+#         for k, v in CAREER.items():
+#             shots = v.get("shots", 0)
+#             goals = v.get("goals", 0)
+#             if shots > 0:
+#                 rate = goals / shots
+#                 items.append((k, rate, goals, shots))
+#     # 동률 안정화를 위해: 성공률↓, 시도수↓, uid↑
+#     items.sort(key=lambda x: (-x[1], -x[3], x[0]))
+#     return items
+
+# def _rank_of(uid: str):
+#     """(등수, 총원). 기록 없으면 (None, 총원)"""
+#     items = _leaders()
+#     total = len(items)
+#     for i, (k, *_rest) in enumerate(items, start=1):
+#         if k == uid:
+#             return i, total
+#     return None, total
+
+# def _short(u: str, n: int = 6) -> str:
+#     return u[:n] if u else "unknown"
+
+# def _save_name(uid: str, name: str):
+#     with N_LOCK:
+#         if name:
+#             NAMEBOOK[uid] = name
+
+# def _get_name(uid: str, fallback_short: bool = True) -> str:
+#     with N_LOCK:
+#         nm = NAMEBOOK.get(uid)
+#     if nm:
+#         return nm
+#     return _short(uid, 6) if fallback_short else uid
+
+# def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
+#     """
+#     리더보드 텍스트와 extra.mentions 딕셔너리를 함께 생성하여 반환.
+#     - user1은 항상 요청자(uid)
+#     - 상위 limit명까지 user2, user3 ... 로 멘션 키 자동 할당
+#     - 본문에는 "{{#mentions.userX}}" 토큰을 정확히 매칭 (f-string 이스케이프 이슈 회피)
+#     """
+#     items = _leaders()
+#     if not items:
+#         text = "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
+#         mentions = {"user1": {"type": "botUserKey", "id": uid}}
+#         return text, mentions
+
+#     top_uid, top_rate, _, _ = items[0]
+#     header = "승부차기 평균 성공률 결과\n\n" \
+#              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
+
+#     # mentions: user1은 항상 요청자
+#     mentions = {"user1": {"type": "botUserKey", "id": uid}}
+
+#     lines = []
+#     dyn_idx = 2  # user2부터 시작
+#     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
+#         if k == uid:
+#             # 요청자 줄: user1 멘션 사용
+#             line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
+#         else:
+#             # 다른 유저도 멘션으로 표시하려면 user2, user3 ... 동적 할당
+#             key = f"user{dyn_idx}"
+#             mentions[key] = {"type": "botUserKey", "id": k}
+#             line = f"{i}. " + "{{#mentions." + key + "}}" + f" {round(rate*100)}%"
+#             dyn_idx += 1
+#         lines.append(line)
+
+#     # # 내 현재 등수
+#     # my_rank, total = _rank_of(uid)
+#     # if my_rank:
+#     #     lines.append(f"\n내 현재 등수: {my_rank}/{total}")
+#     lines.append("\n\n랭킹은 주기적으로 갱신됩니다.")
+
+#     text = header + "\n".join(lines)
+#     return text, mentions
+# # ====================================================================
+
+
+# # ---- Payload helpers ---------------------------------------------------------
+# def _uid(body: dict) -> str:
+#     """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
+#     user = ((body.get("userRequest") or {}).get("user") or {})
+#     uid = (user.get("id") or "").strip()
+#     return uid or "unknown"
+
+# def _uname(body: dict) -> str:
+#     """카카오 문서에는 nickname 필드가 보장되지 않음 → 표시명은 uid로 대체.
+#     가능하면 properties.nickname 사용하여 저장 (fallback은 uid)
+#     """
+#     user = ((body.get("userRequest") or {}).get("user") or {})
+#     props = user.get("properties") or {}
+#     nickname = (props.get("nickname") or "").strip()
+#     uid = (user.get("id") or "").strip() or "unknown"
+#     return nickname or uid
+
+# def _param_from_action(body: dict, key: str) -> str:
+#     """action.params 우선, 없으면 action.detailParams[key].value"""
+#     action = body.get("action") or {}
+#     params = action.get("params") or {}
+#     if key in params and params[key] is not None:
+#         return str(params[key])
+#     dparams = action.get("detailParams") or {}
+#     if key in dparams and dparams[key] is not None:
+#         val = (dparams[key] or {}).get("value")
+#         if val is not None:
+#             return str(val)
+#     return ""
+
+# def _get_kick_input(body: dict, cur_idx: int) -> str:
+#     """
+#     1) 다중 슬롯: dir{cur_idx} (예: dir0, dir1 ...)
+#     2) 단일 슬롯: dir
+#     둘 다 없으면 빈 문자열
+#     """
+#     key = f"dir{cur_idx}"
+#     v = _param_from_action(body, key)
+#     if v:
+#         return v
+#     return _param_from_action(body, "dir")
+
+# # ---- Game helpers ------------------------------------------------------------
+# def _board(shots, total=5):
+#     marks = "".join("⭕️" if s else "❌️" for s in shots)
+#     return marks + "⬜️" * (total - len(shots))
+
+# def _kick_prob(direction_text: str) -> float:
+#     s = (direction_text or "").strip().lower()
+#     # 가운데(센터)만 33%, 그 외(왼/오/사분면 포함) 66%
+#     return 0.33 if s in {"가운데", "center", "c"} else 0.66
+
+# def _start(uid: str):
+#     with PG_LOCK:
+#         PENALTY_GAMES[uid] = {"shots": [], "max": 5}
+
+# def _state(uid: str):
+#     with PG_LOCK:
+#         return PENALTY_GAMES.get(uid)
+
+# def _reset(uid: str):
+#     """현재 사용자 게임 상태 완전 초기화"""
+#     with PG_LOCK:
+#         if uid in PENALTY_GAMES:
+#             del PENALTY_GAMES[uid]
+
+# def _record(uid: str, success: bool):
+#     with PG_LOCK:
+#         st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
+#         st["shots"].append(success)
+#         done = len(st["shots"]) >= st["max"]
+#         if done:
+#             final = st["shots"][:]
+#             del PENALTY_GAMES[uid]
+#             return final, True
+#         return st["shots"][:], False
+
+# def _quick_replies():
+#     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
+#     # Kakao QuickReply(message) 포맷
+#     return [{"action": "message", "label": o, "messageText": o} for o in opts]
+
+
+# # ---- Endpoint ----------------------------------------------------------------
+# @app.route("/kakao/penalty", methods=["POST"])
+# def kakao_penalty():
+#     try:
+#         # ---------------- 멘트/연출 유틸 ----------------
+#         def _streak_tail(shots, val):
+#             """shots의 끝에서부터 val(True/False)와 같은 값이 몇 번 연속인지 카운트"""
+#             c = 0
+#             for s in reversed(shots):
+#                 if s is val: c += 1
+#                 else: break
+#             return c
+
+#         def _pick(arr):
+#             return random.choice(arr) if arr else ""
+
+#         # 골/노골 기본 멘트 풀
+#         GOAL_BASE = [
+#             "🔥 절정의 컨디션!",
+#             "💥 강슛이네요!",
+#             "🥳 완벽한 코스!",
+#             "😎 침착했다!",
+#             "🎯 정확도 미쳤다!",
+#             "🚀 골망이 찢어지겠어!"
+#         ]
+#         MISS_BASE = [
+#             "😰 긴장했나 봐요!",
+#             "🧤 골키퍼 선방!",
+#             "🙈 아깝다, 포스트!",
+#             "😵 살짝 빗나갔어요.",
+#             "😬 다음엔 더 과감하게!",
+#             "🌪️ 페인트에 걸렸나?"
+#         ]
+
+#         # 연속 상황 멘트 (상황별로 우선 적용)
+#         def goal_streak_msg(st):
+#             if st >= 5: return "🔥🔥🔥 5연속 골! 오늘은 당신의 날!"
+#             if st == 4: return "🔥🔥 4연속 골! 멈출 수 없다!"
+#             if st == 3: return "🔥 3연속 골! 흐름 제대로 탔다!"
+#             if st == 2: return "⚡ 2연속 골! 페이스 좋아요!"
+#             return ""
+
+#         def miss_streak_msg(st):
+#             if st >= 3: return "🧊 연속 실축… 호흡 가다듬고 다시!"
+#             if st == 2: return "🧊 2연속 실축… 코스 바꿔볼까요?"
+#             return ""
+
+#         # 엔딩 보상/칭호
+#         def end_badge(total):
+#             if total == 5: return "🏆 5골 입니다. 퍼펙트 키커!"
+#             if total == 4: return "🥇 4골 입니다. 엘리트 스트라이커!"
+#             if total == 3: return "🥈 3골 입니다. 안정적인 피니셔!"
+#             if total == 2: return "🥉 2골 입니다. 아직 워밍업이네요!"
+#             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
+
+#         # ----------------------------------------------
+#         body = request.get_json(silent=True) or {}
+#         uid = _uid(body)
+#         uname = _uname(body)
+#         # 닉네임 캐싱
+#         _save_name(uid, uname)
+
+#         uter = (body.get("userRequest") or {}).get("utterance") or ""
+#         st = _state(uid)
+        
+#         GM_id = ((body.get("userRequest")).get("block")).get("id")  # "블록ID 예: 68c7f4b6..."
+
+#         # ---- (A) '결과보기' 요청 처리 -----------------------------------------
+#         if uter in ['결과보기', '결과 보기', '랭킹', '랭킹보기', '결과']:
+#             lb_text, mentions = _format_leaderboard_and_mentions(uid, limit=10)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {"text": lb_text}
+#                     }, {
+#                         "textCard": {
+#                             "title": "다시 도전할까요? 😀",
+#                             "buttons": [
+#                                 {"label": "승부차기", "action": "block", "blockId": GM_id}
+#                             ]
+#                         }
+#                     }],
+#                 },
+#                 "extra": {
+#                     # 여러 명 멘션 동적 삽입 (예: user1~userN)
+#                     "mentions": mentions
+#                 }
+#             })
+
+#         # 종료/나가기
+#         if uter in ['종료', '나가기', '홈으로']:
+#             _reset(uid)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+#                         }
+#                     }]
+#                 }
+#             })
+
+#         # 시작 트리거
+#         if not st and uter in ['승부차기', '승차']:
+#             _start(uid)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": (
+#                                 "📣 승부차기가 시작됩니다! 기회는 5번!\n"
+#                                 "🧍‍ vs 🧤\n"
+#                                 "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
+#                             )
+#                         }
+#                     }],
+#                     "quickReplies": _quick_replies()
+#                 }
+#             })
+
+#         # 현재 상태/회차
+#         st = _state(uid)
+#         if not st:
+#             # 잘못된 진입 보호
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [{"simpleText": {"text": "먼저 '@피파봇 승부차기'로 시작해 주세요!"}}]}
+#             })
+
+#         cur_idx = len(st["shots"])
+
+#         # 입력 파싱
+#         dir_text = _get_kick_input(body, cur_idx)
+#         # 입력 없으면 현재 보드만 안내
+#         if not dir_text or uter in ['승부차기', '승차']:
+#             board = _board(st["shots"], st["max"])
+#             n = cur_idx
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {
+#                     "outputs": [{
+#                         "simpleText": {
+#                             "text": (
+#                                 f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
+#                                 f"현재: {board}\n"
+#                                 f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
+#                             )
+#                         }
+#                     }]
+#                 },
+#                 "extra": {
+#                     "mentions": {
+#                         "user1": {"type": "botUserKey", "id": uid}
+#                     }
+#                 }
+#             })
+
+#         # 판정
+#         success = (random.random() < _kick_prob(dir_text))
+#         shots, done = _record(uid, success)
+
+#         # 보드/스코어/연출
+#         board = _board(shots, 5)
+#         n = len(shots)
+#         total = sum(1 for s in shots if s)
+
+#         # 연속 카운트 계산
+#         def _streak_tail_local(shots_local, val):
+#             c = 0
+#             for s in reversed(shots_local):
+#                 if s is val: c += 1
+#                 else: break
+#             return c
+#         g_streak = _streak_tail_local(shots, True)   # 연속 골
+#         m_streak = _streak_tail_local(shots, False)  # 연속 노골
+
+#         # 멘트 조립
+#         if success:
+#             head = "골! "
+#             vibe = goal_streak_msg(g_streak) or _pick(GOAL_BASE)
+#             gk_line = _pick([
+#                 "🧤 골키퍼가 움직이기도 전에 훅!",
+#                 "🧤 골키퍼가 반대편으로 뛰었네요!",
+#                 "🧤 완벽하게 속였습니다!"
+#             ])
+#         else:
+#             head = "노골! "
+#             vibe = miss_streak_msg(m_streak) or _pick(MISS_BASE)
+#             gk_line = _pick([
+#                 "🧤 골키퍼가 읽었어요!",
+#                 "🧤 손끝에 살짝 걸렸습니다!",
+#                 "🧤 코스가 들켰나 봐요!"
+#             ])
+
+#         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
+#         # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
+#         prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍ vs 🧤  |  현재 스코어 {total}골"
+#         reaction = f"\n{vibe}\n{gk_line}"
+
+#         if done:
+#             # ---- 게임 종료: 커리어 누적 & 요약 + 버튼(승부차기/결과보기) ----------
+#             _career_add(uid, total, len(shots))  # 누적 저장
+
+#             badge = end_badge(total)
+#             summary = (
+#                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
+#                 f"{badge}\n"
+#             )
+#             card = {
+#                 "textCard": {
+#                     "title": "다시 도전할까요? 😀",
+#                     "buttons": [
+#                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
+#                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
+#                     ]
+#                 }
+#             }
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
+#                 "extra": {
+#                     # 종료 메시지는 요청자 멘션만 유지(짧게)
+#                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
+#                 }
+#             })
+
+#         # 진행 중이면 다음 입력 유도
+#         return jsonify({
+#             "version": "2.0",
+#             "template": {
+#                 "outputs": [{"simpleText": {"text": prefix + reaction}}],
+#                 "quickReplies": _quick_replies()
+#             },
+#             "extra": {
+#                 "mentions": {"user1": {"type": "botUserKey", "id": uid}}
+#             }
+#         })
+
+#     except Exception:
+#         return jsonify({
+#             "version": "2.0",
+#             "template": {
+#                 "outputs": [{
+#                     "simpleText": {
+#                         "text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."
+#                     }
+#                 }]
+#             }
+#         })
+
 # ------------------------------------------------------------
-# 승부차기 미니게임 - 결과보기(리더보드)에서 다수 멘션 토큰 지원 완성본
+# 승부차기 미니게임 (방별 랭킹/상태 분리: botGroupKey 지원)
 # ------------------------------------------------------------
 import random, threading
 from flask import request, jsonify
 
-# 전역 게임 상태
-PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
+# ========================= 전역 저장소 (방 단위) =========================
+# game state: 방+유저 단위로 key
+PENALTY_GAMES = {}   # { "room:uid": {"shots":[True/False...], "max":5} }
 PG_LOCK = threading.Lock()
 
-# 전역 누적(커리어) 성공률 저장
-CAREER = {}  # { uid: {"goals": int, "shots": int} }
+# career/랭킹: 방 단위로 분리
+CAREER = {}          # { room: { uid: {"goals":int, "shots":int} } }
 C_LOCK = threading.Lock()
 
-# (선택) 닉네임 캐싱 - 멘션이 불가한 경우 fallback로 쓸 수 있음
-NAMEBOOK = {}  # { uid: "nickname" }
+# (선택) 닉네임 캐싱 - 멘션 미지원 환경 fallback 용
+NAMEBOOK = {}        # { uid: "nickname" }
 N_LOCK = threading.Lock()
 
 
-# ========================= 누적/리더보드 유틸 =========================
-def _career_add(uid: str, goals: int, shots: int):
-    """이번 게임 성적을 커리어에 누적."""
-    if shots <= 0:
-        return
-    with C_LOCK:
-        st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
-        st["goals"] += goals
-        st["shots"] += shots
+# ========================= 기본 식별자 헬퍼 =========================
+def _uid(body: dict) -> str:
+    """카카오 user.id (botUserKey)를 최우선으로 사용"""
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    uid = (user.get("id") or "").strip()
+    return uid or "unknown"
 
-def _career_rate(uid: str):
-    """uid의 누적 성공률(0~1). 없으면 None."""
-    with C_LOCK:
-        st = CAREER.get(uid)
-        if not st or st["shots"] <= 0:
-            return None
-        return st["goals"] / st["shots"]
+def _uname(body: dict) -> str:
+    """표시명(없으면 uid)"""
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    props = user.get("properties") or {}
+    nickname = (props.get("nickname") or "").strip()
+    uid = (user.get("id") or "").strip() or "unknown"
+    return nickname or uid
 
-def _leaders():
+def _room(body: dict) -> str:
     """
-    성공률 기준 내림차순 정렬 리스트 반환
-    [(uid, rate, goals, shots), ...]
+    채팅방 식별자 추출:
+    1) botGroupKey (버튼/파라미터로 들어오는 값)
+    2) conversation.id (카카오 대화 세션 ID)
+    3) roomId (환경별 폴백)
+    4) 개인DM: dm:{user.id}
     """
-    with C_LOCK:
-        items = []
-        for k, v in CAREER.items():
-            shots = v.get("shots", 0)
-            goals = v.get("goals", 0)
-            if shots > 0:
-                rate = goals / shots
-                items.append((k, rate, goals, shots))
-    # 동률 안정화를 위해: 성공률↓, 시도수↓, uid↑
-    items.sort(key=lambda x: (-x[1], -x[3], x[0]))
-    return items
+    ur = body.get("userRequest") or {}
+    action = body.get("action") or {}
 
-def _rank_of(uid: str):
-    """(등수, 총원). 기록 없으면 (None, 총원)"""
-    items = _leaders()
-    total = len(items)
-    for i, (k, *_rest) in enumerate(items, start=1):
-        if k == uid:
-            return i, total
-    return None, total
+    # 1) action.params / userRequest.params 내 botGroupKey 우선
+    for container in (action.get("params") or {}, ur.get("params") or {}):
+        bg = container.get("botGroupKey")
+        if bg:
+            return str(bg)
 
-def _short(u: str, n: int = 6) -> str:
-    return u[:n] if u else "unknown"
+    # 2) 카카오 컨버세이션 ID
+    conv = ur.get("conversation") or {}
+    rid = conv.get("id")
+    if rid:
+        return str(rid)
+
+    # 3) 기타 roomId 폴백
+    rid = ur.get("roomId")
+    if rid:
+        return str(rid)
+
+    # 4) 개인 DM
+    return f"dm:{_uid(body)}"
 
 def _save_name(uid: str, name: str):
     with N_LOCK:
@@ -1471,16 +1930,51 @@ def _get_name(uid: str, fallback_short: bool = True) -> str:
         nm = NAMEBOOK.get(uid)
     if nm:
         return nm
-    return _short(uid, 6) if fallback_short else uid
+    return (uid[:6] if uid else "unknown") if fallback_short else uid
 
-def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
-    """
-    리더보드 텍스트와 extra.mentions 딕셔너리를 함께 생성하여 반환.
-    - user1은 항상 요청자(uid)
-    - 상위 limit명까지 user2, user3 ... 로 멘션 키 자동 할당
-    - 본문에는 "{{#mentions.userX}}" 토큰을 정확히 매칭 (f-string 이스케이프 이슈 회피)
-    """
-    items = _leaders()
+
+# ========================= 커리어/랭킹 유틸 (방 스코프) =========================
+def _career_add(room: str, uid: str, goals: int, shots: int):
+    if shots <= 0:
+        return
+    with C_LOCK:
+        roombox = CAREER.setdefault(room, {})
+        st = roombox.setdefault(uid, {"goals": 0, "shots": 0})
+        st["goals"] += goals
+        st["shots"] += shots
+
+def _career_rate(room: str, uid: str):
+    with C_LOCK:
+        st = (CAREER.get(room) or {}).get(uid)
+        if not st or st["shots"] <= 0:
+            return None
+        return st["goals"] / st["shots"]
+
+def _leaders(room: str):
+    """해당 방의 리더보드 [(uid, rate, goals, shots), ...]"""
+    with C_LOCK:
+        roombox = CAREER.get(room, {})
+        items = []
+        for k, v in roombox.items():
+            shots = v.get("shots", 0)
+            goals = v.get("goals", 0)
+            if shots > 0:
+                rate = goals / shots
+                items.append((k, rate, goals, shots))
+    # 동률 안정: 성공률↓, 시도수↓, uid↑
+    items.sort(key=lambda x: (-x[1], -x[3], x[0]))
+    return items
+
+def _rank_of(room: str, uid: str):
+    items = _leaders(room)
+    total = len(items)
+    for i, (k, *_rest) in enumerate(items, start=1):
+        if k == uid:
+            return i, total
+    return None, total
+
+def _format_leaderboard_and_mentions(room: str, uid: str, limit: int = 10):
+    items = _leaders(room)
     if not items:
         text = "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
         mentions = {"user1": {"type": "botUserKey", "id": uid}}
@@ -1490,51 +1984,23 @@ def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
     header = "승부차기 평균 성공률 결과\n\n" \
              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
 
-    # mentions: user1은 항상 요청자
     mentions = {"user1": {"type": "botUserKey", "id": uid}}
-
     lines = []
-    dyn_idx = 2  # user2부터 시작
+    dyn_idx = 2
     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
         if k == uid:
-            # 요청자 줄: user1 멘션 사용
             line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
         else:
-            # 다른 유저도 멘션으로 표시하려면 user2, user3 ... 동적 할당
             key = f"user{dyn_idx}"
             mentions[key] = {"type": "botUserKey", "id": k}
             line = f"{i}. " + "{{#mentions." + key + "}}" + f" {round(rate*100)}%"
             dyn_idx += 1
         lines.append(line)
-
-    # # 내 현재 등수
-    # my_rank, total = _rank_of(uid)
-    # if my_rank:
-    #     lines.append(f"\n내 현재 등수: {my_rank}/{total}")
     lines.append("\n\n랭킹은 주기적으로 갱신됩니다.")
-
-    text = header + "\n".join(lines)
-    return text, mentions
-# ====================================================================
+    return header + "\n".join(lines), mentions
 
 
-# ---- Payload helpers ---------------------------------------------------------
-def _uid(body: dict) -> str:
-    """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    uid = (user.get("id") or "").strip()
-    return uid or "unknown"
-
-def _uname(body: dict) -> str:
-    """카카오 문서에는 nickname 필드가 보장되지 않음 → 표시명은 uid로 대체.
-    가능하면 properties.nickname 사용하여 저장 (fallback은 uid)
-    """
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    props = user.get("properties") or {}
-    nickname = (props.get("nickname") or "").strip()
-    uid = (user.get("id") or "").strip() or "unknown"
-    return nickname or uid
-
+# ========================= 파라미터/입력 유틸 =========================
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
     action = body.get("action") or {}
@@ -1552,7 +2018,6 @@ def _get_kick_input(body: dict, cur_idx: int) -> str:
     """
     1) 다중 슬롯: dir{cur_idx} (예: dir0, dir1 ...)
     2) 단일 슬롯: dir
-    둘 다 없으면 빈 문자열
     """
     key = f"dir{cur_idx}"
     v = _param_from_action(body, key)
@@ -1560,82 +2025,56 @@ def _get_kick_input(body: dict, cur_idx: int) -> str:
         return v
     return _param_from_action(body, "dir")
 
-# ---- Game helpers ------------------------------------------------------------
+
+# ========================= 게임 상태 유틸 (방+유저 스코프) =========================
+def _start(room: str, uid: str):
+    key = f"{room}:{uid}"
+    with PG_LOCK:
+        PENALTY_GAMES[key] = {"shots": [], "max": 5}
+
+def _state(room: str, uid: str):
+    key = f"{room}:{uid}"
+    with PG_LOCK:
+        return PENALTY_GAMES.get(key)
+
+def _reset(room: str, uid: str):
+    key = f"{room}:{uid}"
+    with PG_LOCK:
+        if key in PENALTY_GAMES:
+            del PENALTY_GAMES[key]
+
+def _record(room: str, uid: str, success: bool):
+    key = f"{room}:{uid}"
+    with PG_LOCK:
+        st = PENALTY_GAMES.setdefault(key, {"shots": [], "max": 5})
+        st["shots"].append(success)
+        done = len(st["shots"]) >= st["max"]
+        if done:
+            final = st["shots"][:]
+            del PENALTY_GAMES[key]
+            return final, True
+        return st["shots"][:], False
+
+
+# ========================= 게임 로직 유틸 =========================
 def _board(shots, total=5):
     marks = "".join("⭕️" if s else "❌️" for s in shots)
     return marks + "⬜️" * (total - len(shots))
 
 def _kick_prob(direction_text: str) -> float:
     s = (direction_text or "").strip().lower()
-    # 가운데(센터)만 33%, 그 외(왼/오/사분면 포함) 66%
     return 0.33 if s in {"가운데", "center", "c"} else 0.66
 
-def _start(uid: str):
-    with PG_LOCK:
-        PENALTY_GAMES[uid] = {"shots": [], "max": 5}
 
-def _state(uid: str):
-    with PG_LOCK:
-        return PENALTY_GAMES.get(uid)
-
-def _reset(uid: str):
-    """현재 사용자 게임 상태 완전 초기화"""
-    with PG_LOCK:
-        if uid in PENALTY_GAMES:
-            del PENALTY_GAMES[uid]
-
-def _record(uid: str, success: bool):
-    with PG_LOCK:
-        st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
-        st["shots"].append(success)
-        done = len(st["shots"]) >= st["max"]
-        if done:
-            final = st["shots"][:]
-            del PENALTY_GAMES[uid]
-            return final, True
-        return st["shots"][:], False
-
-def _quick_replies():
-    opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
-    # Kakao QuickReply(message) 포맷
-    return [{"action": "message", "label": o, "messageText": o} for o in opts]
-
-
-# ---- Endpoint ----------------------------------------------------------------
+# ========================= 엔드포인트 =========================
 @app.route("/kakao/penalty", methods=["POST"])
 def kakao_penalty():
     try:
-        # ---------------- 멘트/연출 유틸 ----------------
-        def _streak_tail(shots, val):
-            """shots의 끝에서부터 val(True/False)와 같은 값이 몇 번 연속인지 카운트"""
-            c = 0
-            for s in reversed(shots):
-                if s is val: c += 1
-                else: break
-            return c
+        # -------------- 멘트/연출 유틸 --------------
+        def _pick(arr): return random.choice(arr) if arr else ""
+        GOAL_BASE = ["🔥 절정의 컨디션!","💥 강슛이네요!","🥳 완벽한 코스!","😎 침착했다!","🎯 정확도 미쳤다!","🚀 골망이 찢어지겠어!"]
+        MISS_BASE = ["😰 긴장했나 봐요!","🧤 골키퍼 선방!","🙈 아깝다, 포스트!","😵 살짝 빗나갔어요.","😬 다음엔 더 과감하게!","🌪️ 페인트에 걸렸나?"]
 
-        def _pick(arr):
-            return random.choice(arr) if arr else ""
-
-        # 골/노골 기본 멘트 풀
-        GOAL_BASE = [
-            "🔥 절정의 컨디션!",
-            "💥 강슛이네요!",
-            "🥳 완벽한 코스!",
-            "😎 침착했다!",
-            "🎯 정확도 미쳤다!",
-            "🚀 골망이 찢어지겠어!"
-        ]
-        MISS_BASE = [
-            "😰 긴장했나 봐요!",
-            "🧤 골키퍼 선방!",
-            "🙈 아깝다, 포스트!",
-            "😵 살짝 빗나갔어요.",
-            "😬 다음엔 더 과감하게!",
-            "🌪️ 페인트에 걸렸나?"
-        ]
-
-        # 연속 상황 멘트 (상황별로 우선 적용)
         def goal_streak_msg(st):
             if st >= 5: return "🔥🔥🔥 5연속 골! 오늘은 당신의 날!"
             if st == 4: return "🔥🔥 4연속 골! 멈출 수 없다!"
@@ -1648,7 +2087,6 @@ def kakao_penalty():
             if st == 2: return "🧊 2연속 실축… 코스 바꿔볼까요?"
             return ""
 
-        # 엔딩 보상/칭호
         def end_badge(total):
             if total == 5: return "🏆 5골 입니다. 퍼펙트 키커!"
             if total == 4: return "🥇 4골 입니다. 엘리트 스트라이커!"
@@ -1656,78 +2094,65 @@ def kakao_penalty():
             if total == 2: return "🥉 2골 입니다. 아직 워밍업이네요!"
             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
 
-        # ----------------------------------------------
+        # -------------- 본문 --------------
         body = request.get_json(silent=True) or {}
-        uid = _uid(body)
+        uid  = _uid(body)
+        room = _room(body)    # ✅ 방 식별자
         uname = _uname(body)
-        # 닉네임 캐싱
         _save_name(uid, uname)
 
         uter = (body.get("userRequest") or {}).get("utterance") or ""
-        st = _state(uid)
-        
-        GM_id = ((body.get("userRequest")).get("block")).get("id")  # "블록ID 예: 68c7f4b6..."
+        st = _state(room, uid)
+        GM_id = ((body.get("userRequest") or {}).get("block") or {}).get("id")
 
-        # ---- (A) '결과보기' 요청 처리 -----------------------------------------
-        if uter in ['결과보기', '결과 보기', '랭킹', '랭킹보기', '결과']:
-            lb_text, mentions = _format_leaderboard_and_mentions(uid, limit=10)
+        # 결과보기(리더보드)
+        if uter in ['결과보기','결과 보기','랭킹','랭킹보기','결과']:
+            lb_text, mentions = _format_leaderboard_and_mentions(room, uid, limit=10)
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{
-                        "simpleText": {"text": lb_text}
-                    }, {
-                        "textCard": {
+                    "outputs": [
+                        {"simpleText": {"text": lb_text}},
+                        {"textCard": {
                             "title": "다시 도전할까요? 😀",
                             "buttons": [
                                 {"label": "승부차기", "action": "block", "blockId": GM_id}
                             ]
-                        }
-                    }],
+                        }}
+                    ]
                 },
-                "extra": {
-                    # 여러 명 멘션 동적 삽입 (예: user1~userN)
-                    "mentions": mentions
-                }
+                "extra": {"mentions": mentions}
             })
 
-        # 종료/나가기
-        if uter in ['종료', '나가기', '홈으로']:
-            _reset(uid)
+        # 종료
+        if uter in ['종료','나가기','홈으로']:
+            _reset(room, uid)
+            return jsonify({
+                "version": "2.0",
+                "template": {"outputs": [{
+                    "simpleText": {
+                        "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                    }
+                }]}
+            })
+
+        # 시작
+        if not st and uter in ['승부차기','승차']:
+            _start(room, uid)
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [{
-                        "simpleText": {
-                            "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
-                        }
-                    }]
-                }
-            })
-
-        # 시작 트리거
-        if not st and uter in ['승부차기', '승차']:
-            _start(uid)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "🧍‍ vs 🧤\n"
-                                "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
-                            )
-                        }
+                        "simpleText": {"text": "📣 승부차기가 시작됩니다! 기회는 5번!\n🧍‍ vs 🧤\n“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."}
                     }],
-                    "quickReplies": _quick_replies()
+                    "quickReplies": [{"action":"message","label":o,"messageText":o}
+                                     for o in ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]]
                 }
             })
 
-        # 현재 상태/회차
-        st = _state(uid)
+        # 상태 확인
+        st = _state(room, uid)
         if not st:
-            # 잘못된 진입 보호
             return jsonify({
                 "version": "2.0",
                 "template": {"outputs": [{"simpleText": {"text": "먼저 '@피파봇 승부차기'로 시작해 주세요!"}}]}
@@ -1735,88 +2160,59 @@ def kakao_penalty():
 
         cur_idx = len(st["shots"])
 
-        # 입력 파싱
+        # 입력 파싱(없으면 보드만)
         dir_text = _get_kick_input(body, cur_idx)
-        # 입력 없으면 현재 보드만 안내
-        if not dir_text or uter in ['승부차기', '승차']:
+        if not dir_text or uter in ['승부차기','승차']:
             board = _board(st["shots"], st["max"])
             n = cur_idx
             return jsonify({
                 "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
-                                f"현재: {board}\n"
-                                f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
-                            )
-                        }
-                    }]
-                },
-                "extra": {
-                    "mentions": {
-                        "user1": {"type": "botUserKey", "id": uid}
-                    }
-                }
+                "template": {"outputs": [{
+                    "simpleText": {"text": f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n현재: {board}\n“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."}
+                }]},
+                "extra": {"mentions": {"user1": {"type": "botUserKey", "id": uid}}}
             })
 
         # 판정
         success = (random.random() < _kick_prob(dir_text))
-        shots, done = _record(uid, success)
+        shots, done = _record(room, uid, success)
 
-        # 보드/스코어/연출
+        # 보드/스코어
         board = _board(shots, 5)
         n = len(shots)
         total = sum(1 for s in shots if s)
 
-        # 연속 카운트 계산
-        def _streak_tail_local(shots_local, val):
+        # 연속 멘트
+        def _streak_tail_local(_shots, val):
             c = 0
-            for s in reversed(shots_local):
+            for s in reversed(_shots):
                 if s is val: c += 1
                 else: break
             return c
-        g_streak = _streak_tail_local(shots, True)   # 연속 골
-        m_streak = _streak_tail_local(shots, False)  # 연속 노골
+        g_streak = _streak_tail_local(shots, True)
+        m_streak = _streak_tail_local(shots, False)
 
-        # 멘트 조립
         if success:
             head = "골! "
             vibe = goal_streak_msg(g_streak) or _pick(GOAL_BASE)
-            gk_line = _pick([
-                "🧤 골키퍼가 움직이기도 전에 훅!",
-                "🧤 골키퍼가 반대편으로 뛰었네요!",
-                "🧤 완벽하게 속였습니다!"
-            ])
+            gk_line = _pick(["🧤 골키퍼가 움직이기도 전에 훅!","🧤 골키퍼가 반대편으로 뛰었네요!","🧤 완벽하게 속였습니다!"])
         else:
             head = "노골! "
             vibe = miss_streak_msg(m_streak) or _pick(MISS_BASE)
-            gk_line = _pick([
-                "🧤 골키퍼가 읽었어요!",
-                "🧤 손끝에 살짝 걸렸습니다!",
-                "🧤 코스가 들켰나 봐요!"
-            ])
+            gk_line = _pick(["🧤 골키퍼가 읽었어요!","🧤 손끝에 살짝 걸렸습니다!","🧤 코스가 들켰나 봐요!"])
 
-        # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
         prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍ vs 🧤  |  현재 스코어 {total}골"
         reaction = f"\n{vibe}\n{gk_line}"
 
         if done:
-            # ---- 게임 종료: 커리어 누적 & 요약 + 버튼(승부차기/결과보기) ----------
-            _career_add(uid, total, len(shots))  # 누적 저장
-
+            _career_add(room, uid, total, len(shots))  # ✅ 방 누적 저장
             badge = end_badge(total)
-            summary = (
-                f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
-                f"{badge}\n"
-            )
+            summary = f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n{badge}\n"
             card = {
                 "textCard": {
                     "title": "다시 도전할까요? 😀",
                     "buttons": [
-                        {"label": "승부차기",  "action": "block", "blockId": GM_id},
+                        {"label": "승부차기", "action": "block", "blockId": GM_id},
                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
                     ]
                 }
@@ -1824,34 +2220,26 @@ def kakao_penalty():
             return jsonify({
                 "version": "2.0",
                 "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
-                "extra": {
-                    # 종료 메시지는 요청자 멘션만 유지(짧게)
-                    "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-                }
+                "extra": {"mentions": {"user1": {"type": "botUserKey", "id": uid}}}
             })
 
-        # 진행 중이면 다음 입력 유도
+        # 진행 중
         return jsonify({
             "version": "2.0",
             "template": {
                 "outputs": [{"simpleText": {"text": prefix + reaction}}],
-                "quickReplies": _quick_replies()
+                "quickReplies": [{"action":"message","label":o,"messageText":o}
+                                 for o in ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]]
             },
-            "extra": {
-                "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-            }
+            "extra": {"mentions": {"user1": {"type": "botUserKey", "id": uid}}}
         })
 
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "simpleText": {
-                        "text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."
-                    }
-                }]
-            }
+            "template": {"outputs": [{
+                "simpleText": {"text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."}
+            }]}
         })
 
 
