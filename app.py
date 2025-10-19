@@ -1116,7 +1116,7 @@ def kakao_skill():
                         "title": "승률 개선 솔루션",
                         "description": description,
                         # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
-                        "thumbnail": {"imageUrl": badge_url}} if badge_url else {},
+                        "thumbnail": {"imageUrl": badge_url} if badge_url else {},
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
