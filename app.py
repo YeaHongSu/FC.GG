@@ -842,7 +842,7 @@ from flask import send_file, request
 @app.route("/tierbadge")
 def tierbadge():
     url = request.args.get("url", "")
-    size = int(request.args.get("size", 240))   # 아이콘 실제 크기
+    size = int(request.args.get("size", 320))   # 아이콘 실제 크기
     bg_w, bg_h = 1000, 600                      # 카드에 보낼 전체 캔버스
 
     r = requests.get(url, timeout=2)
@@ -868,6 +868,14 @@ def kakao_skill():
     """
     try:
         import time, re
+
+        badge_url = None
+        if tier_image:
+            public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+            # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
+            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=320&bgw=1000&bgh=600"
+
+
         t0 = time.time()
 
         # ---- 튜닝 ----
@@ -1010,7 +1018,8 @@ def kakao_skill():
                 "basicCard":{
                     "title": f"{nick} · Lv.{lv}",
                     "description":"요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
-                    **({"thumbnail":{"imageUrl":tier_image, "width":1600,"height":1600}} if tier_image else {}),
+                    # **({"thumbnail":{"imageUrl":tier_image, "width":1600,"height":1600}} if tier_image else {}),
+                    **({"thumbnail":{"imageUrl": badge_url}} if badge_url else {}),
                     "buttons":[
                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
                         {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
@@ -1107,7 +1116,8 @@ def kakao_skill():
                     "basicCard": {
                         "title": "승률 개선 솔루션",
                         "description": description,
-                        "thumbnail": {"imageUrl": tier_image} if tier_image else {},
+                        # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
+                        **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
                             # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
@@ -1148,7 +1158,8 @@ def kakao_skill():
                 "basicCard": {
                     "title": title,
                     "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    **({"thumbnail": {"imageUrl": tier_image, "width":16,"height":16}} if tier_image else {}),
+                    # **({"thumbnail": {"imageUrl": tier_image, "width":16,"height":16}} if tier_image else {}),
+                    **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
                         # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
