@@ -6,7 +6,6 @@
     <meta charset="UTF-8">
     <!-- <meta name="viewport" content="width=1024, initial-scale=0.5, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover"> -->
     <meta name="viewport" content="width=1024, initial-scale=0.6, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"> -->
     <meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
     <meta name="google-adsense-account" content="ca-pub-7970639123590302">
     <meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 피파 전적, FC온라인 전적, FC온라인 전적 검색, 플레이스타일, 승률 개선, 수수료 계산기, 빠칭코, 선수 티어, 에프씨지지, fcgg, fc.gg">
@@ -73,6 +72,37 @@
     <style>
         html{overflow-anchor:none}
     </style>
+    <style>
+      /* 공통으로 크게 */
+      #db-start, #db-restart{
+        font-size: 1.25rem;     /* 약 20px */
+        padding: .9rem 1.5rem;  /* 높이/넓이 증가 */
+        border-radius: .75rem;  /* 더 둥글게 */
+      }
+      /* 필요시 색/굵기 커스터마이즈 */
+      #db-start{ font-weight:700; }
+      #db-restart{ font-weight:600; }
+    </style>
+    <style>
+      /* 데스크탑에서만 축소 (원하면 1024 대신 992/1200 등으로 조절) */
+      @media (min-width: 1024px) {
+        /* 크롬/엣지 등 */
+        html { zoom: .75; }
+    
+        /* Safari 폴백: zoom 미지원이면 wrapper에만 scale */
+        @supports not (zoom: 1) {
+          /* body에 걸지 말고 wrapper에만! (sticky/fixed 이슈 방지) */
+          #scale-root {
+            transform: scale(.75);
+            transform-origin: top center;
+            /* 스케일로 줄어든 폭을 보정해 가로 여백/스크롤 방지 */
+            width: calc(100% / .75); /* = 133.333...% */
+          }
+        }
+      }
+    </style>
+
+
 
 
 </head>
@@ -152,8 +182,10 @@
                 </div>
 
                 <div class="d-flex gap-3 align-items-center mb-3">
-                  <button id="db-start" class="btn btn-primary btn-sm">게임 시작</button>
-                  <button id="db-restart" class="btn btn-outline-secondary btn-sm">재시작</button>
+                  <!-- <button id="db-start" class="btn btn-primary btn-sm">게임 시작</button>
+                  <button id="db-restart" class="btn btn-outline-secondary btn-sm">재시작</button> -->
+                  <button id="db-start"   class="btn btn-primary btn-lg px-4 py-3 fw-bold">게임 시작</button>
+                  <button id="db-restart" class="btn btn-outline-secondary btn-lg px-4 py-3 fw-bold">재시작</button>
                   <span id="db-status" class="ms-auto badge bg-secondary">대기</span>
                 </div>
 
