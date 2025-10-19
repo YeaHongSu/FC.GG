@@ -401,7 +401,8 @@
     
       // ❌ resize 시 자동 스크롤 제거 (버벅임 원인)
     </script> -->
-    <script>
+    
+    <!-- <script>
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     
       function centerOn(el) {
@@ -432,9 +433,43 @@
     
       window.addEventListener('load', centerSafely);
       window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
+    </script> -->
+
+    <script>
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    
+      function centerOn(el) {
+        if (!el) return;
+    
+        const rect = el.getBoundingClientRect();
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollTop  = window.pageYOffset || document.documentElement.scrollTop;
+    
+        const targetLeft = rect.left + scrollLeft + rect.width / 2 - window.innerWidth / 2;
+        const documentHeight = document.body.scrollHeight;
+        const viewportHeight = window.innerHeight;
+    
+        const targetTop = (documentHeight / 2) - (viewportHeight / 2);
+    
+        window.scrollTo({
+          left: Math.max(0, targetLeft),
+          top: Math.max(0, targetTop),
+          behavior: 'auto'  // 즉시 이동
+        });
+      }
+    
+      function centerSafely() {
+        const target = document.getElementById('dodge-ball');
+        centerOn(target);
+      }
+    
+      // ✅ 더 빠른 시점 (DOMContentLoaded)으로 변경
+      document.addEventListener('DOMContentLoaded', centerSafely);
+    
+      // 브라우저 캐시 복원 시에도 유지
+      window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
     </script>
 
-    
 
 
 
