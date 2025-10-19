@@ -843,7 +843,7 @@ from flask import send_file, request
 @app.route("/tierbadge")
 def tierbadge():
     url = request.args.get("url", "")
-    size = int(request.args.get("size", 320))   # 아이콘 실제 크기
+    size = int(request.args.get("size", 480))   # 아이콘 실제 크기
     bg_w, bg_h = 1000, 600                      # 카드에 보낼 전체 캔버스
 
     r = requests.get(url, timeout=2)
@@ -1008,7 +1008,7 @@ def kakao_skill():
         if tier_image:
             public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
             # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
-            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=320&bgw=1000&bgh=600"
+            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=480&bgw=1000&bgh=600"
 
         # ---------- 최근 경기 ----------
         if now() - t0 > TIME_BUDGET - 1.5:
