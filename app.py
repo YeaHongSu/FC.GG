@@ -1315,85 +1315,85 @@ def kakao_skill2_tierlist():
             "template": {"outputs": [{"simpleText": {"text": "티어리스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
 
-# 승부차기 미니게임
-import random, threading
-from flask import request, jsonify
+# # 승부차기 미니게임
+# import random, threading
+# from flask import request, jsonify
 
-PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
-PG_LOCK = threading.Lock()
+# PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
+# PG_LOCK = threading.Lock()
 
-# ---- 누적(커리어) 성공률 집계용 전역 저장소 -----------------------------------
-CAREER = {}  # { uid: {"goals": int, "shots": int} }
-C_LOCK = threading.Lock()
+# # ---- 누적(커리어) 성공률 집계용 전역 저장소 -----------------------------------
+# CAREER = {}  # { uid: {"goals": int, "shots": int} }
+# C_LOCK = threading.Lock()
 
-def _career_add(uid: str, goals: int, shots: int):
-    """이번 게임 성적을 커리어에 누적."""
-    if shots <= 0:
-        return
-    with C_LOCK:
-        st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
-        st["goals"] += goals
-        st["shots"] += shots
+# def _career_add(uid: str, goals: int, shots: int):
+#     """이번 게임 성적을 커리어에 누적."""
+#     if shots <= 0:
+#         return
+#     with C_LOCK:
+#         st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
+#         st["goals"] += goals
+#         st["shots"] += shots
 
-def _career_rate(uid: str):
-    """uid의 누적 성공률(0~1). 없으면 None."""
-    with C_LOCK:
-        st = CAREER.get(uid)
-        if not st or st["shots"] <= 0:
-            return None
-        return st["goals"] / st["shots"]
+# def _career_rate(uid: str):
+#     """uid의 누적 성공률(0~1). 없으면 None."""
+#     with C_LOCK:
+#         st = CAREER.get(uid)
+#         if not st or st["shots"] <= 0:
+#             return None
+#         return st["goals"] / st["shots"]
 
-def _leaders():
-    """성공률 기준 내림차순 정렬 리스트 [(uid, rate, goals, shots), ...]"""
-    with C_LOCK:
-        items = []
-        for k, v in CAREER.items():
-            shots = v.get("shots", 0)
-            goals = v.get("goals", 0)
-            rate = (goals / shots) if shots > 0 else None
-            if rate is not None:
-                items.append((k, rate, goals, shots))
-        items.sort(key=lambda x: x[1], reverse=True)
-        return items
+# def _leaders():
+#     """성공률 기준 내림차순 정렬 리스트 [(uid, rate, goals, shots), ...]"""
+#     with C_LOCK:
+#         items = []
+#         for k, v in CAREER.items():
+#             shots = v.get("shots", 0)
+#             goals = v.get("goals", 0)
+#             rate = (goals / shots) if shots > 0 else None
+#             if rate is not None:
+#                 items.append((k, rate, goals, shots))
+#         items.sort(key=lambda x: x[1], reverse=True)
+#         return items
 
-def _rank_of(uid: str):
-    """(등수, 총원). 기록 없으면 (None, 총원)"""
-    items = _leaders()
-    total = len(items)
-    for i, (k, _, _, _) in enumerate(items, start=1):
-        if k == uid:
-            return i, total
-    return None, total
+# def _rank_of(uid: str):
+#     """(등수, 총원). 기록 없으면 (None, 총원)"""
+#     items = _leaders()
+#     total = len(items)
+#     for i, (k, _, _, _) in enumerate(items, start=1):
+#         if k == uid:
+#             return i, total
+#     return None, total
 
-def _short(u: str, n: int = 6) -> str:
-    """닉네임 대체용 uid 축약 표시"""
-    return u[:n] if u else "unknown"
+# def _short(u: str, n: int = 6) -> str:
+#     """닉네임 대체용 uid 축약 표시"""
+#     return u[:n] if u else "unknown"
 
-def _format_leaderboard(uid: str, limit: int = 10) -> str:
-    """결과보기 출력용 포맷"""
-    items = _leaders()
-    if not items:
-        return "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
+# def _format_leaderboard(uid: str, limit: int = 10) -> str:
+#     """결과보기 출력용 포맷"""
+#     items = _leaders()
+#     if not items:
+#         return "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
 
-    # 1등 헤더
-    top_uid, top_rate, top_goals, top_shots = items[0]
-    header = "승부차기 평균 성공률 결과\n\n" \
-             f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
+#     # 1등 헤더
+#     top_uid, top_rate, top_goals, top_shots = items[0]
+#     header = "승부차기 평균 성공률 결과\n\n" \
+#              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
 
-    lines = []
-    for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
-        # 현재 유저인 경우 멘션 표기를 넣어 강조
-        if k == uid:
-            # ✅ f-string 안에서 {{ }}가 한 겹 사라지므로 4겹 또는 문자열 연결 방식 사용
-            line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
-            # 또는 같은 효과:
-            # line = f"{i}. {{{{#mentions.user1}}}} {round(rate*100)}%"
-        else:
-            # 다른 유저는 @축약 uid 표기
-            line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
-        lines.append(line)
+#     lines = []
+#     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
+#         # 현재 유저인 경우 멘션 표기를 넣어 강조
+#         if k == uid:
+#             # ✅ f-string 안에서 {{ }}가 한 겹 사라지므로 4겹 또는 문자열 연결 방식 사용
+#             line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
+#             # 또는 같은 효과:
+#             # line = f"{i}. {{{{#mentions.user1}}}} {round(rate*100)}%"
+#         else:
+#             # 다른 유저는 @축약 uid 표기
+#             line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
+#         lines.append(line)
 
-    return header + "\n".join(lines)
+#     return header + "\n".join(lines)
 
 # ------------------------------------------------------------
 # 승부차기 미니게임 - 결과보기(리더보드)에서 다수 멘션 토큰 지원 완성본
