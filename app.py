@@ -19,6 +19,7 @@ import aiohttp
 import sqlite3
 from flask import jsonify
 import re
+from urllib.parse import quote_plus
 
 import time
 import functools
