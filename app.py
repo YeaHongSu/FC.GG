@@ -1100,10 +1100,10 @@ def kakao_skill():
                 head = f"{nick}  Lv.{lv}"
                 body_lines = [
                     "",
-                    "【개선 시 승률】\n"
+                    "❮개선 시 승률❯\n"
                     f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
                     f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
-                    "【개선해야하는 지표】"
+                    "❮개선해야하는 지표❯"
                 ]
                 if improved_features_text:
                     feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
@@ -1153,7 +1153,7 @@ def kakao_skill():
             if len(matches) == 0:
                 return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
             title = f"{nick} · Lv.{lv}"
-            desc_common = f"승률 {win_rate_text}\n【플레이스타일】\n{play_style_text}"
+            desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
             card = {
                 "basicCard": {
                     "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
