@@ -67,6 +67,7 @@
         transform: translateY(3px);
         box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.1);
       }
+      .dp-viewport.clickable{ cursor: pointer; }
 
     </style>
     <style>
@@ -498,6 +499,288 @@
       const SPAWN_BASE_MS = 900;             // 초기 스폰 간격
       const DIFF_PER_SEC = 0.04;             // 난이도 증가율(초당)
       const MAX_BALLS = 10;                  // 최대 동시 낙하 수
+    
+      const canvas = document.getElementById('db-canvas');
+      const ctx = canvas.getContext('2d', {alpha:false});
+      const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    
+      // ✅ [추가] 캔버스가 들어있는 뷰포트 요소 + 클릭 가능 토글 함수
+      const viewportEl = canvas.closest('.dp-viewport');
+      function setClickable(on){
+        if(!viewportEl) return;
+        viewportEl.classList.toggle('clickable', !!on);
+      }
+    
+      function resizeCanvas(){
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+    
+      // UI
+      const $start   = document.getElementById('db-start');
+      const $restart = document.getElementById('db-restart');
+      const $status  = document.getElementById('db-status');
+      const $time    = document.getElementById('db-time');
+      const $best    = document.getElementById('db-best');
+      const $speed   = document.getElementById('db-speed');
+    
+      // 모바일 버튼
+      const $leftBtn  = document.getElementById('db-left');
+      const $rightBtn = document.getElementById('db-right');
+    
+      // 로컬 베스트
+      const BEST_KEY = 'db-best-seconds';
+      let bestSeconds = Number(localStorage.getItem(BEST_KEY) || 0);
+      $best.textContent = bestSeconds.toFixed(1);
+    
+      // --------- 상태 ---------
+      const STATE = { IDLE:'idle', PLAY:'play', OVER:'over' }; // PAUSE 제거
+      let state = STATE.IDLE;
+    
+      const keys = new Set();
+      let player, balls, startTime, lastTime, elapsed, diff, spawnMs, spawnTimer, holdDir = 0;
+    
+      function resetGame() {
+        player = { x:(W-PLAYER_W)/2, y:H-PLAYER_H-8, w:PLAYER_W, h:PLAYER_H };
+        balls = [];
+        elapsed = 0;
+        diff = 1.0;
+        spawnMs = SPAWN_BASE_MS;
+        spawnTimer = 0;
+        lastTime = performance.now();
+        startTime = lastTime; // ★ 재시작 시 타이머/스피드 완전 초기화
+        $time.textContent  = '0.0';
+        $speed.textContent = '1.0x';
+        $status.textContent = (state===STATE.PLAY)?'플레이 중':'대기';
+        setClickable(state !== STATE.PLAY);     // ✅ [추가] 대기/오버에서는 클릭 가능
+        draw(false);
+      }
+    
+      function startGame() {
+        state = STATE.PLAY;
+        setClickable(false);                    // ✅ [추가] 플레이 중에는 클릭 비활성
+        resetGame();
+        loop();
+      }
+    
+      function endGame() {
+        state = STATE.OVER; 
+        $status.textContent = '게임오버';
+        setClickable(true);                     // ✅ [추가] 오버 시 화면 클릭으로 재시작 허용
+        if (elapsed > bestSeconds) {
+          bestSeconds = elapsed;
+          localStorage.setItem(BEST_KEY, String(bestSeconds));
+          $best.textContent = bestSeconds.toFixed(1);
+        }
+        draw(true);
+      }
+    
+      // ✅ [추가] 화면 탭/클릭으로 시작/재시작
+      function onViewportTap(ev){
+        if(ev) ev.preventDefault(); // 모바일 더블탭 확대 방지
+        if(state === STATE.IDLE){
+          startGame();
+        }else if(state === STATE.OVER){
+          state = STATE.PLAY;
+          setClickable(false);
+          resetGame();
+          loop();
+        }
+        // PLAY 중엔 무시
+      }
+      if (viewportEl){
+        ['pointerdown','touchstart','mousedown','click'].forEach(evt=>{
+          viewportEl.addEventListener(evt, onViewportTap, {passive:false});
+        });
+      }
+    
+      // 입력 (Space 관련 완전 제거)
+      window.addEventListener('keydown', (e)=>{
+        if (['ArrowLeft','ArrowRight','KeyA','KeyD','KeyR'].includes(e.code)) e.preventDefault();
+        keys.add(e.code);
+      });
+      window.addEventListener('keyup', (e)=>{
+        keys.delete(e.code);
+        if (e.code==='KeyR')  { state=STATE.PLAY; setClickable(false); resetGame(); loop(); } // ✅ setClickable(false) 추가
+      });
+    
+      // 모바일 버튼 입력(포인터/터치 공통)
+      const onDownL = (ev)=>{ ev.preventDefault(); holdDir = -1; };
+      const onDownR = (ev)=>{ ev.preventDefault(); holdDir =  1; };
+      const onUp = (ev)=>{ ev.preventDefault(); holdDir = 0; };
+    
+      ['pointerdown','touchstart','mousedown'].forEach(evt=>{
+        $leftBtn.addEventListener(evt, onDownL, {passive:false});
+        $rightBtn.addEventListener(evt, onDownR, {passive:false});
+      });
+      ['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(evt=>{
+        $leftBtn.addEventListener(evt, onUp, {passive:false});
+        $rightBtn.addEventListener(evt, onUp, {passive:false});
+      });
+    
+      // 버튼
+      $start.addEventListener('click', ()=>{ if(state!==STATE.PLAY) startGame(); });
+      $restart.addEventListener('click', ()=>{ state=STATE.PLAY; setClickable(false); resetGame(); loop(); }); // ✅ setClickable(false) 추가
+    
+      // 유틸
+      const rand = (min,max)=>Math.random()*(max-min)+min;
+    
+      function spawnBall(){
+        if (balls.length >= MAX_BALLS) return;
+        const r = rand(BALL_MIN,BALL_MAX);
+        balls.push({
+          x: rand(r, W-r),
+          y: -r - rand(0,120),
+          r: r,
+          vy: BALL_BASE_VY * rand(0.95,1.15)
+        });
+      }
+    
+      function collideRectCircle(rx, ry, rw, rh, cx, cy, cr){
+        // 가장 가까운 점 찾기 후 거리 비교
+        const nx = Math.max(rx, Math.min(cx, rx+rw));
+        const ny = Math.max(ry, Math.min(cy, ry+rh));
+        const dx = cx - nx, dy = cy - ny;
+        return (dx*dx + dy*dy) <= cr*cr;
+      }
+    
+      // 루프
+      function loop(){
+        if (state !== STATE.PLAY) return;
+    
+        const now = performance.now();
+        const dt  = Math.min(0.033, (now - lastTime)/1000);
+        lastTime  = now;
+    
+        elapsed = (now - startTime)/1000;
+        diff     = 1.0 + DIFF_PER_SEC * elapsed;
+        spawnTimer += dt*1000;
+        const currentSpawn = Math.max(320, SPAWN_BASE_MS / diff);
+        if (spawnTimer >= currentSpawn){ spawnBall(); spawnTimer = 0; }
+    
+        // 입력 -> 이동
+        let dir = 0;
+        if (keys.has('ArrowLeft') || keys.has('KeyA')) dir -= 1;
+        if (keys.has('ArrowRight')|| keys.has('KeyD')) dir += 1;
+        if (holdDir !== 0) dir = holdDir;
+    
+        player.x += dir * BASE_SPEED * dt;
+        if (player.x < 0) player.x = 0;
+        if (player.x > W - player.w) player.x = W - player.w;
+    
+        // 낙하
+        for (const b of balls){ b.y += b.vy * dt * diff; }
+        for (const b of balls){
+          if (b.y - b.r > H + 60){
+            b.y = -b.r - rand(0,120);
+            b.x = rand(b.r, W-b.r);
+            b.vy = BALL_BASE_VY * rand(0.95,1.2);
+          }
+        }
+    
+        // 충돌
+        for (const b of balls){
+          if (collideRectCircle(player.x, player.y, player.w, player.h, b.x, b.y, b.r)){ endGame(); return; }
+        }
+    
+        draw(false);
+        requestAnimationFrame(loop);
+      }
+    
+      // 렌더
+      function draw(showOver){
+        // 배경
+        ctx.fillStyle = '#0b1020';
+        ctx.fillRect(0,0,W,H);
+    
+        // 바닥
+        ctx.fillStyle = '#101a3a';
+        ctx.fillRect(0, H-8, W, 8);
+    
+        // 플레이어
+        ctx.fillStyle = '#4fc3f7';
+        roundRect(ctx, player.x, player.y, player.w, player.h, 8, true, false);
+        ctx.font = '22px Apple SD Gothic Neo, Noto Sans KR, system-ui';
+        ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+        ctx.fillText('🤾', player.x+player.w/2, player.y+player.h/2);
+    
+        // 공(⚽ 이모지)
+        for (const b of balls) {
+          ctx.font = Math.round(b.r * 1.9) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji", system-ui';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('⚽', b.x, b.y);
+        }
+    
+        // HUD
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Noto Sans KR, system-ui';
+        ctx.textAlign='left';  ctx.fillText(`Time: ${elapsed.toFixed(1)}s`, 10, 10);
+        ctx.textAlign='center';ctx.fillText(`Speed: ${diff.toFixed(1)}x`, W/2, 10);
+        ctx.textAlign='right'; ctx.fillText(`Best: ${bestSeconds.toFixed(1)}s`, W-10, 10);
+    
+        // 외부 UI
+        $time.textContent  = elapsed.toFixed(1);
+        $speed.textContent = `${diff.toFixed(1)}x`;
+    
+        if (showOver){
+          ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle='#fff'; ctx.textAlign='center';
+          ctx.font='36px Poppins, system-ui'; ctx.fillText('GAME OVER', W/2, H/2-40);
+          ctx.font='20px Noto Sans KR, system-ui'; ctx.fillText(`기록: ${elapsed.toFixed(1)}초`, W/2, H/2);
+          ctx.fillText('R: 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
+        }
+      }
+    
+      function roundRect(ctx, x, y, w, h, r, fill, stroke){
+        if (typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
+        ctx.beginPath();
+        ctx.moveTo(x+r.tl,y);
+        ctx.lineTo(x+w-r.tr,y);
+        ctx.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+        ctx.lineTo(x+w,y+h-r.br);
+        ctx.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+        ctx.lineTo(x+r.bl,y+h);
+        ctx.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+        ctx.lineTo(x,y+r.tl);
+        ctx.quadraticCurveTo(x,y,x+r.tl,y);
+        ctx.closePath();
+        if(fill) ctx.fill();
+        if(stroke) ctx.stroke();
+      }
+    
+      // 초기 상태 표시
+      resetGame(); // <- 이 시점엔 state=IDLE 이므로 자동으로 setClickable(true) 적용됨
+    })();
+    </script>
+
+    <!-- <script>
+    (() => {
+      const path = location.pathname;
+      const trigger = document.getElementById('miniGameDropdown');
+      const items = document.querySelectorAll('#miniGameDropdown + .dropdown-menu .dropdown-item');
+      let matched = false;
+      items.forEach(a => {
+        if (a.getAttribute('href') === path) {
+          a.classList.add('active');         // 드롭다운 내 활성화
+          trigger.classList.add('active');   // 상단 탭 활성화
+          matched = true;
+        }
+      });
+    })();
+    (() => {
+      // --------- 기본 설정 ---------
+      const W = 480, H = 640;                // 내부 논리 해상도
+      const PLAYER_W = 48, PLAYER_H = 48;    // 캐릭터 크기
+      const BASE_SPEED = 240;                // 캐릭터 이동 px/s
+      const BALL_MIN = 22, BALL_MAX = 34;    // 공 크기
+      const BALL_BASE_VY = 150;              // 초기 낙하속도(px/s)
+      const SPAWN_BASE_MS = 900;             // 초기 스폰 간격
+      const DIFF_PER_SEC = 0.04;             // 난이도 증가율(초당)
+      const MAX_BALLS = 10;                  // 최대 동시 낙하 수
 
       const canvas = document.getElementById('db-canvas');
       const ctx = canvas.getContext('2d', {alpha:false});
@@ -726,6 +1009,6 @@
       // 초기 상태 표시
       resetGame();
     })();
-    </script>
+    </script> -->
 </body>
 </html>
