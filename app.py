@@ -1114,7 +1114,7 @@ def kakao_skill():
                 description = head + "\n" + "\n".join(body_lines)
                 card = {
                     "basicCard": {
-                        "title": "승률 개선 솔루션",
+                        # "title": "승률 개선 솔루션",
                         "description": description,
                         # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
                         "thumbnail": {"imageUrl": badge_url} if badge_url else {},
@@ -1153,13 +1153,12 @@ def kakao_skill():
             if len(matches) == 0:
                 return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
             title = f"{nick} · Lv.{lv}"
-            desc_common = f"  승률 {win_rate_text}\n【플레이스타일】\n  {play_style_text}"
+            desc_common = f"승률 {win_rate_text}\n【플레이스타일】\n{play_style_text}"
             card = {
                 "basicCard": {
-                    "description": f"\n  {title}\n\n{desc_common}\n\n  최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+                    "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
                     # "title": title,
                     # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    # **({"thumbnail": {"imageUrl": tier_image, "width":16,"height":16}} if tier_image else {}),
                     **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
                     "buttons": [
                         {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
