@@ -423,7 +423,7 @@
         window.scrollTo({
           left: Math.max(0, targetLeft),
           top: Math.max(0, targetTop),
-          behavior: instant
+          behavior: 'auto'
         });
       }
     
@@ -455,7 +455,7 @@
         window.scrollTo({
           left: Math.max(0, targetLeft),
           top: Math.max(0, targetTop),
-          behavior: 'auto'  // 즉시 이동
+          behavior: 'instant'  // 즉시 이동
         });
       }
     
