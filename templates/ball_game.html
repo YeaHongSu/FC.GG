@@ -731,7 +731,8 @@
           ctx.fillStyle='#fff'; ctx.textAlign='center';
           ctx.font='36px Poppins, system-ui'; ctx.fillText('GAME OVER', W/2, H/2-40);
           ctx.font='20px Noto Sans KR, system-ui'; ctx.fillText(`기록: ${elapsed.toFixed(1)}초`, W/2, H/2);
-          ctx.fillText('R: 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
+          // ctx.fillText('R: 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
+          ctx.fillText('R 또는 클릭 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
         }
       }
     
@@ -775,7 +776,7 @@
       // --------- 기본 설정 ---------
       const W = 480, H = 640;                // 내부 논리 해상도
       const PLAYER_W = 48, PLAYER_H = 48;    // 캐릭터 크기
-      const BASE_SPEED = 240;                // 캐릭터 이동 px/s
+      const BASE_SPEED = 280;                // 캐릭터 이동 px/s
       const BALL_MIN = 22, BALL_MAX = 34;    // 공 크기
       const BALL_BASE_VY = 150;              // 초기 낙하속도(px/s)
       const SPAWN_BASE_MS = 900;             // 초기 스폰 간격
