@@ -67,8 +67,6 @@
         transform: translateY(3px);
         box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.1);
       }
-      .dp-viewport.clickable{ cursor:pointer; } 
-      /* 추가한 부분 */
 
     </style>
     <style>
@@ -529,53 +527,6 @@
       const BEST_KEY = 'db-best-seconds';
       let bestSeconds = Number(localStorage.getItem(BEST_KEY) || 0);
       $best.textContent = bestSeconds.toFixed(1);
-
-      // 추가한 부분
-      const canvas = document.getElementById('db-canvas');
-      const ctx = canvas.getContext('2d', {alpha:false});
-        
-      // ✅ 추가
-      const viewportEl = canvas.closest('.dp-viewport');
-      function setClickable(on){
-        if(!viewportEl) return;
-        viewportEl.classList.toggle('clickable', !!on);
-      }
-      // ✅ 추가
-        function onViewportTap(ev){
-          if(ev) ev.preventDefault();        // 모바일 더블탭 확대 방지
-          if(state === STATE.IDLE){
-            startGame();
-          }else if(state === STATE.OVER){
-            state = STATE.PLAY;
-            resetGame();
-            loop();
-          }
-        }
-        ['pointerdown','touchstart','mousedown','click'].forEach(evt=>{
-          viewportEl.addEventListener(evt, onViewportTap, {passive:false});
-        });
-        function startGame() {
-          state = STATE.PLAY;
-          setClickable(false);        // ✅ 추가: 플레이 중에는 클릭 비활성
-          resetGame();
-          loop();
-        }
-        
-        function endGame() {
-          state = STATE.OVER;
-          $status.textContent = '게임오버';
-          setClickable(true);         // ✅ 추가: 오버 시 클릭으로 재시작
-          if (elapsed > bestSeconds) { /* ... 기존 그대로 ... */ }
-          draw(true);
-        }
-        
-        function resetGame() {
-          /* ... 기존 초기화 그대로 ... */
-          $status.textContent = (state===STATE.PLAY)?'플레이 중':'대기';
-          setClickable(state !== STATE.PLAY); // ✅ 추가: 대기/오버 상태에서만 클릭 가능
-          draw(false);
-        }
-        // 여기까지
 
 
 
