@@ -1152,7 +1152,7 @@ def kakao_skill():
         else:
             if len(matches) == 0:
                 return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
-            title = f"  {nick} · Lv.{lv}"
+            title = f"    {nick} · Lv.{lv}"
             desc_common = f"  승률 {win_rate_text}\n【플레이스타일】\n  {play_style_text}"
             card = {
                 "basicCard": {
