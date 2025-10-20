@@ -1156,7 +1156,7 @@ def kakao_skill():
             desc_common = f"  승률 {win_rate_text}\n【플레이스타일】\n  {play_style_text}"
             card = {
                 "basicCard": {
-                    "description": f"  {title}\n\n{desc_common}\n\n  최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+                    "description": f"\n  {title}\n\n{desc_common}\n\n  최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
                     # "title": title,
                     # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
                     # **({"thumbnail": {"imageUrl": tier_image, "width":16,"height":16}} if tier_image else {}),
