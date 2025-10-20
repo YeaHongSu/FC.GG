@@ -726,15 +726,28 @@
         $time.textContent  = elapsed.toFixed(1);
         $speed.textContent = `${diff.toFixed(1)}x`;
     
+        // ✅ 추가: 대기(IDLE) 상태에서만 "클릭 시 플레이 시작" 오버레이 표시
+        if (state === STATE.IDLE && !showOver) {
+          ctx.fillStyle = 'rgba(0,0,0,.35)';
+          ctx.fillRect(0,0,W,H);
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '28px Poppins, Noto Sans KR, system-ui';
+          ctx.fillText('클릭 시 플레이 시작', W/2, H/2);
+          return; // 오버레이만 보여주고 종료
+        }
+    
+        // 게임오버 오버레이
         if (showOver){
           ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,W,H);
           ctx.fillStyle='#fff'; ctx.textAlign='center';
           ctx.font='36px Poppins, system-ui'; ctx.fillText('GAME OVER', W/2, H/2-40);
           ctx.font='20px Noto Sans KR, system-ui'; ctx.fillText(`기록: ${elapsed.toFixed(1)}초`, W/2, H/2);
-          // ctx.fillText('R: 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
-          ctx.fillText('R 또는 클릭 재시작', W/2, H/2+32); /* Space 문구 제거 (원본 유지) */
+          ctx.fillText('R 또는 클릭 재시작', W/2, H/2+32);
         }
       }
+
     
       function roundRect(ctx, x, y, w, h, r, fill, stroke){
         if (typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
