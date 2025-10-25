@@ -2023,17 +2023,21 @@ def _uname(body: dict) -> str:
 def _room_id(body: dict) -> str:
     """
     채팅방(대화방) 식별자.
-    같은 채팅방이면 항상 같은 값이 되게 'conversation.id'만 사용한다.
-    만약 conversation.id가 아예 안 오면 'global'로 통일한다.
+
+    1) userRequest.bot.botGroupKey  : 단톡/그룹 고유값
+    2) conversation.id              : (있으면) 대화방 식별값
+    3) "global"                     : 최후 fallback
     """
+    ur = body.get("userRequest") or {}
+    bot_info = ur.get("bot") or {}
+    group_key = (bot_info.get("botGroupKey") or "").strip()
+
     conv = body.get("conversation") or {}
     conv_id = (conv.get("id") or "").strip()
 
-    if conv_id:
-        return conv_id
+    room = group_key or conv_id or "global"
+    return str(room)
 
-    # fallback (ex. 극히 예외적인 경우)
-    return "global"
 
 
 
@@ -2175,6 +2179,7 @@ def kakao_penalty():
         uid = _uid(body)
         uname = _uname(body)
         room_id = _room_id(body)  # ★ 채팅방 ID 추출 (핵심)
+        print("[DEBUG] room_id =", room_id, "uid =", uid)
 
         # 닉네임 캐싱
         _save_name(uid, uname)
