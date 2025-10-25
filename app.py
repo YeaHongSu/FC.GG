@@ -866,23 +866,24 @@ def kakao_skill():
     """
     - 모든 모드 별칭을 즉시 숫자 코드(50/60/52/40)로 정규화
     - '친선경기/친선/클래식/클겜'과 '커스텀매치/커스텀/커겜' 제대로 동작
-    - 전적검색/승률개선 공통, 5초 제약 대비 경량화 유지
+    - 전적검색/승률개선 공통, 5초 제약 대비 경량화 유지 (+콜백 대응)
     """
     try:
-        import time, re
+        import time, re, threading, requests, numpy as np
+        from urllib.parse import quote_plus
 
         t0 = time.time()
 
         # ---- 튜닝 ----
         API_TIMEOUT = 1.2
         MAX_DETAIL  = 25
-        TIME_BUDGET = 4.2
+        TIME_BUDGET = 4.2  # 동기 경로용. 콜백 경로는 쓰레드라 상관 없음
 
         # ---- 유틸 ----
-        def now(): return time.time()
+        def now():
+            return time.time()
 
         def json_get(url, params, headers, timeout=API_TIMEOUT):
-            import requests
             try:
                 r = requests.get(url, params=params, headers=headers, timeout=timeout)
                 return r.json()
@@ -890,34 +891,53 @@ def kakao_skill():
                 return {}
 
         def kakao_text(msg):
-            return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":msg}}]}})
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {"text": msg}
+                    }]
+                }
+            })
 
+        # 카카오 mention / tierbadge 등에서 쓰던 함수 그대로 유지
         def pick_tier_image(division_info, mode_code):
             try:
                 mt = int(mode_code)
-                mt_info = next((i for i in (division_info or []) if i.get("matchType") == mt), None)
+                mt_info = next(
+                    (i for i in (division_info or []) if i.get("matchType") == mt),
+                    None
+                )
                 if not mt_info:
                     return None
                 div = mt_info.get("division")
-                m = next((d for d in division_mapping if d["divisionId"] == div), None)
+                m = next(
+                    (d for d in division_mapping if d["divisionId"] == div),
+                    None
+                )
                 return (m or {}).get("divisionName")
             except Exception:
                 return None
 
         # ---------- 바디/발화 파싱 ----------
         body = request.get_json(silent=True) or {}
-        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
-        callback_url = body.get("userRequest", {}).get("callbackUrl")
+        user_req = body.get("userRequest") or {}
 
-        # print(((body.get("userRequest")).get("block")).get("id"))
-        JJ_id = "68a44ed5d2032812d4a7df8b"
-        SL_id = "68b4464f171fb452df215e52"
+        utter = (user_req.get("utterance") or "").strip()
+        callback_url = user_req.get("callbackUrl")  # 콜백 URL (있으면 AI 챗봇 콜백 모드)
+
+        JJ_id = "68a44ed5d2032812d4a7df8b"  # 전적검색 blockId
+        SL_id = "68b4464f171fb452df215e52"  # 승률개선 blockId
 
         CMD_SYNONYMS = {
             "전적검색": ["전적검색", "전적", "검색"],
             "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"]
         }
-        WORD2CMD = {w: cmd for cmd, words in CMD_SYNONYMS.items() for w in words}
+        WORD2CMD = {
+            w: cmd
+            for cmd, words in CMD_SYNONYMS.items()
+            for w in words
+        }
 
         def _p(key):
             return (
@@ -927,377 +947,217 @@ def kakao_skill():
             )
 
         # 파라미터
-        nick = (_p("nick") or "").strip()
+        nick_from_param = (_p("nick") or "").strip()
 
-        # 발화 전처리
+        # 발화 전처리: @피파봇 제거, 공백 normalize
         text = re.sub(r"\s+", " ", utter)
-        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+        text = re.sub(r"^@\S+\s*", "", text)
         tokens = text.split(" ") if text else []
 
         # 명령어 탐지
         found_cmd = ""
-        for i, t in enumerate(list(tokens)):
-            if t in WORD2CMD:
-                found_cmd = WORD2CMD[t]
+        for i, tk in enumerate(list(tokens)):
+            if tk in WORD2CMD:
+                found_cmd = WORD2CMD[tk]
                 tokens.pop(i)
                 break
         if not found_cmd:
             found_cmd = "전적검색"
 
-        # 남은 토큰 = 닉네임(공백 허용)
+        # 나머지 토큰 = 닉네임(공백 가능)
         found_nick = " ".join(tokens).strip()
 
-        nick = nick or found_nick
+        nick = nick_from_param or found_nick
         mode = "50"
 
         if not nick or not mode:
             return kakao_text("닉네임/모드를 인식하지 못했어요.")
 
-        # ---------- 기본 정보 조회 ----------
+        # ---------- 공용 정보(콜백이든 아니든 쓸 수 있도록 함수로 뺌) ----------
+
+        # division_mapping 은 pick_tier_image 내부에서 씀: 전역처럼 둘게
+        division_mapping = [
+            {"divisionId": 800,  "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
+            {"divisionId": 900,  "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
+            {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
+            {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
+            {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
+            {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
+            {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
+            {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
+            {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
+            {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
+            {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
+            {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
+            {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
+            {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
+            {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
+            {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
+            {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
+            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
+        ]
+
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
-        j = json_get("https://open.api.nexon.com/fconline/v1/id",
-                     {"nickname": nick}, headers)
-        ouid = j.get("ouid")
-        if not ouid:
-            return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
+        # 공통으로 쓰는 래퍼: 유저 기본정보 + 배지URL 등
+        def fetch_user_basic_and_badge(nick_local: str):
+            # ouid
+            j = json_get(
+                "https://open.api.nexon.com/fconline/v1/id",
+                {"nickname": nick_local},
+                headers
+            )
+            ouid_local = j.get("ouid")
+            if not ouid_local:
+                return None
 
-        if now() - t0 > TIME_BUDGET:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
-            return jsonify({"version":"2.0","template":{"outputs":[{
-                "basicCard":{
-                    "title": f"{nick}",
-                    "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
-                    "buttons":[
-                        {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
-                    ]
-                }
-            }]}})
+            basic = json_get(
+                "https://open.api.nexon.com/fconline/v1/user/basic",
+                {"ouid": ouid_local},
+                headers
+            )
+            lv_local = basic.get("level", "?")
 
-        basic = json_get("https://open.api.nexon.com/fconline/v1/user/basic",
-                         {"ouid": ouid}, headers)
-        lv = basic.get("level", "?")
-
-        # 티어 이미지(여유 있을 때만)
-        tier_image = None
-        if now() - t0 < TIME_BUDGET - 0.5:
-            division_mapping = [
-                {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
-                {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
-                {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
-                {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
-                {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
-                {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
-                {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
-                {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
-                {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
-                {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
-                {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
-                {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
-                {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
-                {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
-                {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
-                {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
-                {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
-                {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
-            ]
-            divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
-                            {"ouid": ouid}, headers)
+            # 티어 뱃지
+            divi = json_get(
+                "https://open.api.nexon.com/fconline/v1/user/maxdivision",
+                {"ouid": ouid_local},
+                headers
+            )
             tier_image = pick_tier_image(divi, mode)
 
-        badge_url = None
-        if tier_image:
-            public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
-            # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
-            badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=480&bgw=1000&bgh=600"
+            badge_url_local = None
+            if tier_image:
+                public_root = app.config.get(
+                    "PUBLIC_ROOT",
+                    request.url_root.rstrip("/")
+                )
+                badge_url_local = (
+                    f"{public_root}/tierbadge?url={quote_plus(tier_image)}"
+                    f"&size=480&bgw=1000&bgh=600"
+                )
 
-        # ---------- 최근 경기 ----------
-        if now() - t0 > TIME_BUDGET - 1.5:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
-            return jsonify({"version":"2.0","template":{"outputs":[{
-                "basicCard":{
-                    "title": f"{nick} · Lv.{lv}",
-                    "description":"요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
-                    # **({"thumbnail":{"imageUrl":tier_image, "width":1600,"height":1600}} if tier_image else {}),
-                    **({"thumbnail":{"imageUrl": badge_url}} if badge_url else {}),
-                    "buttons":[
-                        {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
+            return {
+                "ouid": ouid_local,
+                "level": lv_local,
+                "badge_url": badge_url_local
+            }
+
+        # 경기/분석 전체를 수행해서 card를 만들어주는 함수
+        # (이 함수는 콜백 스레드 안에서 호출할 거야)
+        def build_winrate_card(nick_local: str, ouid_local: str, lv_local: str,
+                               badge_url_local: str):
+            """
+            승률개선 카드 or simpleText를 dict 형태로 리턴
+            """
+
+            # 최근 경기
+            matches_local = json_get(
+                "https://open.api.nexon.com/fconline/v1/user/match",
+                {"ouid": ouid_local, "matchtype": mode, "limit": MAX_DETAIL},
+                headers
+            )
+
+            # 분석 기본값
+            win_rate_text_local = "데이터 없음"
+            play_style_text_local = "플레이스타일 분석 불가"
+            original_win_rate = None
+            modified_win_rate = None
+            win_rate_improvement = None
+            improved_features_text = ""
+
+            if matches_local:
+                # get_match_data, me, you, data_list, data_list_cl,
+                # avg_data, top_n_argmax, top_n_argmin, determine_play_style,
+                # calculate_win_improvement, data_label
+                # 이 함수들은 네 기존 코드에 이미 있다고 가정하고 그대로 쓴다.
+
+                match_data_list = get_match_data(
+                    matches_local[:MAX_DETAIL],
+                    headers
+                )
+
+                results = []
+                w_l_data = []
+                imp_rows = []
+
+                for data in match_data_list or []:
+                    my = me(data, nick_local)
+                    opp = you(data, nick_local)
+                    row = data_list(my)
+                    opp_row = data_list(opp)
+                    if row is None or opp_row is None:
+                        continue
+                    res = my["matchDetail"]["matchResult"]
+                    results.append(res)
+                    w_l_data.append(res)
+                    imp_rows.append(row)
+
+                total = len(results)
+                wins = sum(1 for r in results if r == "승")
+                if total:
+                    win_rate_text_local = f"{wins / total * 100:.2f}%"
+
+                if imp_rows:
+                    # 내 평균스탯
+                    filt = [
+                        [v for v in row if isinstance(v, (int, float))]
+                        for row in imp_rows
                     ]
-                }
-            }]}})
+                    my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
 
-        matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
-                           {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL},
-                           headers)
+                    # 비교 대상(클래스 평균)
+                    cl = np.array(data_list_cl(avg_data(mode)))
+                    diff = (my_avg - cl) / cl
 
-        # ---------- 경량 상세/계산 ----------
-        win_rate_text = "데이터 없음"
-        play_style_text = "플레이스타일 분석 불가"
-        original_win_rate = modified_win_rate = win_rate_improvement = None
-        improved_features_text = ""
+                    max_idx, max_vals = top_n_argmax(diff, 20)
+                    min_idx, min_vals = top_n_argmin(diff, 20)
+                    threshold = 0.9
+                    max_data = list(zip(max_idx[:5], max_vals[:5]))
+                    min_data = [
+                        (i, v)
+                        for i, v in zip(min_idx, min_vals)
+                        if abs(v) < threshold
+                    ][:5]
 
-        if matches and (now() - t0) < TIME_BUDGET - 0.3:
-            match_data_list = get_match_data(matches[:MAX_DETAIL], headers)
+                    style = determine_play_style(max_data, min_data)
+                    play_style_text_local = (
+                        style.get("summary", str(style))
+                        if isinstance(style, dict) else str(style)
+                    )
 
-            results, w_l_data, imp_rows = [], [], []
-            for data in match_data_list or []:
-                my = me(data, nick)
-                opp = you(data, nick)
-                row = data_list(my)
-                opp_row = data_list(opp)
-                if row is None or opp_row is None:
-                    continue
-                res = my["matchDetail"]["matchResult"]
-                results.append(res); w_l_data.append(res); imp_rows.append(row)
-
-            total = len(results)
-            wins = sum(1 for r in results if r == "승")
-            if total:
-                win_rate_text = f"{wins / total * 100:.2f}%"
-
-            if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
-                import numpy as np
-                filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
-                my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
-
-                cl = np.array(data_list_cl(avg_data(mode)))
-                diff = (my_avg - cl) / cl
-
-                max_idx, max_vals = top_n_argmax(diff, 20)
-                min_idx, min_vals = top_n_argmin(diff, 20)
-                threshold = 0.9
-                max_data = list(zip(max_idx[:5], max_vals[:5]))
-                min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
-
-                style = determine_play_style(max_data, min_data)
-                play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
-
-                if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
+                    # 승률개선 모델
                     try:
                         padded_imp = np.array(filt, dtype=float)
                         (
-                            top_n,
-                            increase_ratio,
+                            _top_n,
+                            _increase_ratio,
                             improved_features_text,
                             original_win_rate,
                             modified_win_rate,
                             win_rate_improvement,
-                        ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
+                        ) = calculate_win_improvement(
+                            padded_imp,
+                            w_l_data,
+                            data_label
+                        )
                     except Exception:
-                        original_win_rate = modified_win_rate = win_rate_improvement = None
+                        original_win_rate = None
+                        modified_win_rate = None
+                        win_rate_improvement = None
                         improved_features_text = ""
 
-        # ---------- 카드 ----------
-        MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
-        result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
+            # 카드 조립
+            result_url_local = f"https://fcgg.kr/전적검색/{nick_local}/공식경기"
+            imp_url_local = f"https://fcgg.kr/승률개선결과/{nick_local}/공식경기"
 
-        # if found_cmd == "승률개선":
-            
-    #         if (original_win_rate is not None and
-    #             modified_win_rate is not None and
-    #             win_rate_improvement is not None):
-    #             head = f"{nick}  Lv.{lv}"
-    #             body_lines = [
-    #                 "",
-    #                 "❮개선 시 승률❯\n"
-    #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
-    #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
-    #                 "❮개선해야하는 지표❯"
-    #             ]
-    #             if improved_features_text:
-    #                 feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
-    #                 feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
-    #                 body_lines.extend(feat_lines)
-    #             else:
-    #                 body_lines.append("분석 데이터가 부족합니다.")
-    #             description = head + "\n" + "\n".join(body_lines)
-    #             card = {
-    #                 "basicCard": {
-    #                     # "title": "승률 개선 솔루션",
-    #                     "description": description,
-    #                     # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
-    #                     "thumbnail": {"imageUrl": badge_url} if badge_url else {},
-    #                     "buttons": [
-    #                         {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-    #                         # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
-    #                         {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-    #                         "extra":{"params":{"nick": nick}}}
-    #                     ]
-    #                 }
-    #             }
-    #         else:
-    #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
-    #             # # 개선 계산 실패/데이터 부족 폴백
-    #             # description = (
-    #             #     f"{nick}  Lv.{lv}\n\n"
-    #             #     "[개선 시 승률]\n"
-    #             #     "분석 데이터가 부족합니다.\n\n"
-    #             #     "[개선해야하는 지표]\n"
-    #             #     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
-    #             # )
-    #             # card = {
-    #             #     "basicCard": {
-    #             #         "title": "승률 개선 솔루션",
-    #             #         "description": description,
-    #             #         **({"thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600}} if tier_image else {}),
-    #             #         "buttons": [
-    #             #             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-    #             #             # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
-    #             #             {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-    #             #             "extra":{"params":{"nick": nick}}}
-    #             #         ]
-    #             #     }
-    #             # }
-    #     else:
-    #         if len(matches) == 0:
-    #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
-    #         title = f"{nick} · Lv.{lv}"
-    #         desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
-    #         card = {
-    #             "basicCard": {
-    #                 "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-    #                 # "title": title,
-    #                 # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-    #                 **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
-    #                 "buttons": [
-    #                     {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-    #                     # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
-    #                     {"label": "승률개선",  "action": "block", "blockId": SL_id, 
-    #                     "extra":{"params":{"nick": nick}}}
-    #                 ]
-    #             }
-    #         }
-        
-    #     return jsonify({"version":"2.0","template":{"outputs":[card]}})
-
-    # except Exception:
-    #     return jsonify({
-    #         "version":"2.0",
-    #         "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
-    #     })
-
-
-    #     흠흠!
-        # if found_cmd == "승률개선":
-    #         # -----------------------------
-    #         # 여기서는 카드(card)만 만들어두고
-    #         # 즉시 리턴하지 않는다 (중요)
-    #         # -----------------------------
-    #         if (original_win_rate is not None and
-    #             modified_win_rate is not None and
-    #             win_rate_improvement is not None):
-    #             head = f"{nick}  Lv.{lv}"
-    #             body_lines = [
-    #                 "",
-    #                 "❮개선 시 승률❯\n"
-    #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
-    #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
-    #                 "❮개선해야하는 지표❯"
-    #             ]
-    #             if improved_features_text:
-    #                 feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
-    #                 feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
-    #                 body_lines.extend(feat_lines)
-    #             else:
-    #                 body_lines.append("분석 데이터가 부족합니다.")
-    #             description = head + "\n" + "\n".join(body_lines)
-    #             card = {
-    #                 "basicCard": {
-    #                     "description": description,
-    #                     "thumbnail": {"imageUrl": badge_url} if badge_url else {},
-    #                     "buttons": [
-    #                         {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-    #                         {"label": "전적검색", "action": "block", "blockId": JJ_id,
-    #                          "extra": {"params": {"nick": nick}}}
-    #                     ]
-    #                 }
-    #             }
-    #         else:
-    #             card = {
-    #                 "simpleText": {"text": "최근 전적 경기 수가 부족합니다."}
-    #             }
-
-    #         # -----------------------------
-    #         # 콜백 처리
-    #         # -----------------------------
-    #         if callback_url:
-    #             import threading, requests
-
-    #             def _send_callback():
-    #                 try:
-    #                     payload = {
-    #                         "version": "2.0",
-    #                         "template": {"outputs": [card]}
-    #                     }
-    #                     requests.post(callback_url, json=payload, timeout=60)
-    #                 except Exception as e:
-    #                     print("[callback error]", e)
-
-    #             threading.Thread(target=_send_callback, daemon=True).start()
-
-    #             return jsonify({
-    #                 "version": "2.0",
-    #                 "useCallback": True,
-    #                 "data": {"text": f"{nick}님의 승률을 끌어올리는 중입니다!"}
-    #             })
-
-    #         # fallback (콜백 미지원일 경우)
-    #         return jsonify({
-    #             "version": "2.0",
-    #             "template": {"outputs": [card]}
-    #         })
-
-    #     else:
-    #         # ---------------- 기존 전적검색 분기 ----------------
-    #         if len(matches) == 0:
-    #             return jsonify({
-    #                 "version": "2.0",
-    #                 "template": {"outputs": [{"simpleText": {"text": "최근 전적 경기 수가 부족합니다."}}]}
-    #             })
-
-    #         title = f"{nick} · Lv.{lv}"
-    #         desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
-    #         card = {
-    #             "basicCard": {
-    #                 "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-    #                 "thumbnail": {"imageUrl": badge_url} if badge_url else {},
-    #                 "buttons": [
-    #                     {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
-    #                     {"label": "승률개선", "action": "block", "blockId": SL_id,
-    #                      "extra": {"params": {"nick": nick}}}
-    #                 ]
-    #             }
-    #         }
-
-    #         return jsonify({
-    #             "version": "2.0",
-    #             "template": {"outputs": [card]}
-    #         })
-
-    # except Exception as e:
-    #     print("[ERROR]", e)
-    #     return jsonify({
-    #         "version": "2.0",
-    #         "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
-    #     })
-
-        if found_cmd == "승률개선":
-            
-            # -----------------------------
-            # 여기서는 카드(card)만 만들어두고
-            # 즉시 리턴하지 않는다 (중요)
-            # -----------------------------
+            # 승률개선 카드 (original_win_rate가 있으면 고급 카드)
             if (
                 original_win_rate is not None and
                 modified_win_rate is not None and
                 win_rate_improvement is not None
             ):
-                head = f"{nick}  Lv.{lv}"
+                head = f"{nick_local}  Lv.{lv_local}"
                 body_lines = [
                     "",
                     "❮개선 시 승률❯\n"
@@ -1311,67 +1171,57 @@ def kakao_skill():
                         for ln in improved_features_text.splitlines()
                         if ln.strip()
                     ]
-                    feat_lines = (
-                        feat_lines[:5]
-                        if len(feat_lines) > 5 else feat_lines
-                    )
+                    if len(feat_lines) > 5:
+                        feat_lines = feat_lines[:5]
                     body_lines.extend(feat_lines)
                 else:
                     body_lines.append("분석 데이터가 부족합니다.")
+
                 description = head + "\n" + "\n".join(body_lines)
-                card = {
+
+                card_local = {
                     "basicCard": {
                         "description": description,
                         "thumbnail": (
-                            {"imageUrl": badge_url} if badge_url else {}
+                            {"imageUrl": badge_url_local}
+                            if badge_url_local else {}
                         ),
                         "buttons": [
                             {
                                 "label": "승률개선 자세히 보기",
                                 "action": "webLink",
-                                "webLinkUrl": imp_url
+                                "webLinkUrl": imp_url_local
                             },
                             {
                                 "label": "전적검색",
                                 "action": "block",
                                 "blockId": JJ_id,
-                                "extra": {"params": {"nick": nick}}
+                                "extra": {"params": {"nick": nick_local}}
                             }
                         ]
                     }
                 }
             else:
-                card = {
+                # 간단 카드(데이터 부족)
+                # 여기서는 simpleText로만 줄게. (너 기존 로직 유지)
+                card_local = {
                     "simpleText": {
                         "text": "최근 전적 경기 수가 부족합니다."
                     }
                 }
 
-            # -----------------------------
-            # 콜백 처리
-            # -----------------------------
+            # 전적검색(=승률개선 말고 일반 전적 카드) 만들 때도 써먹을 수 있도록
+            # win_rate_text_local / play_style_text_local도 같이 리턴
+            return card_local, win_rate_text_local, play_style_text_local, matches_local
+
+        # ---------- 여기서부터 분기 ----------
+
+        # ========== 승률개선 ==========
+        if found_cmd == "승률개선":
+            # 콜백 URL이 있으면: "useCallback" 즉시 응답 + 백그라운드에서 모든 계산 후 callback_url POST
             if callback_url:
-                # 긴 계산 끝난 결과(card)를 callback_url로 따로 보내기
-                def _send_callback():
-                    try:
-                        payload = {
-                            "version": "2.0",
-                            "template": {"outputs": [card]}
-                        }
-                        # timeout은 콜백 POST 한 번에 대한 네트워크 제한일 뿐이니
-                        # 60 정도로 넉넉히 잡아도 돼 (5초 제한은 skill 응답쪽임)
-                        requests.post(callback_url, json=payload, timeout=60)
-                    except Exception as e:
-                        print("[callback error]", e)
-
-                threading.Thread(
-                    target=_send_callback,
-                    daemon=True
-                ).start()
-
-                # 먼저 즉답: useCallback=true를 돌려서
-                # 카카오가 "콜백 기다리는 중" 상태로 들어가게
-                return jsonify({
+                # 먼저 즉시 답장 (5초 안에 끝나므로 타임아웃 안 남)
+                immediate_response = jsonify({
                     "version": "2.0",
                     "useCallback": True,
                     "data": {
@@ -1379,62 +1229,155 @@ def kakao_skill():
                     }
                 })
 
-            # fallback (콜백 미지원일 경우 = callback_url 없음)
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [card]}
-            })
-
-        else:
-            # ---------------- 기존 전적검색 분기 ----------------
-            if len(matches) == 0:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{
-                            "simpleText": {
-                                "text": "최근 전적 경기 수가 부족합니다."
+                # 백그라운드에서 무거운 분석 시작
+                def _bg_work():
+                    try:
+                        # 1) 유저 기본 정보/티어 뱃지
+                        ub = fetch_user_basic_and_badge(nick)
+                        if not ub:
+                            payload_fail = {
+                                "version": "2.0",
+                                "template": {
+                                    "outputs": [{
+                                        "simpleText": {
+                                            "text": f"'{nick}' 유저를 찾지 못했습니다."
+                                        }
+                                    }]
+                                }
                             }
-                        }]
-                    }
-                })
+                            requests.post(callback_url, json=payload_fail, timeout=5)
+                            return
 
-            title = f"{nick} · Lv.{lv}"
-            desc_common = (
-                f"승률 {win_rate_text}\n"
-                f"❮플레이스타일❯\n"
-                f"{play_style_text}"
-            )
-            card = {
-                "basicCard": {
-                    "description": (
-                        f"{title}\n\n"
-                        f"{desc_common}\n\n"
-                        f"최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다."
-                    ),
-                    "thumbnail": (
-                        {"imageUrl": badge_url} if badge_url else {}
-                    ),
-                    "buttons": [
-                        {
-                            "label": "전적 자세히 보기",
-                            "action": "webLink",
-                            "webLinkUrl": result_url
-                        },
-                        {
-                            "label": "승률개선",
-                            "action": "block",
-                            "blockId": SL_id,
-                            "extra": {"params": {"nick": nick}}
+                        ouid_local = ub["ouid"]
+                        lv_local = ub["level"]
+                        badge_url_local = ub["badge_url"]
+
+                        # 2) 승률개선 카드 만들기
+                        (
+                            card_local,
+                            _win_rate_text_local,
+                            _play_style_text_local,
+                            _matches_local
+                        ) = build_winrate_card(
+                            nick, ouid_local, lv_local, badge_url_local
+                        )
+
+                        # 3) callback_url로 최종 카드 쏘기
+                        payload_ok = {
+                            "version": "2.0",
+                            "template": {
+                                "outputs": [card_local]
+                            }
                         }
-                    ]
-                }
-            }
+                        requests.post(callback_url, json=payload_ok, timeout=5)
 
+                    except Exception as e:
+                        print("[callback error bg_work]", e)
+                        # 실패 시에도 최소한 오류 텍스트 한번 더 시도
+                        try:
+                            payload_err = {
+                                "version": "2.0",
+                                "template": {
+                                    "outputs": [{
+                                        "simpleText": {
+                                            "text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."
+                                        }
+                                    }]
+                                }
+                            }
+                            requests.post(callback_url, json=payload_err, timeout=5)
+                        except Exception as ee:
+                            print("[callback post fail]", ee)
+
+                threading.Thread(target=_bg_work, daemon=True).start()
+
+                # 메인 스레드는 여기서 바로 리턴 (=> 카카오에 즉시 말풍선 나감)
+                return immediate_response
+
+            # 콜백 URL이 없으면: 콜백 불가 방.
+            # 이 경우 장시간 계산하면 5초 타임아웃나서 아무 말풍선도 안 나오는 상황이 생기니까
+            # 안전하게 짧은 안내만 바로 돌려준다.
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [card]}
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": (
+                                "승률개선 분석은 이 대화방에서는 바로 제공이 어렵습니다.\n"
+                                "전적검색은 정상 이용 가능합니다."
+                            )
+                        }
+                    }]
+                }
             })
+
+        # ========== 전적검색 (found_cmd != "승률개선") ==========
+        # 이 쪽은 기존처럼 동기 계산해서 카드 만들어 바로 내려줌
+        ub_sync = fetch_user_basic_and_badge(nick)
+        if not ub_sync:
+            return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
+        ouid_sync = ub_sync["ouid"]
+        lv_sync = ub_sync["level"]
+        badge_url_sync = ub_sync["badge_url"]
+
+        # 전적검색용 카드 만들기 (build_winrate_card()를 재사용)
+        (
+            _card_unused,
+            win_rate_text_sync,
+            play_style_text_sync,
+            matches_sync
+        ) = build_winrate_card(nick, ouid_sync, lv_sync, badge_url_sync)
+
+        # 전적검색 응답용 basicCard (너 기본 포맷 유지)
+        if not matches_sync:
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": "최근 전적 경기 수가 부족합니다."
+                        }
+                    }]
+                }
+            })
+
+        result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+
+        card_search = {
+            "basicCard": {
+                "description": (
+                    f"{nick} · Lv.{lv_sync}\n\n"
+                    f"승률 {win_rate_text_sync}\n"
+                    f"❮플레이스타일❯\n"
+                    f"{play_style_text_sync}\n\n"
+                    f"최근 {min(len(matches_sync or []), MAX_DETAIL)}경기 기반 전적입니다."
+                ),
+                "thumbnail": (
+                    {"imageUrl": badge_url_sync}
+                    if badge_url_sync else {}
+                ),
+                "buttons": [
+                    {
+                        "label": "전적 자세히 보기",
+                        "action": "webLink",
+                        "webLinkUrl": result_url
+                    },
+                    {
+                        "label": "승률개선",
+                        "action": "block",
+                        "blockId": SL_id,
+                        "extra": {"params": {"nick": nick}}
+                    }
+                ]
+            }
+        }
+
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [card_search]
+            }
+        })
 
     except Exception as e:
         print("[ERROR]", e)
@@ -1448,6 +1391,595 @@ def kakao_skill():
                 }]
             }
         })
+
+
+# @app.route("/kakao/skill", methods=["POST"])
+# def kakao_skill():
+#     """
+#     - 모든 모드 별칭을 즉시 숫자 코드(50/60/52/40)로 정규화
+#     - '친선경기/친선/클래식/클겜'과 '커스텀매치/커스텀/커겜' 제대로 동작
+#     - 전적검색/승률개선 공통, 5초 제약 대비 경량화 유지
+#     """
+#     try:
+#         import time, re
+
+#         t0 = time.time()
+
+#         # ---- 튜닝 ----
+#         API_TIMEOUT = 1.2
+#         MAX_DETAIL  = 25
+#         TIME_BUDGET = 4.2
+
+#         # ---- 유틸 ----
+#         def now(): return time.time()
+
+#         def json_get(url, params, headers, timeout=API_TIMEOUT):
+#             import requests
+#             try:
+#                 r = requests.get(url, params=params, headers=headers, timeout=timeout)
+#                 return r.json()
+#             except Exception:
+#                 return {}
+
+#         def kakao_text(msg):
+#             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":msg}}]}})
+
+#         def pick_tier_image(division_info, mode_code):
+#             try:
+#                 mt = int(mode_code)
+#                 mt_info = next((i for i in (division_info or []) if i.get("matchType") == mt), None)
+#                 if not mt_info:
+#                     return None
+#                 div = mt_info.get("division")
+#                 m = next((d for d in division_mapping if d["divisionId"] == div), None)
+#                 return (m or {}).get("divisionName")
+#             except Exception:
+#                 return None
+
+#         # ---------- 바디/발화 파싱 ----------
+#         body = request.get_json(silent=True) or {}
+#         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+#         callback_url = body.get("userRequest", {}).get("callbackUrl")
+
+#         # print(((body.get("userRequest")).get("block")).get("id"))
+#         JJ_id = "68a44ed5d2032812d4a7df8b"
+#         SL_id = "68b4464f171fb452df215e52"
+
+#         CMD_SYNONYMS = {
+#             "전적검색": ["전적검색", "전적", "검색"],
+#             "승률개선": ["승률개선", "승개", "개선", "개선검색", "승률"]
+#         }
+#         WORD2CMD = {w: cmd for cmd, words in CMD_SYNONYMS.items() for w in words}
+
+#         def _p(key):
+#             return (
+#                 (body.get("action", {}).get("params", {}) or {}).get(key)
+#                 or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
+#                 or ""
+#             )
+
+#         # 파라미터
+#         nick = (_p("nick") or "").strip()
+
+#         # 발화 전처리
+#         text = re.sub(r"\s+", " ", utter)
+#         text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+#         tokens = text.split(" ") if text else []
+
+#         # 명령어 탐지
+#         found_cmd = ""
+#         for i, t in enumerate(list(tokens)):
+#             if t in WORD2CMD:
+#                 found_cmd = WORD2CMD[t]
+#                 tokens.pop(i)
+#                 break
+#         if not found_cmd:
+#             found_cmd = "전적검색"
+
+#         # 남은 토큰 = 닉네임(공백 허용)
+#         found_nick = " ".join(tokens).strip()
+
+#         nick = nick or found_nick
+#         mode = "50"
+
+#         if not nick or not mode:
+#             return kakao_text("닉네임/모드를 인식하지 못했어요.")
+
+#         # ---------- 기본 정보 조회 ----------
+#         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
+
+#         j = json_get("https://open.api.nexon.com/fconline/v1/id",
+#                      {"nickname": nick}, headers)
+#         ouid = j.get("ouid")
+#         if not ouid:
+#             return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
+
+#         if now() - t0 > TIME_BUDGET:
+#             result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+#             imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
+#             return jsonify({"version":"2.0","template":{"outputs":[{
+#                 "basicCard":{
+#                     "title": f"{nick}",
+#                     "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
+#                     "buttons":[
+#                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
+#                         {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
+#                     ]
+#                 }
+#             }]}})
+
+#         basic = json_get("https://open.api.nexon.com/fconline/v1/user/basic",
+#                          {"ouid": ouid}, headers)
+#         lv = basic.get("level", "?")
+
+#         # 티어 이미지(여유 있을 때만)
+#         tier_image = None
+#         if now() - t0 < TIME_BUDGET - 0.5:
+#             division_mapping = [
+#                 {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
+#                 {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
+#                 {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
+#                 {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
+#                 {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
+#                 {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
+#                 {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
+#                 {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
+#                 {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
+#                 {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
+#                 {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
+#                 {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
+#                 {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
+#                 {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
+#                 {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
+#                 {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
+#                 {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
+#                 {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
+#             ]
+#             divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
+#                             {"ouid": ouid}, headers)
+#             tier_image = pick_tier_image(divi, mode)
+
+#         badge_url = None
+#         if tier_image:
+#             public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+#             # badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=240&bgw=1000&bgh=600"
+#             badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=480&bgw=1000&bgh=600"
+
+#         # ---------- 최근 경기 ----------
+#         if now() - t0 > TIME_BUDGET - 1.5:
+#             result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+#             imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
+#             return jsonify({"version":"2.0","template":{"outputs":[{
+#                 "basicCard":{
+#                     "title": f"{nick} · Lv.{lv}",
+#                     "description":"요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
+#                     # **({"thumbnail":{"imageUrl":tier_image, "width":1600,"height":1600}} if tier_image else {}),
+#                     **({"thumbnail":{"imageUrl": badge_url}} if badge_url else {}),
+#                     "buttons":[
+#                         {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
+#                         {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
+#                     ]
+#                 }
+#             }]}})
+
+#         matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
+#                            {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL},
+#                            headers)
+
+#         # ---------- 경량 상세/계산 ----------
+#         win_rate_text = "데이터 없음"
+#         play_style_text = "플레이스타일 분석 불가"
+#         original_win_rate = modified_win_rate = win_rate_improvement = None
+#         improved_features_text = ""
+
+#         if matches and (now() - t0) < TIME_BUDGET - 0.3:
+#             match_data_list = get_match_data(matches[:MAX_DETAIL], headers)
+
+#             results, w_l_data, imp_rows = [], [], []
+#             for data in match_data_list or []:
+#                 my = me(data, nick)
+#                 opp = you(data, nick)
+#                 row = data_list(my)
+#                 opp_row = data_list(opp)
+#                 if row is None or opp_row is None:
+#                     continue
+#                 res = my["matchDetail"]["matchResult"]
+#                 results.append(res); w_l_data.append(res); imp_rows.append(row)
+
+#             total = len(results)
+#             wins = sum(1 for r in results if r == "승")
+#             if total:
+#                 win_rate_text = f"{wins / total * 100:.2f}%"
+
+#             if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
+#                 import numpy as np
+#                 filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
+#                 my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
+
+#                 cl = np.array(data_list_cl(avg_data(mode)))
+#                 diff = (my_avg - cl) / cl
+
+#                 max_idx, max_vals = top_n_argmax(diff, 20)
+#                 min_idx, min_vals = top_n_argmin(diff, 20)
+#                 threshold = 0.9
+#                 max_data = list(zip(max_idx[:5], max_vals[:5]))
+#                 min_data = [(i, v) for i, v in zip(min_idx, min_vals) if abs(v) < threshold][:5]
+
+#                 style = determine_play_style(max_data, min_data)
+#                 play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
+
+#                 if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
+#                     try:
+#                         padded_imp = np.array(filt, dtype=float)
+#                         (
+#                             top_n,
+#                             increase_ratio,
+#                             improved_features_text,
+#                             original_win_rate,
+#                             modified_win_rate,
+#                             win_rate_improvement,
+#                         ) = calculate_win_improvement(padded_imp, w_l_data, data_label)
+#                     except Exception:
+#                         original_win_rate = modified_win_rate = win_rate_improvement = None
+#                         improved_features_text = ""
+
+#         # ---------- 카드 ----------
+#         MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
+#         result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+#         imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
+
+#         # if found_cmd == "승률개선":
+            
+#     #         if (original_win_rate is not None and
+#     #             modified_win_rate is not None and
+#     #             win_rate_improvement is not None):
+#     #             head = f"{nick}  Lv.{lv}"
+#     #             body_lines = [
+#     #                 "",
+#     #                 "❮개선 시 승률❯\n"
+#     #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+#     #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+#     #                 "❮개선해야하는 지표❯"
+#     #             ]
+#     #             if improved_features_text:
+#     #                 feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
+#     #                 feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
+#     #                 body_lines.extend(feat_lines)
+#     #             else:
+#     #                 body_lines.append("분석 데이터가 부족합니다.")
+#     #             description = head + "\n" + "\n".join(body_lines)
+#     #             card = {
+#     #                 "basicCard": {
+#     #                     # "title": "승률 개선 솔루션",
+#     #                     "description": description,
+#     #                     # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
+#     #                     "thumbnail": {"imageUrl": badge_url} if badge_url else {},
+#     #                     "buttons": [
+#     #                         {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+#     #                         # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
+#     #                         {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
+#     #                         "extra":{"params":{"nick": nick}}}
+#     #                     ]
+#     #                 }
+#     #             }
+#     #         else:
+#     #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
+#     #             # # 개선 계산 실패/데이터 부족 폴백
+#     #             # description = (
+#     #             #     f"{nick}  Lv.{lv}\n\n"
+#     #             #     "[개선 시 승률]\n"
+#     #             #     "분석 데이터가 부족합니다.\n\n"
+#     #             #     "[개선해야하는 지표]\n"
+#     #             #     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+#     #             # )
+#     #             # card = {
+#     #             #     "basicCard": {
+#     #             #         "title": "승률 개선 솔루션",
+#     #             #         "description": description,
+#     #             #         **({"thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600}} if tier_image else {}),
+#     #             #         "buttons": [
+#     #             #             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+#     #             #             # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
+#     #             #             {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
+#     #             #             "extra":{"params":{"nick": nick}}}
+#     #             #         ]
+#     #             #     }
+#     #             # }
+#     #     else:
+#     #         if len(matches) == 0:
+#     #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
+#     #         title = f"{nick} · Lv.{lv}"
+#     #         desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
+#     #         card = {
+#     #             "basicCard": {
+#     #                 "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+#     #                 # "title": title,
+#     #                 # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+#     #                 **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
+#     #                 "buttons": [
+#     #                     {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
+#     #                     # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
+#     #                     {"label": "승률개선",  "action": "block", "blockId": SL_id, 
+#     #                     "extra":{"params":{"nick": nick}}}
+#     #                 ]
+#     #             }
+#     #         }
+        
+#     #     return jsonify({"version":"2.0","template":{"outputs":[card]}})
+
+#     # except Exception:
+#     #     return jsonify({
+#     #         "version":"2.0",
+#     #         "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+#     #     })
+
+
+#     #     흠흠!
+#         # if found_cmd == "승률개선":
+#     #         # -----------------------------
+#     #         # 여기서는 카드(card)만 만들어두고
+#     #         # 즉시 리턴하지 않는다 (중요)
+#     #         # -----------------------------
+#     #         if (original_win_rate is not None and
+#     #             modified_win_rate is not None and
+#     #             win_rate_improvement is not None):
+#     #             head = f"{nick}  Lv.{lv}"
+#     #             body_lines = [
+#     #                 "",
+#     #                 "❮개선 시 승률❯\n"
+#     #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+#     #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+#     #                 "❮개선해야하는 지표❯"
+#     #             ]
+#     #             if improved_features_text:
+#     #                 feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
+#     #                 feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
+#     #                 body_lines.extend(feat_lines)
+#     #             else:
+#     #                 body_lines.append("분석 데이터가 부족합니다.")
+#     #             description = head + "\n" + "\n".join(body_lines)
+#     #             card = {
+#     #                 "basicCard": {
+#     #                     "description": description,
+#     #                     "thumbnail": {"imageUrl": badge_url} if badge_url else {},
+#     #                     "buttons": [
+#     #                         {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+#     #                         {"label": "전적검색", "action": "block", "blockId": JJ_id,
+#     #                          "extra": {"params": {"nick": nick}}}
+#     #                     ]
+#     #                 }
+#     #             }
+#     #         else:
+#     #             card = {
+#     #                 "simpleText": {"text": "최근 전적 경기 수가 부족합니다."}
+#     #             }
+
+#     #         # -----------------------------
+#     #         # 콜백 처리
+#     #         # -----------------------------
+#     #         if callback_url:
+#     #             import threading, requests
+
+#     #             def _send_callback():
+#     #                 try:
+#     #                     payload = {
+#     #                         "version": "2.0",
+#     #                         "template": {"outputs": [card]}
+#     #                     }
+#     #                     requests.post(callback_url, json=payload, timeout=60)
+#     #                 except Exception as e:
+#     #                     print("[callback error]", e)
+
+#     #             threading.Thread(target=_send_callback, daemon=True).start()
+
+#     #             return jsonify({
+#     #                 "version": "2.0",
+#     #                 "useCallback": True,
+#     #                 "data": {"text": f"{nick}님의 승률을 끌어올리는 중입니다!"}
+#     #             })
+
+#     #         # fallback (콜백 미지원일 경우)
+#     #         return jsonify({
+#     #             "version": "2.0",
+#     #             "template": {"outputs": [card]}
+#     #         })
+
+#     #     else:
+#     #         # ---------------- 기존 전적검색 분기 ----------------
+#     #         if len(matches) == 0:
+#     #             return jsonify({
+#     #                 "version": "2.0",
+#     #                 "template": {"outputs": [{"simpleText": {"text": "최근 전적 경기 수가 부족합니다."}}]}
+#     #             })
+
+#     #         title = f"{nick} · Lv.{lv}"
+#     #         desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
+#     #         card = {
+#     #             "basicCard": {
+#     #                 "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+#     #                 "thumbnail": {"imageUrl": badge_url} if badge_url else {},
+#     #                 "buttons": [
+#     #                     {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
+#     #                     {"label": "승률개선", "action": "block", "blockId": SL_id,
+#     #                      "extra": {"params": {"nick": nick}}}
+#     #                 ]
+#     #             }
+#     #         }
+
+#     #         return jsonify({
+#     #             "version": "2.0",
+#     #             "template": {"outputs": [card]}
+#     #         })
+
+#     # except Exception as e:
+#     #     print("[ERROR]", e)
+#     #     return jsonify({
+#     #         "version": "2.0",
+#     #         "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+#     #     })
+
+#         if found_cmd == "승률개선":
+            
+#             # -----------------------------
+#             # 여기서는 카드(card)만 만들어두고
+#             # 즉시 리턴하지 않는다 (중요)
+#             # -----------------------------
+#             if (
+#                 original_win_rate is not None and
+#                 modified_win_rate is not None and
+#                 win_rate_improvement is not None
+#             ):
+#                 head = f"{nick}  Lv.{lv}"
+#                 body_lines = [
+#                     "",
+#                     "❮개선 시 승률❯\n"
+#                     f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+#                     f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+#                     "❮개선해야하는 지표❯"
+#                 ]
+#                 if improved_features_text:
+#                     feat_lines = [
+#                         ln.strip()
+#                         for ln in improved_features_text.splitlines()
+#                         if ln.strip()
+#                     ]
+#                     feat_lines = (
+#                         feat_lines[:5]
+#                         if len(feat_lines) > 5 else feat_lines
+#                     )
+#                     body_lines.extend(feat_lines)
+#                 else:
+#                     body_lines.append("분석 데이터가 부족합니다.")
+#                 description = head + "\n" + "\n".join(body_lines)
+#                 card = {
+#                     "basicCard": {
+#                         "description": description,
+#                         "thumbnail": (
+#                             {"imageUrl": badge_url} if badge_url else {}
+#                         ),
+#                         "buttons": [
+#                             {
+#                                 "label": "승률개선 자세히 보기",
+#                                 "action": "webLink",
+#                                 "webLinkUrl": imp_url
+#                             },
+#                             {
+#                                 "label": "전적검색",
+#                                 "action": "block",
+#                                 "blockId": JJ_id,
+#                                 "extra": {"params": {"nick": nick}}
+#                             }
+#                         ]
+#                     }
+#                 }
+#             else:
+#                 card = {
+#                     "simpleText": {
+#                         "text": "최근 전적 경기 수가 부족합니다."
+#                     }
+#                 }
+
+#             # -----------------------------
+#             # 콜백 처리
+#             # -----------------------------
+#             if callback_url:
+#                 # 긴 계산 끝난 결과(card)를 callback_url로 따로 보내기
+#                 def _send_callback():
+#                     try:
+#                         payload = {
+#                             "version": "2.0",
+#                             "template": {"outputs": [card]}
+#                         }
+#                         # timeout은 콜백 POST 한 번에 대한 네트워크 제한일 뿐이니
+#                         # 60 정도로 넉넉히 잡아도 돼 (5초 제한은 skill 응답쪽임)
+#                         requests.post(callback_url, json=payload, timeout=60)
+#                     except Exception as e:
+#                         print("[callback error]", e)
+
+#                 threading.Thread(
+#                     target=_send_callback,
+#                     daemon=True
+#                 ).start()
+
+#                 # 먼저 즉답: useCallback=true를 돌려서
+#                 # 카카오가 "콜백 기다리는 중" 상태로 들어가게
+#                 return jsonify({
+#                     "version": "2.0",
+#                     "useCallback": True,
+#                     "data": {
+#                         "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
+#                     }
+#                 })
+
+#             # fallback (콜백 미지원일 경우 = callback_url 없음)
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [card]}
+#             })
+
+#         else:
+#             # ---------------- 기존 전적검색 분기 ----------------
+#             if len(matches) == 0:
+#                 return jsonify({
+#                     "version": "2.0",
+#                     "template": {
+#                         "outputs": [{
+#                             "simpleText": {
+#                                 "text": "최근 전적 경기 수가 부족합니다."
+#                             }
+#                         }]
+#                     }
+#                 })
+
+#             title = f"{nick} · Lv.{lv}"
+#             desc_common = (
+#                 f"승률 {win_rate_text}\n"
+#                 f"❮플레이스타일❯\n"
+#                 f"{play_style_text}"
+#             )
+#             card = {
+#                 "basicCard": {
+#                     "description": (
+#                         f"{title}\n\n"
+#                         f"{desc_common}\n\n"
+#                         f"최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다."
+#                     ),
+#                     "thumbnail": (
+#                         {"imageUrl": badge_url} if badge_url else {}
+#                     ),
+#                     "buttons": [
+#                         {
+#                             "label": "전적 자세히 보기",
+#                             "action": "webLink",
+#                             "webLinkUrl": result_url
+#                         },
+#                         {
+#                             "label": "승률개선",
+#                             "action": "block",
+#                             "blockId": SL_id,
+#                             "extra": {"params": {"nick": nick}}
+#                         }
+#                     ]
+#                 }
+#             }
+
+#             return jsonify({
+#                 "version": "2.0",
+#                 "template": {"outputs": [card]}
+#             })
+
+#     except Exception as e:
+#         print("[ERROR]", e)
+#         return jsonify({
+#             "version": "2.0",
+#             "template": {
+#                 "outputs": [{
+#                     "simpleText": {
+#                         "text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."
+#                     }
+#                 }]
+#             }
+#         })
 
 
 # -------------------------------------------
