@@ -1094,6 +1094,7 @@ def kakao_skill():
         imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
 
         if found_cmd == "승률개선":
+            return jsonify({"version" : "2.0",  "useCallback" : True,  "data": {"text" : "유저님의 승률을 끌어올리는 중입니다!"}})
             if (original_win_rate is not None and
                 modified_win_rate is not None and
                 win_rate_improvement is not None):
