@@ -1205,45 +1205,31 @@ def kakao_skill():
                 description = head + "\n" + "\n".join(body_lines)
                 card = {
                     "basicCard": {
-                        # "title": "승률 개선 솔루션",
                         "description": description,
-                        # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
                         "thumbnail": {"imageUrl": badge_url} if badge_url else {},
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
-                            {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-                            "extra":{"params":{"nick": nick}}}
+                            {"label": "전적검색", "action": "block", "blockId": JJ_id,
+                             "extra": {"params": {"nick": nick}}}
                         ]
                     }
                 }
             else:
-                # 데이터 부족이면 여기서 바로 "부족합니다"를 최종 콜백 카드로 쓸 수도 있고,
-                # 그냥 간단 텍스트 하나만 콜백으로 보낼 수도 있어.
-                # 일단 너 기존 로직 그대로 유지해서 simpleText 카드 만들어둘게.
                 card = {
-                    "simpleText": {
-                        "text": "최근 전적 경기 수가 부족합니다."
-                    }
+                    "simpleText": {"text": "최근 전적 경기 수가 부족합니다."}
                 }
 
             # -----------------------------
-            # ★ 여기서부터 콜백 처리 추가
+            # 콜백 처리
             # -----------------------------
-            # callbackUrl이 있을 때만 콜백 전송 스레드 돌린다.
-            # (callbackUrl은 body.userRequest.callbackUrl 에서 이미 뽑았지)
             if callback_url:
-                # import threading, requests  # <- 파일 상단에서 이미 import 했으면 이 줄은 빼도 됨
+                import threading, requests
 
                 def _send_callback():
                     try:
                         payload = {
                             "version": "2.0",
-                            "template": {
-                                # card가 basicCard면 outputs에 [{"basicCard": {...}}] 형태여야 하고,
-                                # 위에서 card 자체를 그 형태로 이미 맞췄지.
-                                "outputs": [card]
-                            }
+                            "template": {"outputs": [card]}
                         }
                         requests.post(callback_url, json=payload, timeout=5)
                     except Exception as e:
@@ -1251,51 +1237,51 @@ def kakao_skill():
 
                 threading.Thread(target=_send_callback, daemon=True).start()
 
-                # 5초 안에 먼저 보내는 "생각중" 메시지 (= useCallback true)
                 return jsonify({
                     "version": "2.0",
                     "useCallback": True,
-                    "data": {
-                        "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
-                    }
+                    "data": {"text": f"{nick}님의 승률을 끌어올리는 중입니다!"}
                 })
 
-            # 만약 callback_url이 없으면 (콜백 기능이 안 켜진 블록이면)
-            # 그냥 기존처럼 즉시 카드 리턴
+            # fallback (콜백 미지원일 경우)
             return jsonify({
                 "version": "2.0",
-                "template": {
-                    "outputs": [card]
-                }
+                "template": {"outputs": [card]}
             })
 
         else:
-            # ---------------- 기존 전적검색 분기 그대로 ----------------
+            # ---------------- 기존 전적검색 분기 ----------------
             if len(matches) == 0:
-                return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
+                return jsonify({
+                    "version": "2.0",
+                    "template": {"outputs": [{"simpleText": {"text": "최근 전적 경기 수가 부족합니다."}}]}
+                })
+
             title = f"{nick} · Lv.{lv}"
             desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
             card = {
                 "basicCard": {
                     "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    # "title": title,
-                    # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
+                    "thumbnail": {"imageUrl": badge_url} if badge_url else {},
                     "buttons": [
-                        {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-                        # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
-                        {"label": "승률개선",  "action": "block", "blockId": SL_id, 
-                        "extra":{"params":{"nick": nick}}}
+                        {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
+                        {"label": "승률개선", "action": "block", "blockId": SL_id,
+                         "extra": {"params": {"nick": nick}}}
                     ]
                 }
             }
 
             return jsonify({
-                "version":"2.0",
-                "template":{"outputs":[card]}
+                "version": "2.0",
+                "template": {"outputs": [card]}
             })
 
-
+    except Exception as e:
+        print("[ERROR]", e)
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+        })
 
 
 # -------------------------------------------
