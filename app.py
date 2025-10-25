@@ -2022,24 +2022,32 @@ def _uname(body: dict) -> str:
 
 def _room_id(body: dict) -> str:
     """
-    채팅방(대화방) 식별자.
+    채팅방(그룹채팅방) 식별자 추출.
 
-    우선순위:
-    1) userRequest.bot.botGroupKey  -> 채팅방마다 고유하게 부여됨 (단톡/오픈채팅 구분 가능)
-    2) conversation.id              -> 일부 환경에서만 존재
-    3) "global"                     -> fallback (1:1 대화 등)
+    우선순위
+    1) userRequest.chat.properties.botGroupKey  -> 문서상 '팀채팅방 식별키'
+    2) userRequest.chat.id                      -> chat.id 도 botGroupKey와 동일하게 내려온다고 명시
+    3) conversation.id                          -> 일부 환경에서만 존재
+    4) "global"                                 -> 최후 fallback
     """
     ur = body.get("userRequest") or {}
-    bot_info = ur.get("bot") or {}
-    group_key = (bot_info.get("botGroupKey") or "").strip()
+
+    chat = ur.get("chat") or {}
+    chat_props = chat.get("properties") or {}
+
+    group_key_from_props = (chat_props.get("botGroupKey") or "").strip()
+    group_key_from_chat_id = (chat.get("id") or "").strip()
 
     conv = body.get("conversation") or {}
     conv_id = (conv.get("id") or "").strip()
 
-    # 🔥 핵심 포인트: botGroupKey를 가장 먼저 사용
-    room = group_key or conv_id or "global"
+    room = (
+        group_key_from_props
+        or group_key_from_chat_id
+        or conv_id
+        or "global"
+    )
     return str(room)
-
 
 
 def _param_from_action(body: dict, key: str) -> str:
