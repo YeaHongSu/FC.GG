@@ -1287,158 +1287,367 @@ def kakao_skill():
     #         "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
     #     })
 
-        if found_cmd == "승률개선":
+        # if found_cmd == "승률개선":
             
-            # -----------------------------
-            # 여기서는 카드(card)만 만들어두고
-            # 즉시 리턴하지 않는다 (중요)
-            # -----------------------------
-            if (
-                original_win_rate is not None and
-                modified_win_rate is not None and
-                win_rate_improvement is not None
-            ):
-                head = f"{nick}  Lv.{lv}"
-                body_lines = [
-                    "",
-                    "❮개선 시 승률❯\n"
-                    f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
-                    f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
-                    "❮개선해야하는 지표❯"
-                ]
-                if improved_features_text:
-                    feat_lines = [
-                        ln.strip()
-                        for ln in improved_features_text.splitlines()
-                        if ln.strip()
+    #         # -----------------------------
+    #         # 여기서는 카드(card)만 만들어두고
+    #         # 즉시 리턴하지 않는다 (중요)
+    #         # -----------------------------
+    #         if (
+    #             original_win_rate is not None and
+    #             modified_win_rate is not None and
+    #             win_rate_improvement is not None
+    #         ):
+    #             head = f"{nick}  Lv.{lv}"
+    #             body_lines = [
+    #                 "",
+    #                 "❮개선 시 승률❯\n"
+    #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+    #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+    #                 "❮개선해야하는 지표❯"
+    #             ]
+    #             if improved_features_text:
+    #                 feat_lines = [
+    #                     ln.strip()
+    #                     for ln in improved_features_text.splitlines()
+    #                     if ln.strip()
+    #                 ]
+    #                 feat_lines = (
+    #                     feat_lines[:5]
+    #                     if len(feat_lines) > 5 else feat_lines
+    #                 )
+    #                 body_lines.extend(feat_lines)
+    #             else:
+    #                 body_lines.append("분석 데이터가 부족합니다.")
+    #             description = head + "\n" + "\n".join(body_lines)
+    #             card = {
+    #                 "basicCard": {
+    #                     "description": description,
+    #                     "thumbnail": (
+    #                         {"imageUrl": badge_url} if badge_url else {}
+    #                     ),
+    #                     "buttons": [
+    #                         {
+    #                             "label": "승률개선 자세히 보기",
+    #                             "action": "webLink",
+    #                             "webLinkUrl": imp_url
+    #                         },
+    #                         {
+    #                             "label": "전적검색",
+    #                             "action": "block",
+    #                             "blockId": JJ_id,
+    #                             "extra": {"params": {"nick": nick}}
+    #                         }
+    #                     ]
+    #                 }
+    #             }
+    #         else:
+    #             card = {
+    #                 "simpleText": {
+    #                     "text": "최근 전적 경기 수가 부족합니다."
+    #                 }
+    #             }
+
+    #         # -----------------------------
+    #         # 콜백 처리
+    #         # -----------------------------
+    #         if callback_url:
+    #             # 긴 계산 끝난 결과(card)를 callback_url로 따로 보내기
+    #             def _send_callback():
+    #                 try:
+    #                     payload = {
+    #                         "version": "2.0",
+    #                         "template": {"outputs": [card]}
+    #                     }
+    #                     # timeout은 콜백 POST 한 번에 대한 네트워크 제한일 뿐이니
+    #                     # 60 정도로 넉넉히 잡아도 돼 (5초 제한은 skill 응답쪽임)
+    #                     requests.post(callback_url, json=payload, timeout=60)
+    #                 except Exception as e:
+    #                     print("[callback error]", e)
+
+    #             threading.Thread(
+    #                 target=_send_callback,
+    #                 daemon=True
+    #             ).start()
+
+    #             # 먼저 즉답: useCallback=true를 돌려서
+    #             # 카카오가 "콜백 기다리는 중" 상태로 들어가게
+    #             return jsonify({
+    #                 "version": "2.0",
+    #                 "useCallback": True,
+    #                 "data": {
+    #                     "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
+    #                 }
+    #             })
+
+    #         # fallback (콜백 미지원일 경우 = callback_url 없음)
+    #         return jsonify({
+    #             "version": "2.0",
+    #             "template": {"outputs": [card]}
+    #         })
+
+    #     else:
+    #         # ---------------- 기존 전적검색 분기 ----------------
+    #         if len(matches) == 0:
+    #             return jsonify({
+    #                 "version": "2.0",
+    #                 "template": {
+    #                     "outputs": [{
+    #                         "simpleText": {
+    #                             "text": "최근 전적 경기 수가 부족합니다."
+    #                         }
+    #                     }]
+    #                 }
+    #             })
+
+    #         title = f"{nick} · Lv.{lv}"
+    #         desc_common = (
+    #             f"승률 {win_rate_text}\n"
+    #             f"❮플레이스타일❯\n"
+    #             f"{play_style_text}"
+    #         )
+    #         card = {
+    #             "basicCard": {
+    #                 "description": (
+    #                     f"{title}\n\n"
+    #                     f"{desc_common}\n\n"
+    #                     f"최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다."
+    #                 ),
+    #                 "thumbnail": (
+    #                     {"imageUrl": badge_url} if badge_url else {}
+    #                 ),
+    #                 "buttons": [
+    #                     {
+    #                         "label": "전적 자세히 보기",
+    #                         "action": "webLink",
+    #                         "webLinkUrl": result_url
+    #                     },
+    #                     {
+    #                         "label": "승률개선",
+    #                         "action": "block",
+    #                         "blockId": SL_id,
+    #                         "extra": {"params": {"nick": nick}}
+    #                     }
+    #                 ]
+    #             }
+    #         }
+
+    #         return jsonify({
+    #             "version": "2.0",
+    #             "template": {"outputs": [card]}
+    #         })
+
+    # except Exception as e:
+    #     print("[ERROR]", e)
+    #     return jsonify({
+    #         "version": "2.0",
+    #         "template": {
+    #             "outputs": [{
+    #                 "simpleText": {
+    #                     "text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."
+    #                 }
+    #             }]
+    #         }
+    #     })
+            
+        # ---------- 승률개선 분기 ----------
+        if found_cmd == "승률개선":
+
+            # 콜백 기능 안 쓰는 방 (callback_url 없음) -> 예전 그대로 카드 바로 리턴
+            if not callback_url:
+                if (
+                    original_win_rate is not None and
+                    modified_win_rate is not None and
+                    win_rate_improvement is not None
+                ):
+                    head = f"{nick}  Lv.{lv}"
+                    body_lines = [
+                        "",
+                        "❮개선 시 승률❯\n"
+                        f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+                        f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+                        "❮개선해야하는 지표❯"
                     ]
-                    feat_lines = (
-                        feat_lines[:5]
-                        if len(feat_lines) > 5 else feat_lines
-                    )
-                    body_lines.extend(feat_lines)
-                else:
-                    body_lines.append("분석 데이터가 부족합니다.")
-                description = head + "\n" + "\n".join(body_lines)
-                card = {
-                    "basicCard": {
-                        "description": description,
-                        "thumbnail": (
-                            {"imageUrl": badge_url} if badge_url else {}
-                        ),
-                        "buttons": [
-                            {
-                                "label": "승률개선 자세히 보기",
-                                "action": "webLink",
-                                "webLinkUrl": imp_url
-                            },
-                            {
-                                "label": "전적검색",
-                                "action": "block",
-                                "blockId": JJ_id,
-                                "extra": {"params": {"nick": nick}}
-                            }
+                    if improved_features_text:
+                        feat_lines = [
+                            ln.strip()
+                            for ln in improved_features_text.splitlines()
+                            if ln.strip()
                         ]
-                    }
-                }
-            else:
-                card = {
-                    "simpleText": {
-                        "text": "최근 전적 경기 수가 부족합니다."
-                    }
-                }
+                        feat_lines = (
+                            feat_lines[:5]
+                            if len(feat_lines) > 5 else feat_lines
+                        )
+                        body_lines.extend(feat_lines)
+                    else:
+                        body_lines.append("분석 데이터가 부족합니다.")
 
-            # -----------------------------
-            # 콜백 처리
-            # -----------------------------
-            if callback_url:
-                # 긴 계산 끝난 결과(card)를 callback_url로 따로 보내기
-                def _send_callback():
+                    description = head + "\n" + "\n".join(body_lines)
+
+                    card_sync = {
+                        "basicCard": {
+                            "description": description,
+                            "thumbnail": (
+                                {"imageUrl": badge_url} if badge_url else {}
+                            ),
+                            "buttons": [
+                                {
+                                    "label": "승률개선 자세히 보기",
+                                    "action": "webLink",
+                                    "webLinkUrl": imp_url
+                                },
+                                {
+                                    "label": "전적검색",
+                                    "action": "block",
+                                    "blockId": JJ_id,
+                                    "extra": {"params": {"nick": nick}}
+                                }
+                            ]
+                        }
+                    }
+                else:
+                    card_sync = {
+                        "simpleText": {
+                            "text": "최근 전적 경기 수가 부족합니다."
+                        }
+                    }
+
+                return jsonify({
+                    "version": "2.0",
+                    "template": {"outputs": [card_sync]}
+                })
+
+            # 콜백 지원 방 (callback_url 있음)
+            def _bg_send_callback():
+                try:
+                    if (
+                        original_win_rate is not None and
+                        modified_win_rate is not None and
+                        win_rate_improvement is not None
+                    ):
+                        head = f"{nick}  Lv.{lv}"
+                        body_lines = [
+                            "",
+                            "❮개선 시 승률❯\n"
+                            f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
+                            f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
+                            "❮개선해야하는 지표❯"
+                        ]
+                        if improved_features_text:
+                            feat_lines = [
+                                ln.strip()
+                                for ln in improved_features_text.splitlines()
+                                if ln.strip()
+                            ]
+                            feat_lines = (
+                                feat_lines[:5]
+                                if len(feat_lines) > 5 else feat_lines
+                            )
+                            body_lines.extend(feat_lines)
+                        else:
+                            body_lines.append("분석 데이터가 부족합니다.")
+
+                        # 이 description이 우리가 사용자에게 최종 보여주고 싶은 텍스트
+                        final_text = head + "\n" + "\n".join(body_lines)
+
+                    else:
+                        final_text = "최근 전적 경기 수가 부족합니다."
+
+                    # 콜백 블록이 {{#webhook.text}} 를 보고 있으므로
+                    # 여기서는 template/outputs 안 보내고 data.text만 보낸다
+                    payload_ok = {
+                        "version": "2.0",
+                        "data": {
+                            "text": final_text
+                        }
+                    }
+
+                    requests.post(callback_url, json=payload_ok, timeout=5)
+
+                except Exception as cb_err:
+                    print("[callback bg error]", cb_err)
+                    traceback.print_exc()
+
+                    # 에러 났을 때도 data.text 형식으로
+                    payload_err = {
+                        "version": "2.0",
+                        "data": {
+                            "text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."
+                        }
+                    }
                     try:
-                        payload = {
-                            "version": "2.0",
-                            "template": {"outputs": [card]}
-                        }
-                        # timeout은 콜백 POST 한 번에 대한 네트워크 제한일 뿐이니
-                        # 60 정도로 넉넉히 잡아도 돼 (5초 제한은 skill 응답쪽임)
-                        requests.post(callback_url, json=payload, timeout=60)
-                    except Exception as e:
-                        print("[callback error]", e)
+                        requests.post(callback_url, json=payload_err, timeout=5)
+                    except Exception as cb_post_err:
+                        print("[callback post fail]", cb_post_err)
 
-                threading.Thread(
-                    target=_send_callback,
-                    daemon=True
-                ).start()
+            threading.Thread(
+                target=_bg_send_callback,
+                daemon=True
+            ).start()
 
-                # 먼저 즉답: useCallback=true를 돌려서
-                # 카카오가 "콜백 기다리는 중" 상태로 들어가게
-                return jsonify({
-                    "version": "2.0",
-                    "useCallback": True,
-                    "data": {
-                        "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
-                    }
-                })
-
-            # fallback (콜백 미지원일 경우 = callback_url 없음)
+            # 즉답 (5초 안)
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [card]}
-            })
-
-        else:
-            # ---------------- 기존 전적검색 분기 ----------------
-            if len(matches) == 0:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {
-                        "outputs": [{
-                            "simpleText": {
-                                "text": "최근 전적 경기 수가 부족합니다."
-                            }
-                        }]
-                    }
-                })
-
-            title = f"{nick} · Lv.{lv}"
-            desc_common = (
-                f"승률 {win_rate_text}\n"
-                f"❮플레이스타일❯\n"
-                f"{play_style_text}"
-            )
-            card = {
-                "basicCard": {
-                    "description": (
-                        f"{title}\n\n"
-                        f"{desc_common}\n\n"
-                        f"최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다."
-                    ),
-                    "thumbnail": (
-                        {"imageUrl": badge_url} if badge_url else {}
-                    ),
-                    "buttons": [
-                        {
-                            "label": "전적 자세히 보기",
-                            "action": "webLink",
-                            "webLinkUrl": result_url
-                        },
-                        {
-                            "label": "승률개선",
-                            "action": "block",
-                            "blockId": SL_id,
-                            "extra": {"params": {"nick": nick}}
-                        }
-                    ]
+                "useCallback": True,
+                "data": {
+                    "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
                 }
-            }
+            })
 
+        # ---------- 전적검색 분기 ----------
+        if len(matches) == 0:
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [card]}
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": "최근 전적 경기 수가 부족합니다."
+                        }
+                    }]
+                }
             })
+
+        title = f"{nick} · Lv.{lv}"
+        desc_common = (
+            f"승률 {win_rate_text}\n"
+            f"❮플레이스타일❯\n"
+            f"{play_style_text}"
+        )
+        card_normal = {
+            "basicCard": {
+                "description": (
+                    f"{title}\n\n"
+                    f"{desc_common}\n\n"
+                    f"최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다."
+                ),
+                "thumbnail": (
+                    {"imageUrl": badge_url} if badge_url else {}
+                ),
+                "buttons": [
+                    {
+                        "label": "전적 자세히 보기",
+                        "action": "webLink",
+                        "webLinkUrl": f"https://fcgg.kr/전적검색/{nick}/공식경기"
+                    },
+                    {
+                        "label": "승률개선",
+                        "action": "block",
+                        "blockId": SL_id,
+                        "extra": {"params": {"nick": nick}}
+                    }
+                ]
+            }
+        }
+
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [card_normal]}
+        })
 
     except Exception as e:
+        import traceback
         print("[ERROR]", e)
+        traceback.print_exc()
         return jsonify({
             "version": "2.0",
             "template": {
@@ -1449,7 +1658,6 @@ def kakao_skill():
                 }]
             }
         })
-
 
 # -------------------------------------------
 # [NEW] 티어리스트 전용 Kakao 스킬 엔드포인트: /kakao/skill2
