@@ -1096,95 +1096,8 @@ def kakao_skill():
         result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
         imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
 
-        # if found_cmd == "승률개선":
-            
-    #         if (original_win_rate is not None and
-    #             modified_win_rate is not None and
-    #             win_rate_improvement is not None):
-    #             head = f"{nick}  Lv.{lv}"
-    #             body_lines = [
-    #                 "",
-    #                 "❮개선 시 승률❯\n"
-    #                 f"{original_win_rate * 100:.2f}% ➜ {modified_win_rate * 100:.2f}% "
-    #                 f"(＋{win_rate_improvement * 100:.2f}%p)\n\n"
-    #                 "❮개선해야하는 지표❯"
-    #             ]
-    #             if improved_features_text:
-    #                 feat_lines = [ln.strip() for ln in improved_features_text.splitlines() if ln.strip()]
-    #                 feat_lines = feat_lines[:5] if len(feat_lines) > 5 else feat_lines
-    #                 body_lines.extend(feat_lines)
-    #             else:
-    #                 body_lines.append("분석 데이터가 부족합니다.")
-    #             description = head + "\n" + "\n".join(body_lines)
-    #             card = {
-    #                 "basicCard": {
-    #                     # "title": "승률 개선 솔루션",
-    #                     "description": description,
-    #                     # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
-    #                     "thumbnail": {"imageUrl": badge_url} if badge_url else {},
-    #                     "buttons": [
-    #                         {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-    #                         # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
-    #                         {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-    #                         "extra":{"params":{"nick": nick}}}
-    #                     ]
-    #                 }
-    #             }
-    #         else:
-    #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
-    #             # # 개선 계산 실패/데이터 부족 폴백
-    #             # description = (
-    #             #     f"{nick}  Lv.{lv}\n\n"
-    #             #     "[개선 시 승률]\n"
-    #             #     "분석 데이터가 부족합니다.\n\n"
-    #             #     "[개선해야하는 지표]\n"
-    #             #     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
-    #             # )
-    #             # card = {
-    #             #     "basicCard": {
-    #             #         "title": "승률 개선 솔루션",
-    #             #         "description": description,
-    #             #         **({"thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600}} if tier_image else {}),
-    #             #         "buttons": [
-    #             #             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-    #             #             # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
-    #             #             {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
-    #             #             "extra":{"params":{"nick": nick}}}
-    #             #         ]
-    #             #     }
-    #             # }
-    #     else:
-    #         if len(matches) == 0:
-    #             return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
-    #         title = f"{nick} · Lv.{lv}"
-    #         desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
-    #         card = {
-    #             "basicCard": {
-    #                 "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-    #                 # "title": title,
-    #                 # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-    #                 **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
-    #                 "buttons": [
-    #                     {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
-    #                     # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
-    #                     {"label": "승률개선",  "action": "block", "blockId": SL_id, 
-    #                     "extra":{"params":{"nick": nick}}}
-    #                 ]
-    #             }
-    #         }
-        
-    #     return jsonify({"version":"2.0","template":{"outputs":[card]}})
-
-    # except Exception:
-    #     return jsonify({
-    #         "version":"2.0",
-    #         "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
-    #     })
         if found_cmd == "승률개선":
-            # -----------------------------
-            # 여기서는 카드(card)만 만들어두고
-            # 즉시 리턴하지 않는다 (중요)
-            # -----------------------------
+            
             if (original_win_rate is not None and
                 modified_win_rate is not None and
                 win_rate_improvement is not None):
@@ -1205,83 +1118,69 @@ def kakao_skill():
                 description = head + "\n" + "\n".join(body_lines)
                 card = {
                     "basicCard": {
+                        # "title": "승률 개선 솔루션",
                         "description": description,
+                        # "thumbnail": {"imageUrl": tier_image} if tier_image else {},
                         "thumbnail": {"imageUrl": badge_url} if badge_url else {},
                         "buttons": [
                             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
-                            {"label": "전적검색", "action": "block", "blockId": JJ_id,
-                             "extra": {"params": {"nick": nick}}}
+                            # {"label": "전적검색", "action": "webLink", "webLinkUrl": result_url},
+                            {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
+                            "extra":{"params":{"nick": nick}}}
                         ]
                     }
                 }
             else:
-                card = {
-                    "simpleText": {"text": "최근 전적 경기 수가 부족합니다."}
-                }
-
-            # -----------------------------
-            # 콜백 처리
-            # -----------------------------
-            if callback_url:
-                import threading, requests
-
-                def _send_callback():
-                    try:
-                        payload = {
-                            "version": "2.0",
-                            "template": {"outputs": [card]}
-                        }
-                        requests.post(callback_url, json=payload, timeout=5)
-                    except Exception as e:
-                        print("[callback error]", e)
-
-                threading.Thread(target=_send_callback, daemon=True).start()
-
-                return jsonify({
-                    "version": "2.0",
-                    "useCallback": True,
-                    "data": {"text": f"{nick}님의 승률을 끌어올리는 중입니다!"}
-                })
-
-            # fallback (콜백 미지원일 경우)
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [card]}
-            })
-
+                return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
+                # # 개선 계산 실패/데이터 부족 폴백
+                # description = (
+                #     f"{nick}  Lv.{lv}\n\n"
+                #     "[개선 시 승률]\n"
+                #     "분석 데이터가 부족합니다.\n\n"
+                #     "[개선해야하는 지표]\n"
+                #     "최근 경기가 충분하지 않거나 일부 지표가 누락되었습니다."
+                # )
+                # card = {
+                #     "basicCard": {
+                #         "title": "승률 개선 솔루션",
+                #         "description": description,
+                #         **({"thumbnail": {"imageUrl": tier_image, "width":1600,"height":1600}} if tier_image else {}),
+                #         "buttons": [
+                #             {"label": "승률개선 자세히 보기", "action": "webLink", "webLinkUrl": imp_url},
+                #             # {"label": "전적검색",  "action": "webLink", "webLinkUrl": result_url},
+                #             {"label": "전적검색",  "action": "block", "blockId": JJ_id, 
+                #             "extra":{"params":{"nick": nick}}}
+                #         ]
+                #     }
+                # }
         else:
-            # ---------------- 기존 전적검색 분기 ----------------
             if len(matches) == 0:
-                return jsonify({
-                    "version": "2.0",
-                    "template": {"outputs": [{"simpleText": {"text": "최근 전적 경기 수가 부족합니다."}}]}
-                })
-
+                return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":"최근 전적 경기 수가 부족합니다."}}]}})
             title = f"{nick} · Lv.{lv}"
             desc_common = f"승률 {win_rate_text}\n❮플레이스타일❯\n{play_style_text}"
             card = {
                 "basicCard": {
                     "description": f"{title}\n\n{desc_common}\n\n최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
-                    "thumbnail": {"imageUrl": badge_url} if badge_url else {},
+                    # "title": title,
+                    # "description": f"{desc_common}\n\n 최근 {min(len(matches or []), MAX_DETAIL)}경기 기반 전적입니다.",
+                    **({"thumbnail": {"imageUrl": badge_url}} if badge_url else {}),
                     "buttons": [
-                        {"label": "전적 자세히 보기", "action": "webLink", "webLinkUrl": result_url},
-                        {"label": "승률개선", "action": "block", "blockId": SL_id,
-                         "extra": {"params": {"nick": nick}}}
+                        {"label": "전적 자세히 보기",  "action": "webLink", "webLinkUrl": result_url},
+                        # {"label": "승률개선", "action": "webLink", "webLinkUrl": imp_url},
+                        {"label": "승률개선",  "action": "block", "blockId": SL_id, 
+                        "extra":{"params":{"nick": nick}}}
                     ]
                 }
             }
+        
+        return jsonify({"version":"2.0","template":{"outputs":[card]}})
 
-            return jsonify({
-                "version": "2.0",
-                "template": {"outputs": [card]}
-            })
-
-    except Exception as e:
-        print("[ERROR]", e)
+    except Exception:
         return jsonify({
-            "version": "2.0",
-            "template": {"outputs": [{"simpleText": {"text": "분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
+            "version":"2.0",
+            "template":{"outputs":[{"simpleText":{"text":"분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
+
 
 
 # -------------------------------------------
