@@ -877,7 +877,6 @@ def kakao_skill():
         # ---- 튜닝 ----
         API_TIMEOUT = 1.2
         MAX_DETAIL  = 25
-        TIME_BUDGET = 4.2
 
         # ---- 유틸 ----
         def now(): return time.time()
@@ -963,19 +962,6 @@ def kakao_skill():
         if not ouid:
             return kakao_text(f"'{nick}' 유저를 찾지 못했습니다.")
 
-        if now() - t0 > TIME_BUDGET:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
-            return jsonify({"version":"2.0","template":{"outputs":[{
-                "basicCard":{
-                    "title": f"{nick}",
-                    "description":"네트워크 지연으로 간단 요약만 제공해요. 버튼으로 상세 페이지에서 확인하세요.",
-                    "buttons":[
-                        {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
-                    ]
-                }
-            }]}})
 
         basic = json_get("https://open.api.nexon.com/fconline/v1/user/basic",
                          {"ouid": ouid}, headers)
@@ -983,30 +969,30 @@ def kakao_skill():
 
         # 티어 이미지(여유 있을 때만)
         tier_image = None
-        if now() - t0 < TIME_BUDGET - 0.5:
-            division_mapping = [
-                {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
-                {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
-                {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
-                {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
-                {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
-                {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
-                {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
-                {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
-                {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
-                {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
-                {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
-                {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
-                {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
-                {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
-                {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
-                {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
-                {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
-                {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
-            ]
-            divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
-                            {"ouid": ouid}, headers)
-            tier_image = pick_tier_image(divi, mode)
+
+        division_mapping = [
+            {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank0.png"},
+            {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank1.png"},
+            {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank2.png"},
+            {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank3.png"},
+            {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank4.png"},
+            {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank5.png"},
+            {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank6.png"},
+            {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank7.png"},
+            {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank8.png"},
+            {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank9.png"},
+            {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank10.png"},
+            {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank11.png"},
+            {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank12.png"},
+            {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank13.png"},
+            {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank14.png"},
+            {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank15.png"},
+            {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank16.png"},
+            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2009/ico_rank17.png"},
+        ]
+        divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
+                        {"ouid": ouid}, headers)
+        tier_image = pick_tier_image(divi, mode)
 
         badge_url = None
         if tier_image:
@@ -1015,22 +1001,7 @@ def kakao_skill():
             badge_url = f"{public_root}/tierbadge?url={quote_plus(tier_image)}&size=480&bgw=1000&bgh=600"
 
         # ---------- 최근 경기 ----------
-        if now() - t0 > TIME_BUDGET - 1.5:
-            result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-            imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
-            return jsonify({"version":"2.0","template":{"outputs":[{
-                "basicCard":{
-                    "title": f"{nick} · Lv.{lv}",
-                    "description":"요청이 많아 간단 요약만 보여드려요. 상세 전적은 버튼으로 확인해 주세요.",
-                    # **({"thumbnail":{"imageUrl":tier_image, "width":1600,"height":1600}} if tier_image else {}),
-                    **({"thumbnail":{"imageUrl": badge_url}} if badge_url else {}),
-                    "buttons":[
-                        {"label":"전적 자세히 보기","action":"webLink","webLinkUrl":result_url},
-                        {"label":"승률개선","action":"webLink","webLinkUrl":imp_url},
-                    ]
-                }
-            }]}})
-
+        
         matches = json_get("https://open.api.nexon.com/fconline/v1/user/match",
                            {"ouid": ouid, "matchtype": mode, "limit": MAX_DETAIL},
                            headers)
@@ -1041,7 +1012,7 @@ def kakao_skill():
         original_win_rate = modified_win_rate = win_rate_improvement = None
         improved_features_text = ""
 
-        if matches and (now() - t0) < TIME_BUDGET - 0.3:
+        if matches:
             match_data_list = get_match_data(matches[:MAX_DETAIL], headers)
 
             results, w_l_data, imp_rows = [], [], []
@@ -1060,7 +1031,7 @@ def kakao_skill():
             if total:
                 win_rate_text = f"{wins / total * 100:.2f}%"
 
-            if imp_rows and (now() - t0) < TIME_BUDGET - 0.2:
+            if imp_rows:
                 import numpy as np
                 filt = [[v for v in row if isinstance(v, (int, float))] for row in imp_rows]
                 my_avg = np.nanmean(np.array(filt, dtype=float), axis=0)
@@ -1077,7 +1048,7 @@ def kakao_skill():
                 style = determine_play_style(max_data, min_data)
                 play_style_text = style.get("summary", str(style)) if isinstance(style, dict) else str(style)
 
-                if found_cmd == "승률개선" and (now() - t0) < TIME_BUDGET - 0.4:
+                if found_cmd == "승률개선":
                     try:
                         padded_imp = np.array(filt, dtype=float)
                         (
