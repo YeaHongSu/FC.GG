@@ -1287,13 +1287,7 @@ def kakao_skill():
     #     })
 
         if found_cmd == "승률개선":
-            return jsonify({
-                    "version": "2.0",
-                    "useCallback": True,
-                    "data": {
-                        "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
-                    }
-                })
+            
             # -----------------------------
             # 여기서는 카드(card)만 만들어두고
             # 즉시 리턴하지 않는다 (중요)
@@ -1377,7 +1371,13 @@ def kakao_skill():
 
                 # 먼저 즉답: useCallback=true를 돌려서
                 # 카카오가 "콜백 기다리는 중" 상태로 들어가게
-                
+                return jsonify({
+                    "version": "2.0",
+                    "useCallback": True,
+                    "data": {
+                        "text": f"{nick}님의 승률을 끌어올리는 중입니다!"
+                    }
+                })
 
             # fallback (콜백 미지원일 경우 = callback_url 없음)
             return jsonify({
