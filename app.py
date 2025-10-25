@@ -1064,9 +1064,9 @@ def kakao_skill():
         #                 improved_features_text = ""
 
         # # ---------- 카드 ----------
-        # MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
-        # result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
-        # imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
+        MATCH_TYPE_MAP = globals().get("MATCH_TYPE_MAP", {})
+        result_url = f"https://fcgg.kr/전적검색/{nick}/공식경기"
+        imp_url    = f"https://fcgg.kr/승률개선결과/{nick}/공식경기"
 
         # if found_cmd == "승률개선":
             
