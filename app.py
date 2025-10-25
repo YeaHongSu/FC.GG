@@ -1988,7 +1988,7 @@ def _format_leaderboard_and_mentions(room_id: str, uid: str, limit: int = 10):
     # 내 현재 등수도 보여주자 (채팅방 기준)
     my_rank, total = _rank_of(room_id, uid)
     if my_rank:
-        lines.append(f"\n내 현재 등수: {my_rank}/{total}")
+        lines.append(f"\n내 현재 등수: {my_rank}등")
 
     lines.append("\n랭킹은 주기적으로 갱신됩니다.")
 
@@ -2023,23 +2023,19 @@ def _uname(body: dict) -> str:
 
 def _room_id(body: dict) -> str:
     """
-    채팅방(대화방) 식별자. 우선순위:
-    1) conversation.id  -> 대부분 그룹/오픈채팅 방마다 다름
-    2) userRequest.bot.botGroupKey -> 일부 환경(워크/비즈)에서 단톡 식별
-    3) userRequest.user.id -> 1:1일 땐 이것만으로도 방 분리 효과
-    4) "global" -> 최후 fallback
+    채팅방(대화방) 식별자.
+    같은 채팅방이면 항상 같은 값이 되게 'conversation.id'만 사용한다.
+    만약 conversation.id가 아예 안 오면 'global'로 통일한다.
     """
     conv = body.get("conversation") or {}
     conv_id = (conv.get("id") or "").strip()
 
-    bot_info = ((body.get("userRequest") or {}).get("bot") or {})
-    group_key = (bot_info.get("botGroupKey") or "").strip()
+    if conv_id:
+        return conv_id
 
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    user_id = (user.get("id") or "").strip()
+    # fallback (ex. 극히 예외적인 경우)
+    return "global"
 
-    room = conv_id or group_key or user_id or "global"
-    return str(room)
 
 
 
