@@ -1186,7 +1186,7 @@ def kakao_skill():
                     original_win_rate = modified_win_rate = win_rate_improvement = None
                     improved_features_text = ""
 
-                # ----- 카드 생성 (태경님 정의한 형태 그대로) -----
+                # ----- 카드 생성 -----
                 if (
                     original_win_rate is not None and
                     modified_win_rate is not None and
