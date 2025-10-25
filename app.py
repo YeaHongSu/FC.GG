@@ -906,6 +906,8 @@ def kakao_skill():
         # ---------- 바디/발화 파싱 ----------
         body = request.get_json(silent=True) or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+        callback_url = body.get("userRequest", {}).get("callbackUrl")
+
         # print(((body.get("userRequest")).get("block")).get("id"))
         JJ_id = "68a44ed5d2032812d4a7df8b"
         SL_id = "68b4464f171fb452df215e52"
@@ -1168,8 +1170,8 @@ def kakao_skill():
                     ]
                 }
             }
-
-        return jsonify({"version":"2.0","template":{"outputs":[card]}})
+        
+        return requests.post(callback_url, json=jsonify({"version":"2.0","template":{"outputs":[card]}}))
 
     except Exception:
         return jsonify({
