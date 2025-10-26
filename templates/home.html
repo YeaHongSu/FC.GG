@@ -307,8 +307,20 @@
     </div>
     <div class="container d-flex justify-content-center my-4">
         <main class="container my-4">
-            <h1 class="text-center mb-4">나의 FC 온라인 플레이스타일은?</h1>
-            <h3 class="text-center mb-4">자신의 닉네임을 검색해 보세요!</h3>
+            <!-- <h1 class="text-center mb-4">나의 FC 온라인 플레이스타일은?</h1>
+            <h3 class="text-center mb-4">자신의 닉네임을 검색해 보세요!</h3> -->
+            <h1 class="text-center mb-4" style="font-weight: 800; color: #e60000; line-height: 1.5;">
+                🎉 FC.GG를 이용할 수 있는 카카오톡<br>
+                그룹 챗봇 <span style="color:#ff3333;">'피파봇'</span> 출시!
+            </h1> 
+            <h3 class="text-center mb-4">
+                <a href="https://pf.kakao.com/_xoxlZen" target="_blank" 
+                   style="background-color:#ffeaea; padding:8px 16px; border-radius:12px; 
+                          color:#e60000; font-weight:700; text-decoration:none; 
+                          box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                    💬 그룹 챗봇 채널 바로가기
+                </a>
+            </h3>
             <div class="container mt-3 d-flex justify-content-center">
                 <div class="col-md-6">
                     <div id="bookmark-container" class="bookmark-container"></div>
@@ -364,6 +376,20 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column">
                     <div class="notice-container">
                         <h4 class="mb-4 text-start"><span class="text-success">FC.GG</span> 공지사항</h4>
+                        <div class="notice-item">
+                            <p id="notice16-title">
+                                25/10/22 2.1.0v 업데이트 
+                                (<span style="color: red; font-weight: bold;">카카오톡 그룹 챗봇 '피파봇' 출시</span>)
+                                <span class="notice-date" id="notice16-date"></span>
+                            </p>
+                            <div id="notice16-content" class="notice-content">
+                                <p>
+                                    이번 업데이트에서는 카카오톡 앱 내에서 '피파봇' 그룹 챗봇을 이용하실 수 있습니다. 
+                                    챗봇 내에서 전적검색, 승률개선, 선수티어, 승부차기, 공피하기 이용이 가능합니다. 
+                                    많은 이용 부탁드립니다.
+                                </p>
+                            </div>
+                        </div>
                         <div class="notice-item">
                             <p id="notice15-title">25/09/29 1.6.0v 업데이트 (미니게임: 공 피하기) <span class="notice-date" id="notice15-date"></span></p>
                             <div id="notice15-content" class="notice-content">
@@ -449,6 +475,12 @@
                 <div class="col-lg-6 col-md-12 d-flex flex-column"> 
                     <div class="upcoming-container">
                         <h4 class="mb-4 text-start"><span class="text-primary">FC.GG</span> 업데이트 예정사항</h4>
+                        <div class="upcoming-item">
+                            <p id="upcoming11-title">2.1.0v 신규 기능 추가 예정 (카카오톡 그룹 챗봇 '피파봇') <span class="upcoming-date" id="upcoming11-date"></span></p>
+                            <div id="upcoming11-content" class="upcoming-content">
+                                <p>FC온라인 유저분들이 카카오톡 앱 내에서도 전적검색, 승률개선 콘텐츠를 이용하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
+                            </div>
+                        </div>
                         <div class="upcoming-item">
                             <p id="upcoming10-title">1.6.0v 신규 기능 추가 예정 (미니게임: 공 피하기) <span class="upcoming-date" id="upcoming10-date"></span></p>
                             <div id="upcoming10-content" class="upcoming-content">
@@ -687,6 +719,7 @@
         document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
         document.getElementById("notice14-date").textContent = calculateDaysAgo("2025-07-01");
         document.getElementById("notice15-date").textContent = calculateDaysAgo("2025-09-29");
+        document.getElementById("notice16-date").textContent = calculateDaysAgo("2025-10-21");
 
 
         // 업데이트 예정사항 날짜 자동 설정
@@ -700,6 +733,7 @@
         document.getElementById("upcoming8-date").textContent = calculateDaysAgo("2025-02-10");
         document.getElementById("upcoming9-date").textContent = calculateDaysAgo("2025-06-25");
         document.getElementById("upcoming10-date").textContent = calculateDaysAgo("2025-09-24");
+        document.getElementById("upcoming11-date").textContent = calculateDaysAgo("2025-10-05");
 
         // // 공지사항 클릭 이벤트 설정
         // document.getElementById("notice1-title").addEventListener("click", function() {
@@ -837,6 +871,15 @@
             }
         });
 
+        document.getElementById("notice16-title").addEventListener("click", function() {
+            const content = document.getElementById("notice16-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
         document.getElementById("upcoming1-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming1-content");
             if (content.style.maxHeight) {
@@ -920,6 +963,15 @@
 
         document.getElementById("upcoming10-title").addEventListener("click", function() {
             const content = document.getElementById("upcoming10-content");
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        });
+
+        document.getElementById("upcoming11-title").addEventListener("click", function() {
+            const content = document.getElementById("upcoming11-content");
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
             } else {
