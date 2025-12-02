@@ -62,39 +62,6 @@
 
 {% block extra_js %}
 
-
-<script>
-  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-
-  function centerOn(el) {
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollTop  = window.pageYOffset || document.documentElement.scrollTop;
-
-    const targetLeft = rect.left + scrollLeft + rect.width / 2 - window.innerWidth / 2;
-    const documentHeight = document.body.scrollHeight;
-    const viewportHeight = window.innerHeight;
-
-    const targetTop = (documentHeight / 2) - (viewportHeight / 2);
-
-    window.scrollTo({
-      left: Math.max(0, targetLeft),
-      top: Math.max(0, targetTop),
-      behavior: 'instant'
-    });
-  }
-
-  function centerSafely() {
-    const target = document.getElementById('dodge-ball');
-    centerOn(target);
-  }
-
-  document.addEventListener('DOMContentLoaded', centerSafely);
-  window.addEventListener('pageshow', (e) => { if (e.persisted) centerSafely(); });
-</script>
-
 <script>
 (() => {
     const W = 480, H = 640;
