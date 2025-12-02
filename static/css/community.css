@@ -1,0 +1,324 @@
+/* ===========================================
+   Community Page Specific Styles
+   =========================================== */
+
+/* Layout */
+.community-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+}
+
+/* Sidebar */
+.community-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.category-link {
+    display: block;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.category-link:last-child {
+    border-bottom: none;
+}
+
+.category-link:hover {
+    background: rgba(40, 167, 69, 0.05);
+    color: var(--primary-green);
+}
+
+/* 사이드바 카테고리별 색상 인디케이터 */
+.category-link[data-category]::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.category-link[data-category="전체"]::before {
+    background: var(--text-secondary);
+}
+
+.category-link[data-category="자유게시판"]::before {
+    background: var(--primary-green);
+}
+
+.category-link[data-category="키보드게시판"]::before {
+    background: var(--win-blue);
+}
+
+.category-link[data-category="패드게시판"]::before {
+    background: #8b5cf6;
+}
+
+.category-link[data-category="친추게시판"]::before {
+    background: var(--draw-yellow);
+}
+
+.category-link[data-category="건의사항"]::before {
+    background: var(--lose-red);
+}
+
+/* Video List */
+.video-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.video-item {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-radius: var(--radius-md);
+}
+
+/* Main Content */
+.community-main {
+    min-width: 0;
+}
+
+.community-main .card-modern {
+    overflow: visible;
+}
+
+/* Post Form */
+.post-form {
+    margin-bottom: 16px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    border-color: var(--primary-green);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* Tooltip */
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+}
+
+.tooltip-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-yellow);
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 50%;
+    cursor: help;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: #1e293b;
+    color: white;
+    font-size: 0.8rem;
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    z-index: 100;
+    margin-bottom: 8px;
+}
+
+.tooltip-container:hover .tooltip-text {
+    visibility: visible;
+}
+
+/* Category Description */
+.category-description {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.category-description p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.category-description .highlight {
+    color: var(--lose-red);
+    font-weight: 600;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 16px 0;
+}
+
+/* Posts List */
+.posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.post-card {
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.post-category {
+    padding: 4px 10px;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+}
+
+/* 게시판별 색상 */
+.post-category[data-category="자유게시판"] {
+    background: var(--primary-green);
+}
+
+.post-category[data-category="키보드게시판"] {
+    background: var(--win-blue);
+}
+
+.post-category[data-category="패드게시판"] {
+    background: #8b5cf6; /* purple */
+}
+
+.post-category[data-category="친추게시판"] {
+    background: var(--draw-yellow);
+    color: #1e293b;
+}
+
+.post-category[data-category="건의사항"] {
+    background: var(--lose-red);
+}
+
+.post-author {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.post-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.post-content p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+}
+
+/* Ad Section */
+.ad-section {
+    margin: 16px 0;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .community-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .tooltip-text {
+        white-space: normal;
+        width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .post-header {
+        gap: 8px;
+    }
+
+    .post-card {
+        padding: 12px;
+    }
+}

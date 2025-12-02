@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 승률 개선 결과{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 승률 개선, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/wr_result.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Search Section -->
+<section class="search-section">
+    <div class="search-wrapper">
+        <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요.">
+        <button class="search-btn" id="search_button">검색</button>
+    </div>
+</section>
+
+<!-- Result Grid -->
+<div class="wr-result-grid">
+    <!-- Win Rate Prediction Card -->
+    <div class="card-modern wr-card-prediction">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern"><span class="text-primary">{{ my_data.nickname }}</span>님의 예상 승률입니다!</h2>
+        </div>
+        <div class="card-body-modern">
+            {% if win_rate_improvement > 0 %}
+            <div class="chart-container">
+                <div class="chart-section">
+                    <canvas id="currentWinRateChart"></canvas>
+                    <p class="chart-label">현재 승률</p>
+                </div>
+                <div class="chart-arrow">▶</div>
+                <div class="chart-section">
+                    <canvas id="futureWinRateChart"></canvas>
+                    <p class="chart-label">예상 승률</p>
+                </div>
+            </div>
+            <div class="improvement-summary">
+                지표 개선 시 승률 <span class="text-primary">{{ "%.1f"|format(win_rate_improvement * 100) }}</span>% 증가
+            </div>
+            <div class="improvement-arrow">▼</div>
+            {% else %}
+            <p class="no-improvement">현재 모델로 개선이 불가능합니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Top 5 Metrics Card -->
+    <div class="card-modern wr-card-top5">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern">랭커 대비 상위 <span style="color: var(--primary-green);">5</span>개 지표</h2>
+        </div>
+        <div class="card-body-modern">
+            <ul class="metrics-list">
+                {% for idx, value in max_data %}
+                <li class="metrics-item">
+                    <span>
+                        <span class="metrics-rank positive">Top{{ loop.index }}</span>
+                        <span class="metrics-label">{{ data_label[idx] }}</span>
+                    </span>
+                    <span class="metrics-value positive">
+                        {{ "%.2f"|format(value * 100) }}%
+                        <span>▲</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Improvement Solution Card -->
+    <div class="card-modern wr-card-solution">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern"><span class="text-primary">승률 개선 솔루션</span></h2>
+        </div>
+        <div class="card-body-modern">
+            {% if top_n > 0 and increase_ratio > 0 %}
+            <p class="solution-intro">아래 <strong>{{ top_n }}</strong>개 지표를 <span class="text-primary"><strong>{{ "%.0f"|format(increase_ratio * 100) }}%</strong></span> 개선할 시 예상 승률</p>
+
+            <div class="solution-box">
+                <ul class="improvement-list">
+                    {% for feature in improved_features_text.split("\n") if feature %}
+                    <li class="improvement-item">
+                        <span class="feature-name">{{ feature.split(':')[0] }}</span>
+                        <span class="feature-values">
+                            <span class="feature-current">{{ feature.split(':')[1].split('->')[0] }}</span>
+                            <span class="feature-arrow">▶</span>
+                            <span class="feature-target">{{ feature.split('->')[1] }}</span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <p class="no-improvement">현재 모델로 개선이 불가능합니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Bottom 5 Metrics Card -->
+    <div class="card-modern wr-card-bottom5">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern">랭커 대비 하위 <span style="color: var(--lose-red);">5</span>개 지표</h2>
+        </div>
+        <div class="card-body-modern">
+            <ul class="metrics-list">
+                {% for idx, value in min_data %}
+                <li class="metrics-item">
+                    <span>
+                        <span class="metrics-rank negative">Top{{ loop.index }}</span>
+                        <span class="metrics-label">{{ data_label[idx] }}</span>
+                    </span>
+                    <span class="metrics-value negative">
+                        {{ "%.2f"|format(-value * 100) }}%
+                        <span>▼</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Ads -->
+<div class="ad-section">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    document.getElementById("search_button").addEventListener("click", function() {
+        var characterName = document.getElementById("character_name").value;
+        if (characterName.trim() !== "") {
+            showLoading();
+            setTimeout(function() {
+                window.location.href = "/wr_result.html?character_name=" + characterName + "&match_type=50";
+            }, 1000);
+        }
+    });
+
+    document.getElementById("character_name").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            document.getElementById("search_button").click();
+        }
+    });
+
+    window.addEventListener("pageshow", function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            hideLoading();
+        }
+    });
+
+    // Chart.js setup
+    const currentWinRateCtx = document.getElementById('currentWinRateChart').getContext('2d');
+    const futureWinRateCtx = document.getElementById('futureWinRateChart').getContext('2d');
+
+    const currentWinCount = {{ (match_data | selectattr('결과', 'equalto', '승') | list | length) }};
+    const drawCount = {{ (match_data | selectattr('결과', 'equalto', '무') | list | length) }};
+    const loseCount = {{ (match_data | selectattr('결과', 'equalto', '패') | list | length) }};
+    const totalMatches = currentWinCount + drawCount + loseCount;
+
+    const currentWinRate = (currentWinCount / totalMatches) * 100;
+    const drawRate = (drawCount / totalMatches) * 100;
+    const loseRate = (loseCount / totalMatches) * 100;
+
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '70%',
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.label || '';
+                        if (label) label += ': ';
+                        label += context.raw.toFixed(2) + '%';
+                        return label;
+                    }
+                }
+            }
+        }
+    };
+
+    const currentWinRateChart = new Chart(currentWinRateCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['승리', '무승부', '패배'],
+            datasets: [{
+                data: [currentWinRate, drawRate, loseRate],
+                backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],
+                hoverOffset: 4
+            }]
+        },
+        options: chartOptions,
+        plugins: [{
+            afterDraw: function(chart) {
+                const ctx = chart.ctx;
+                const width = chart.width;
+                const height = chart.height;
+                const fontSize = (height / 114).toFixed(2);
+                ctx.font = "bold " + fontSize + "em Noto Sans KR";
+                ctx.textBaseline = "middle";
+                const text = currentWinRate.toFixed(2) + "%";
+                const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                const textY = height / 2;
+                ctx.fillText(text, textX, textY);
+            }
+        }]
+    });
+
+    const futureWinRate = {{ "%.1f"|format(modified_win_rate * 100) }};
+
+    const futureWinRateChart = new Chart(futureWinRateCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['승리', '무승부', '패배'],
+            datasets: [{
+                data: [futureWinRate, drawRate, 100 - futureWinRate - drawRate],
+                backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],
+                hoverOffset: 4
+            }]
+        },
+        options: chartOptions,
+        plugins: [{
+            afterDraw: function(chart) {
+                const ctx = chart.ctx;
+                const width = chart.width;
+                const height = chart.height;
+                const fontSize = (height / 114).toFixed(2);
+                ctx.font = "bold " + fontSize + "em Noto Sans KR";
+                ctx.textBaseline = "middle";
+                const text = futureWinRate.toFixed(2) + "%";
+                const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                const textY = height / 2;
+                ctx.fillText(text, textX, textY);
+            }
+        }]
+    });
+
+    // Resize charts on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            currentWinRateChart.resize();
+            futureWinRateChart.resize();
+        }, 100);
+    });
+
+</script>
+{% endblock %}

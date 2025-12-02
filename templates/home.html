@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - FC온라인 전적 검색, 선수 티어, 승률 개선, 빠칭코 연습실, 수수료 계산기, 커뮤니티{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="b545b4e23767e7d9bf0d2ba33570793dfdacf4c5" />
+<meta name="description" content="FC온라인 유저를 위한 FC.GG 서비스들을 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 빠칭코 연습실, 수수료 계산기, 커뮤니티를 이용해 보세요!">
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 피파 전적, 피파 전적 검색, FC온라인 전적, FC온라인 전적검색, 플레이스타일, 승률 개선, 수수료 계산기, 빠칭코, 선수 티어, 에프씨지지, fcgg, fc.gg">
+<link rel="canonical" href="https://fcgg.kr" />
+<meta property="og:title" content="FC.GG - FC온라인 전적 검색, 선수 티어, 승률 개선, 빠칭코 연습실, 수수료 계산기">
+<meta property="og:description" content="FC온라인 유저를 위한 FC.GG 서비스들을 확인하세요. 승률 개선 솔루션, 선수 티어 제공, 빠칭코 연습실, 수수료 계산기, 커뮤니티를 이용해 보세요!">
+<meta property="og:url" content="https://www.fcgg.kr">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
+{% block loading %}
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">유저님의 경기들을 분석 중입니다!</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Flash Alert -->
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="flash-alert">
+        {{ messages[0] }}
+        <button class="flash-close" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <h1 class="hero-title">
+        FC.GG 카카오톡 챗봇 <span class="text-primary">'피파봇'</span> 출시!
+    </h1>
+    <a href="https://pf.kakao.com/_xoxlZen" target="_blank" class="chatbot-link">
+        💬 챗봇 채널 바로가기
+    </a>
+</section>
+
+<!-- Bookmarks -->
+<div class="bookmark-container" id="bookmark-container"></div>
+
+<!-- Search Section -->
+<section class="search-section">
+    <div class="search-wrapper">
+        <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요">
+        <button class="search-btn" id="search_button">검색</button>
+    </div>
+</section>
+
+<!-- Popular Players -->
+<section class="popular-section">
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern">실시간 인기 구단주</h3>
+        </div>
+        <div class="card-body-modern">
+            {% if top_nicknames %}
+            <ul class="popular-list">
+                {% for nickname, lv, tier_image, search_count in top_nicknames %}
+                <li class="popular-item" data-nickname="{{ nickname }}">
+                    <span class="popular-rank">Top {{ loop.index }}</span>
+                    <span class="popular-level">Lv. {{ lv }}</span>
+                    <span class="popular-nickname">{{ nickname }}</span>
+                    <img src="{{ tier_image }}" alt="Tier" class="popular-tier">
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="popular-empty">
+                <p>아직 검색된 구단주가 없습니다.</p>
+                <p class="popular-empty-hint">첫 번째로 검색해보세요!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Ads -->
+<div class="ad-section">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<!-- News Grid -->
+<div class="news-grid">
+    <!-- Announcements -->
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern"><span class="text-primary">FC.GG</span> 공지사항</h3>
+        </div>
+        <div class="card-body-modern">
+            <div class="notice-list">
+                <div class="notice-item" data-id="16">
+                    <div class="notice-title">
+                        25/10/22 2.1.0v 업데이트 (<span class="text-danger">카카오톡 그룹 챗봇 '피파봇' 출시</span>)
+                    </div>
+                    <div class="notice-date" id="notice16-date"></div>
+                    <div class="notice-content" id="notice16-content">
+                        <p>이번 업데이트에서는 카카오톡 앱 내에서 '피파봇' 그룹 챗봇을 이용하실 수 있습니다. 챗봇 내에서 전적검색, 승률개선, 선수티어, 승부차기, 공피하기 이용이 가능합니다. 많은 이용 부탁드립니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="15">
+                    <div class="notice-title">25/09/29 1.6.0v 업데이트 (미니게임: 공 피하기)</div>
+                    <div class="notice-date" id="notice15-date"></div>
+                    <div class="notice-content" id="notice15-content">
+                        <p>이번 업데이트에서는 기존 빠칭코 연습실이 스폐셜 상점 연습실로 명칭이 변화되었으며, 미니게임으로 통합과 동시에 공 피하기 콘텐츠가 추가되었습니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="14">
+                    <div class="notice-title">25/07/01 1.5.0v 업데이트 (선수 티어, 플레이스타일)</div>
+                    <div class="notice-date" id="notice14-date"></div>
+                    <div class="notice-content" id="notice14-content">
+                        <p>이번 업데이트에서는 구단주님의 플레이스타일을 더 다채롭게 변화시켰으며 인게임 패치에 따른 선수 티어도 변화되었습니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="13">
+                    <div class="notice-title">25/02/15 1.4.0v 업데이트 (전적 검색 서비스)</div>
+                    <div class="notice-date" id="notice13-date"></div>
+                    <div class="notice-content" id="notice13-content">
+                        <p>이번 업데이트에서는 전적 검색 시 구단주님의 스쿼드를 확인할 수 있도록 수정하였습니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="12">
+                    <div class="notice-title">25/01/23 1.3.0v 업데이트 (빠칭코 연습실 : <span class="text-pink">SSL</span>)</div>
+                    <div class="notice-date" id="notice12-date"></div>
+                    <div class="notice-content" id="notice12-content">
+                        <p>이번 업데이트에서는 신규 빠칭코 : SSL 규칙에 맞게 연습실을 개편하였습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Updates -->
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern"><span class="text-info">FC.GG</span> 업데이트 예정사항</h3>
+        </div>
+        <div class="card-body-modern">
+            <div class="notice-list">
+                <div class="notice-item" data-id="u11">
+                    <div class="notice-title">2.1.0v 신규 기능 추가 예정 (카카오톡 그룹 챗봇 '피파봇')</div>
+                    <div class="notice-date" id="upcoming11-date"></div>
+                    <div class="notice-content" id="upcoming11-content">
+                        <p>FC온라인 유저분들이 카카오톡 앱 내에서도 전적검색, 승률개선 콘텐츠를 이용하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="u10">
+                    <div class="notice-title">1.6.0v 신규 기능 추가 예정 (미니게임: 공 피하기)</div>
+                    <div class="notice-date" id="upcoming10-date"></div>
+                    <div class="notice-content" id="upcoming10-content">
+                        <p>FC온라인 유저분들이 공 피하기 미니게임을 체험하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="u9">
+                    <div class="notice-title">1.5.0v 편의성 개선 예정 (선수 티어, 플레이스타일)</div>
+                    <div class="notice-date" id="upcoming9-date"></div>
+                    <div class="notice-content" id="upcoming9-content">
+                        <p>FC온라인 유저분들이 전적 검색 시 더 다채로운 플레이스타일을 만나보실 수 있도록 개편 예정입니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="u8">
+                    <div class="notice-title">1.4.0v 편의성 개선 예정 (전적 검색 서비스)</div>
+                    <div class="notice-date" id="upcoming8-date"></div>
+                    <div class="notice-content" id="upcoming8-content">
+                        <p>FC온라인 유저분들이 전적 검색 시 자신의 스쿼드를 확인하실 수 있도록 개편 예정입니다.</p>
+                    </div>
+                </div>
+                <div class="notice-item" data-id="u7">
+                    <div class="notice-title">1.3.0v 편의성 개선 예정 (빠칭코 연습실 : SSL)</div>
+                    <div class="notice-date" id="upcoming7-date"></div>
+                    <div class="notice-content" id="upcoming7-content">
+                        <p>FC온라인 유저분들이 신규 빠칭코 : SSL을 연습하실 수 있도록 개편 예정입니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ads -->
+<div class="ad-section">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Calculate time ago (months or days)
+    function calculateDaysAgo(uploadDate) {
+        const now = new Date();
+        const uploaded = new Date(uploadDate);
+        const diffTime = Math.abs(now - uploaded);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffMonths = Math.floor(diffDays / 30);
+
+        if (diffMonths >= 1) {
+            return diffMonths + "달 전";
+        }
+        return diffDays + "일 전";
+    }
+
+    // Set notice dates
+    document.getElementById("notice12-date").textContent = calculateDaysAgo("2025-01-23");
+    document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
+    document.getElementById("notice14-date").textContent = calculateDaysAgo("2025-07-01");
+    document.getElementById("notice15-date").textContent = calculateDaysAgo("2025-09-29");
+    document.getElementById("notice16-date").textContent = calculateDaysAgo("2025-10-21");
+
+    document.getElementById("upcoming7-date").textContent = calculateDaysAgo("2025-01-22");
+    document.getElementById("upcoming8-date").textContent = calculateDaysAgo("2025-02-10");
+    document.getElementById("upcoming9-date").textContent = calculateDaysAgo("2025-06-25");
+    document.getElementById("upcoming10-date").textContent = calculateDaysAgo("2025-09-24");
+    document.getElementById("upcoming11-date").textContent = calculateDaysAgo("2025-10-05");
+
+    // Notice toggle
+    document.querySelectorAll('.notice-item').forEach(item => {
+        item.querySelector('.notice-title').addEventListener('click', function() {
+            const content = item.querySelector('.notice-content');
+            content.classList.toggle('active');
+        });
+    });
+
+    // Loading
+    function showLoading() {
+        document.getElementById("loading-overlay").style.display = "flex";
+    }
+
+    window.addEventListener("pageshow", function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            document.getElementById("loading-overlay").style.display = "none";
+        }
+    });
+
+    // Search
+    document.getElementById("search_button").addEventListener("click", function() {
+        var characterName = document.getElementById("character_name").value;
+        if (characterName.trim() !== "") {
+            showLoading();
+            setTimeout(function() {
+                window.location.href = "/result.html?character_name=" + characterName + "&match_type=50";
+            }, 10);
+        }
+    });
+
+    document.getElementById("character_name").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            document.getElementById("search_button").click();
+        }
+    });
+
+    // Popular player click
+    document.querySelectorAll('.popular-item').forEach(function(element) {
+        element.addEventListener('click', function() {
+            const characterName = this.getAttribute('data-nickname');
+            showLoading();
+            setTimeout(function() {
+                window.location.href = `/result.html?character_name=${characterName}&match_type=50`;
+            }, 10);
+        });
+    });
+
+    // Bookmark functions
+    function setupClickableNicknames() {
+        document.querySelectorAll('.bookmark-nickname').forEach(function(element) {
+            element.addEventListener('click', function(event) {
+                event.preventDefault();
+                const characterName = this.textContent.trim();
+                showLoading();
+                setTimeout(function() {
+                    window.location.href = `/result.html?character_name=${characterName}&match_type=50`;
+                }, 500);
+            });
+        });
+    }
+
+    function renderBookmarks() {
+        const bookmarkContainer = document.getElementById('bookmark-container');
+        const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+        bookmarkContainer.innerHTML = '';
+
+        bookmarks.forEach((nickname) => {
+            const listItem = document.createElement('div');
+            listItem.className = 'bookmark-item';
+
+            const star = document.createElement('span');
+            star.className = 'bookmark-star';
+            star.innerHTML = '★';
+
+            const name = document.createElement('a');
+            name.className = 'bookmark-nickname';
+            name.textContent = nickname;
+            name.href = `/result.html?character_name=${nickname}&match_type=50`;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'bookmark-remove';
+            removeBtn.textContent = 'X';
+            removeBtn.onclick = () => {
+                const index = bookmarks.indexOf(nickname);
+                if (index !== -1) {
+                    bookmarks.splice(index, 1);
+                    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                    renderBookmarks();
+                    setupClickableNicknames();
+                }
+            };
+
+            listItem.appendChild(star);
+            listItem.appendChild(name);
+            listItem.appendChild(removeBtn);
+            bookmarkContainer.appendChild(listItem);
+        });
+
+        setupClickableNicknames();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderBookmarks();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,515 @@
+/* ===========================================
+   Result Page Specific Styles
+   =========================================== */
+
+/* Player Info Card */
+.player-info-card {
+    margin-bottom: 24px;
+}
+
+.player-info-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+/* Mobile Layout - Hidden by default */
+.player-info-mobile {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.player-info-mobile .bookmark-btn {
+    font-size: 1.2rem;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.tier-image-mobile {
+    width: 40px;
+    height: auto;
+}
+
+.tier-text-mobile {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-green);
+}
+
+.level-mobile {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.player-nickname-mobile {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-green);
+}
+
+/* Desktop Layout */
+.player-info-desktop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.player-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.player-nickname {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--primary-green);
+    line-height: 1.2;
+}
+
+.bookmark-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 4px;
+}
+
+.bookmark-btn:hover,
+.bookmark-btn.active {
+    color: var(--accent-yellow);
+    transform: scale(1.1);
+}
+
+.header-bookmark {
+    font-size: 1.3rem;
+    margin-left: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -4px;
+}
+
+.player-stats {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.stat-item {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-green);
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tier-image {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+}
+
+/* Play Style Card */
+.play-style-card {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.play-style-card .card-body-modern {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+}
+
+.play-style-text {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.play-style-name {
+    color: var(--text-secondary);
+}
+
+.play-style-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-green);
+    line-height: 1;
+}
+
+.play-style-suffix {
+    color: var(--text-secondary);
+}
+
+/* Win Rate Card */
+.winrate-section {
+    text-align: center;
+}
+
+.winrate-summary {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.chart-wrapper {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 16px;
+}
+
+.winrate-percentage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--win-blue);
+}
+
+.winrate-message {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+/* Squad Card */
+.squad-card {
+    height: 100%;
+}
+
+.squad-mode-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.squad-field {
+    position: relative;
+    background-image: url('/static/축구장.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: var(--radius-md);
+    aspect-ratio: 3 / 4;
+    overflow: visible;
+}
+
+.player-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.position-tag {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.player-img {
+    width: 48px;
+    height: auto;
+}
+
+.player-name-tag {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 3px;
+    white-space: nowrap;
+    color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+}
+
+/* Controller Card */
+.controller-card {
+    text-align: center;
+}
+
+.controller-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+/* Metrics Cards */
+.metrics-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.metrics-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+
+.metrics-item:last-child {
+    margin-bottom: 0;
+}
+
+.metrics-rank {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.metrics-rank.positive {
+    color: var(--primary-green);
+}
+
+.metrics-rank.negative {
+    color: var(--lose-red);
+}
+
+.metrics-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.metrics-value {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.metrics-value.positive {
+    color: var(--primary-green);
+}
+
+.metrics-value.negative {
+    color: var(--lose-red);
+}
+
+/* Opponent Stats */
+.opponent-section {
+    margin-bottom: 24px;
+    display: none;
+}
+
+.opponent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.opponent-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+}
+
+.opponent-info {
+    flex: 1;
+}
+
+.opponent-rank {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--win-blue);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.opponent-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+.opponent-games {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.opponent-chart {
+    position: relative;
+    width: 70px;
+    height: 70px;
+}
+
+.opponent-winrate {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Match Section */
+.match-section {
+    margin-bottom: 24px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .opponent-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Show mobile layout, hide desktop */
+    .player-info-mobile {
+        display: flex;
+    }
+
+    .player-info-desktop {
+        display: none;
+    }
+
+    /* Play Style - 3 lines on mobile */
+    .play-style-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .play-style-name,
+    .play-style-value,
+    .play-style-suffix {
+        display: block;
+    }
+
+    .play-style-value {
+        font-size: 1.3rem;
+    }
+
+    .squad-field {
+        aspect-ratio: 3 / 4;
+    }
+
+    .player-img {
+        width: 40px;
+    }
+
+    .player-name-tag {
+        font-size: 9px;
+    }
+
+    .position-tag {
+        font-size: 8px;
+        top: -12px;
+    }
+
+    /* Metrics items - prevent awkward line breaks */
+    .metrics-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 14px 16px;
+    }
+
+    .metrics-item > span:first-child {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .metrics-label {
+        font-size: 0.85rem;
+        line-height: 1.3;
+        word-break: keep-all;
+    }
+
+    .metrics-value {
+        align-self: flex-end;
+        font-size: 0.95rem;
+    }
+
+    .metrics-rank {
+        flex-shrink: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .player-info-mobile {
+        gap: 8px;
+    }
+
+    .tier-image-mobile {
+        width: 32px;
+    }
+
+    .level-mobile {
+        font-size: 0.8rem;
+    }
+
+    .player-nickname-mobile {
+        font-size: 1rem;
+    }
+
+    .chart-wrapper {
+        width: 160px;
+        height: 160px;
+    }
+
+    .winrate-percentage {
+        font-size: 1.5rem;
+    }
+}

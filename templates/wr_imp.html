@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 승률 개선 서비스{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 승률 개선, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/wr_imp.css') }}">
+{% endblock %}
+
+{% block loading %}
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">유저님의 승률을 영혼부터 끌어올리고 있는 중입니다!</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="wr-imp-section">
+    <h1 class="page-title">어떻게 하면 더 이길 수 있을까?</h1>
+    <p class="page-subtitle">승률 개선 솔루션을 경험해 보세요!</p>
+
+    <!-- Search -->
+    <div class="search-section">
+        <div class="search-wrapper">
+            <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요">
+            <button class="search-btn" id="search_button">검색</button>
+        </div>
+    </div>
+
+    <!-- Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+
+</section>
+
+<!-- Ads -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showLoading() {
+        document.getElementById("loading-overlay").style.display = "flex";
+    }
+
+    window.addEventListener("pageshow", function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            document.getElementById("loading-overlay").style.display = "none";
+        }
+    });
+
+    document.getElementById("search_button").addEventListener("click", function() {
+        var characterName = document.getElementById("character_name").value;
+        if (characterName.trim() !== "") {
+            showLoading();
+            setTimeout(function() {
+                window.location.href = "/wr_result.html?character_name=" + characterName + "&match_type=50";
+            }, 1000);
+        }
+    });
+
+    document.getElementById("character_name").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            document.getElementById("search_button").click();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+/* ===========================================
+   CSS Variables (Design Tokens)
+   =========================================== */
+
+:root {
+    /* Primary Colors */
+    --primary-green: #28a745;
+    --primary-green-dark: #1e7e34;
+    --primary-green-light: #34ce57;
+
+    /* Accent Colors */
+    --accent-yellow: #ffc107;
+    --accent-yellow-dark: #e0a800;
+
+    /* Match Result Colors */
+    --win-blue: #3b82f6;
+    --win-bg: #1e3a5f;
+    --draw-yellow: #f59e0b;
+    --draw-bg: #78640a;
+    --lose-red: #ef4444;
+    --lose-bg: #7f1d1d;
+
+    /* Background Colors */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-dark: #1e293b;
+
+    /* Text Colors */
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+
+    /* Border */
+    --border-color: #e2e8f0;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+}

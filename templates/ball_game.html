@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 공 피하기 미니게임{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 미니게임, 공 피하기, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ball_game.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="game-section" id="dodge-ball">
+    <h1 class="page-title">드리블하기 전 좌우로 손 풀어볼까요?</h1>
+    <p class="page-subtitle">공 피하기 미니게임</p>
+
+    <div class="card-modern game-card-container">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern">공피하기</h2>
+            <span class="control-hint">← → 또는 A / D | R 재시작</span>
+        </div>
+        <div class="card-body-modern">
+            <!-- Game Controls -->
+            <div class="game-header">
+                <button id="db-start" class="btn-primary btn-lg">게임 시작</button>
+                <button id="db-restart" class="btn-secondary btn-lg">재시작</button>
+                <span id="db-status" class="status-badge">대기</span>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="game-viewport">
+                <canvas id="db-canvas"></canvas>
+            </div>
+
+            <!-- Mobile Controls -->
+            <div class="mobile-controls">
+                <button id="db-left" class="control-btn control-left" aria-label="왼쪽으로 이동">◀ L</button>
+                <button id="db-right" class="control-btn control-right" aria-label="오른쪽으로 이동">R ▶</button>
+            </div>
+
+            <!-- Game Stats -->
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Time:</span>
+                    <span id="db-time" class="stat-value">0.0</span>s
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Best:</span>
+                    <span id="db-best" class="stat-value">0.0</span>s
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Speed:</span>
+                    <span id="db-speed" class="stat-value">1.0x</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const W = 480, H = 640;
+    const PLAYER_W = 48, PLAYER_H = 48;
+    const BASE_SPEED = 240;
+    const BALL_MIN = 22, BALL_MAX = 34;
+    const BALL_BASE_VY = 150;
+    const SPAWN_BASE_MS = 900;
+    const DIFF_PER_SEC = 0.04;
+    const MAX_BALLS = 10;
+
+    const canvas = document.getElementById('db-canvas');
+    const ctx = canvas.getContext('2d', {alpha:false});
+    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+
+    const viewportEl = canvas.closest('.game-viewport');
+    function setClickable(on){
+        if(!viewportEl) return;
+        viewportEl.classList.toggle('clickable', !!on);
+    }
+
+    function resizeCanvas(){
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const $start   = document.getElementById('db-start');
+    const $restart = document.getElementById('db-restart');
+    const $status  = document.getElementById('db-status');
+    const $time    = document.getElementById('db-time');
+    const $best    = document.getElementById('db-best');
+    const $speed   = document.getElementById('db-speed');
+
+    const $leftBtn  = document.getElementById('db-left');
+    const $rightBtn = document.getElementById('db-right');
+
+    const BEST_KEY = 'db-best-seconds';
+    let bestSeconds = Number(localStorage.getItem(BEST_KEY) || 0);
+    $best.textContent = bestSeconds.toFixed(1);
+
+    const STATE = { IDLE:'idle', PLAY:'play', OVER:'over' };
+    let state = STATE.IDLE;
+
+    const keys = new Set();
+    let player, balls, startTime, lastTime, elapsed, diff, spawnMs, spawnTimer, holdDir = 0;
+
+    function resetGame() {
+        player = { x:(W-PLAYER_W)/2, y:H-PLAYER_H-8, w:PLAYER_W, h:PLAYER_H };
+        balls = [];
+        elapsed = 0;
+        diff = 1.0;
+        spawnMs = SPAWN_BASE_MS;
+        spawnTimer = 0;
+        lastTime = performance.now();
+        startTime = lastTime;
+        $time.textContent  = '0.0';
+        $speed.textContent = '1.0x';
+        $status.textContent = (state===STATE.PLAY)?'플레이 중':'대기';
+        setClickable(state !== STATE.PLAY);
+        draw(false);
+    }
+
+    function startGame() {
+        state = STATE.PLAY;
+        setClickable(false);
+        resetGame();
+        loop();
+    }
+
+    function endGame() {
+        state = STATE.OVER;
+        $status.textContent = '게임오버';
+        setClickable(true);
+        if (elapsed > bestSeconds) {
+            bestSeconds = elapsed;
+            localStorage.setItem(BEST_KEY, String(bestSeconds));
+            $best.textContent = bestSeconds.toFixed(1);
+        }
+        draw(true);
+    }
+
+    function onViewportTap(ev){
+        if(ev) ev.preventDefault();
+        if(state === STATE.IDLE){
+            startGame();
+        }else if(state === STATE.OVER){
+            state = STATE.PLAY;
+            setClickable(false);
+            resetGame();
+            loop();
+        }
+    }
+    if (viewportEl){
+        ['pointerdown','touchstart','mousedown','click'].forEach(evt=>{
+            viewportEl.addEventListener(evt, onViewportTap, {passive:false});
+        });
+    }
+
+    window.addEventListener('keydown', (e)=>{
+        if (['ArrowLeft','ArrowRight','KeyA','KeyD','KeyR'].includes(e.code)) e.preventDefault();
+        keys.add(e.code);
+    });
+    window.addEventListener('keyup', (e)=>{
+        keys.delete(e.code);
+        if (e.code==='KeyR')  { state=STATE.PLAY; setClickable(false); resetGame(); loop(); }
+    });
+
+    const onDownL = (ev)=>{ ev.preventDefault(); holdDir = -1; };
+    const onDownR = (ev)=>{ ev.preventDefault(); holdDir =  1; };
+    const onUp = (ev)=>{ ev.preventDefault(); holdDir = 0; };
+
+    ['pointerdown','touchstart','mousedown'].forEach(evt=>{
+        $leftBtn.addEventListener(evt, onDownL, {passive:false});
+        $rightBtn.addEventListener(evt, onDownR, {passive:false});
+    });
+    ['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(evt=>{
+        $leftBtn.addEventListener(evt, onUp, {passive:false});
+        $rightBtn.addEventListener(evt, onUp, {passive:false});
+    });
+
+    $start.addEventListener('click', ()=>{ if(state!==STATE.PLAY) startGame(); });
+    $restart.addEventListener('click', ()=>{ state=STATE.PLAY; setClickable(false); resetGame(); loop(); });
+
+    const rand = (min,max)=>Math.random()*(max-min)+min;
+
+    function spawnBall(){
+        if (balls.length >= MAX_BALLS) return;
+        const r = rand(BALL_MIN,BALL_MAX);
+        balls.push({
+            x: rand(r, W-r),
+            y: -r - rand(0,120),
+            r: r,
+            vy: BALL_BASE_VY * rand(0.95,1.15)
+        });
+    }
+
+    function collideRectCircle(rx, ry, rw, rh, cx, cy, cr){
+        const nx = Math.max(rx, Math.min(cx, rx+rw));
+        const ny = Math.max(ry, Math.min(cy, ry+rh));
+        const dx = cx - nx, dy = cy - ny;
+        return (dx*dx + dy*dy) <= cr*cr;
+    }
+
+    function loop(){
+        if (state !== STATE.PLAY) return;
+
+        const now = performance.now();
+        const dt  = Math.min(0.033, (now - lastTime)/1000);
+        lastTime  = now;
+
+        elapsed = (now - startTime)/1000;
+        diff     = 1.0 + DIFF_PER_SEC * elapsed;
+        spawnTimer += dt*1000;
+        const currentSpawn = Math.max(320, SPAWN_BASE_MS / diff);
+        if (spawnTimer >= currentSpawn){ spawnBall(); spawnTimer = 0; }
+
+        let dir = 0;
+        if (keys.has('ArrowLeft') || keys.has('KeyA')) dir -= 1;
+        if (keys.has('ArrowRight')|| keys.has('KeyD')) dir += 1;
+        if (holdDir !== 0) dir = holdDir;
+
+        player.x += dir * BASE_SPEED * dt;
+        if (player.x < 0) player.x = 0;
+        if (player.x > W - player.w) player.x = W - player.w;
+
+        for (const b of balls){ b.y += b.vy * dt * diff; }
+        for (const b of balls){
+            if (b.y - b.r > H + 60){
+                b.y = -b.r - rand(0,120);
+                b.x = rand(b.r, W-b.r);
+                b.vy = BALL_BASE_VY * rand(0.95,1.2);
+            }
+        }
+
+        for (const b of balls){
+            if (collideRectCircle(player.x, player.y, player.w, player.h, b.x, b.y, b.r)){ endGame(); return; }
+        }
+
+        draw(false);
+        requestAnimationFrame(loop);
+    }
+
+    function draw(showOver){
+        ctx.fillStyle = '#0b1020';
+        ctx.fillRect(0,0,W,H);
+
+        ctx.fillStyle = '#101a3a';
+        ctx.fillRect(0, H-8, W, 8);
+
+        ctx.fillStyle = '#4fc3f7';
+        roundRect(ctx, player.x, player.y, player.w, player.h, 8, true, false);
+        ctx.font = '22px Apple SD Gothic Neo, Noto Sans KR, system-ui';
+        ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+        ctx.fillText('🤾', player.x+player.w/2, player.y+player.h/2);
+
+        for (const b of balls) {
+            ctx.font = Math.round(b.r * 1.9) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji", system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚽', b.x, b.y);
+        }
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Noto Sans KR, system-ui';
+        ctx.textAlign='left';  ctx.fillText(`Time: ${elapsed.toFixed(1)}s`, 10, 10);
+        ctx.textAlign='center';ctx.fillText(`Speed: ${diff.toFixed(1)}x`, W/2, 10);
+        ctx.textAlign='right'; ctx.fillText(`Best: ${bestSeconds.toFixed(1)}s`, W-10, 10);
+
+        $time.textContent  = elapsed.toFixed(1);
+        $speed.textContent = `${diff.toFixed(1)}x`;
+
+        if (state === STATE.IDLE && !showOver) {
+            ctx.fillStyle = 'rgba(0,0,0,.35)';
+            ctx.fillRect(0,0,W,H);
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '28px Poppins, Noto Sans KR, system-ui';
+            ctx.fillText('Click to play', W/2, H/2);
+            return;
+        }
+
+        if (showOver){
+            ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0,0,W,H);
+            ctx.fillStyle='#fff'; ctx.textAlign='center';
+            ctx.font='36px Poppins, system-ui'; ctx.fillText('GAME OVER', W/2, H/2-40);
+            ctx.font='20px Noto Sans KR, system-ui'; ctx.fillText(`기록: ${elapsed.toFixed(1)}초`, W/2, H/2);
+            ctx.fillText('R 또는 클릭 재시작', W/2, H/2+32);
+        }
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke){
+        if (typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
+        ctx.beginPath();
+        ctx.moveTo(x+r.tl,y);
+        ctx.lineTo(x+w-r.tr,y);
+        ctx.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+        ctx.lineTo(x+w,y+h-r.br);
+        ctx.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+        ctx.lineTo(x+r.bl,y+h);
+        ctx.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+        ctx.lineTo(x,y+r.tl);
+        ctx.quadraticCurveTo(x,y,x+r.tl,y);
+        ctx.closePath();
+        if(fill) ctx.fill();
+        if(stroke) ctx.stroke();
+    }
+
+    resetGame();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+<!-- Header -->
+<header class="site-header">
+    <div class="header-logo-row">
+        <a class="main-title-large" href="/">FC.GG</a>
+        <button class="menu-toggle" id="menuToggle" aria-label="메뉴 열기">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+    </div>
+    <nav class="header-nav" id="headerNav">
+        <a class="nav-link" href="/wr_imp.html">승률 개선</a>
+        <a class="nav-link" href="/player_tier.html">선수 티어</a>
+        <div class="dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">미니게임</a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/random.html">스페셜 상점 연습실</a></li>
+                <li><a class="dropdown-item" href="/ball_game.html">공 피하기</a></li>
+            </ul>
+        </div>
+        <a class="nav-link" href="/calculate.html">수수료 계산기</a>
+        <a class="nav-link" href="/community.html">커뮤니티</a>
+        <a class="nav-link" href="/fun.html">현질을 안 했다면?</a>
+        <button id="happyButton" class="btn-sponsor">후원하기</button>
+    </nav>
+</header>
+
+<!-- Sponsor Popup -->
+<div class="popup-overlay" id="popupOverlay"></div>
+<div class="popup-content" id="happyPopup">
+    <button class="popup-close" id="closePopup">&times;</button>
+    <h4 class="popup-title">FC.GG를 위한 후원</h4>
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">더 좋은 서비스를 위해 도와주세요!</p>
+    <p style="font-weight: 600; color: var(--primary-green);">NH농협은행<br>302-1363-7499-71</p>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px;">후원해 주신 분들께 감사드립니다</p>
+</div>

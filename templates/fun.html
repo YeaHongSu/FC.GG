@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 현질을 안 했다면?{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 현질, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fun.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="fun-section">
+    <h1 class="page-title">FC온라인에 현질을 안 했다면?</h1>
+    <p class="page-subtitle">넥슨 창문을 몇 개나 만들었을까요...</p>
+    <button class="btn-accent" onclick="window.open('https://member.nexon.com/home/index.aspx', '_blank');">현질 금액 확인 방법</button>
+
+    <!-- Search -->
+    <div class="search-section">
+        <div class="search-wrapper">
+            <input type="text" id="spending-input" class="search-input" placeholder="현질 금액을 입력하세요 (원)">
+            <button class="search-btn" id="calculate-btn">계산하기</button>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="result-container hidden" id="result-container">
+        <div class="result-grid">
+            <div class="result-item">
+                <span class="result-label">넥슨 창문 제작</span>
+                <strong id="window-result" class="result-value primary">0개</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">치킨</span>
+                <strong id="chicken-result" class="result-value secondary">0마리</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">아메리카노</span>
+                <strong id="coffee-result" class="result-value success">0잔</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">KTX 서울-부산 왕복</span>
+                <strong id="ktx-result" class="result-value danger">0번</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">코인노래방</span>
+                <strong id="karaoke-result" class="result-value info">0곡</strong>
+            </div>
+            <div class="result-item">
+                <span class="result-label">넷플릭스 구독</span>
+                <strong id="netflix-result" class="result-value dark">0개월</strong>
+            </div>
+        </div>
+
+        <!-- Share -->
+        <div class="share-section">
+            <h5>과연 내 친구의 결과는?</h5>
+            <div class="share-buttons">
+                <button class="btn-facebook" id="share-facebook">페이스북</button>
+                <button class="btn-link" id="share-link">🔗 링크 복사</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Ads -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('calculate-btn').addEventListener('click', function () {
+        const amountInput = document.getElementById('spending-input');
+        const amount = parseFloat(amountInput.value.replace(/,/g, ''));
+        if (isNaN(amount) || amount <= 0) {
+            alert('올바른 금액을 입력하세요!');
+            return;
+        }
+
+        const WINDOW_COST = 70000;
+        const CHICKEN_COST = 18000;
+        const COFFEE_COST = 2000;
+        const KTX_COST = 130000;
+        const KARAOKE_COST = 500;
+        const NETFLIX_COST = 5500;
+
+        function formatResult(value) {
+            return Math.floor(value).toLocaleString('en-US');
+        }
+
+        document.getElementById('window-result').textContent = formatResult(amount / WINDOW_COST) + '개 가능';
+        document.getElementById('chicken-result').textContent = formatResult(amount / CHICKEN_COST) + '마리 구매 가능';
+        document.getElementById('coffee-result').textContent = formatResult(amount / COFFEE_COST) + '잔 구매 가능';
+        document.getElementById('ktx-result').textContent = formatResult(amount / KTX_COST) + '번 가능';
+        document.getElementById('karaoke-result').textContent = formatResult(amount / KARAOKE_COST) + '곡 가능';
+
+        const netflixYears = amount / (NETFLIX_COST * 12);
+        const netflixResult = netflixYears >= 1 ? Math.floor(netflixYears) + '년 가능' : (Math.round(netflixYears * 10) / 10).toFixed(1) + '개월 가능';
+        document.getElementById('netflix-result').textContent = netflixResult;
+
+        document.getElementById('result-container').classList.remove('hidden');
+    });
+
+    document.getElementById('spending-input').addEventListener('input', function (e) {
+        const input = e.target;
+        const value = input.value.replace(/,/g, '');
+        if (!isNaN(value) && value !== '') {
+            input.value = parseFloat(value).toLocaleString('en-US');
+        }
+    });
+
+    document.getElementById('share-facebook').addEventListener('click', function () {
+        const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+        window.open(fbShareUrl, '_blank');
+    });
+
+    document.getElementById('share-link').addEventListener('click', function () {
+        navigator.clipboard.writeText(window.location.href).then(function () {
+            alert('링크가 복사되었습니다!');
+        }, function () {
+            alert('링크 복사에 실패했습니다.');
+        });
+    });
+</script>
+{% endblock %}

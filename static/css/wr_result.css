@@ -1,0 +1,384 @@
+/* ===========================================
+   Win Rate Result Page Specific Styles
+   =========================================== */
+
+/* Result Grid */
+.result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* WR Result Grid - 2x2 Layout */
+.wr-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* Chart Container */
+.chart-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.chart-section {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 180px;
+}
+
+.chart-section canvas {
+    width: 180px !important;
+    height: 180px !important;
+}
+
+.chart-label {
+    margin-top: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.chart-arrow {
+    font-size: 2rem;
+    color: var(--primary-green);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    height: 180px;
+    margin-top: -24px;
+}
+
+/* Improvement Summary */
+.improvement-summary {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.improvement-arrow {
+    text-align: center;
+    font-size: 1.5rem;
+    color: var(--accent-yellow);
+    animation: bounce 1s infinite alternate;
+}
+
+@keyframes bounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(10px); }
+}
+
+.no-improvement {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--lose-red);
+    padding: 24px;
+}
+
+/* Video Section */
+.video-description {
+    text-align: center;
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+}
+
+.video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+}
+
+.video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.5s ease;
+}
+
+/* Solution Section */
+.solution-box {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.solution-intro {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 1rem;
+}
+
+.improvement-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.improvement-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+
+.improvement-item:last-child {
+    margin-bottom: 0;
+}
+
+.feature-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.feature-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-current {
+    color: var(--text-secondary);
+}
+
+.feature-arrow {
+    color: var(--primary-green);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.feature-target {
+    font-weight: 600;
+    color: var(--primary-green);
+}
+
+/* Win Rate Cards */
+.win-rate-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rate-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.rate-card.highlight {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+    border-color: var(--primary-green);
+}
+
+.rate-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.rate-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Metrics Cards - Same as result.css */
+.metrics-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.metrics-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+
+.metrics-item:last-child {
+    margin-bottom: 0;
+}
+
+.metrics-rank {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.metrics-rank.positive {
+    color: var(--primary-green);
+}
+
+.metrics-rank.negative {
+    color: var(--lose-red);
+}
+
+.metrics-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.metrics-value {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.metrics-value.positive {
+    color: var(--primary-green);
+}
+
+.metrics-value.negative {
+    color: var(--lose-red);
+}
+
+/* Metrics Grid - Same as components.css */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 992px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Metrics items - prevent awkward line breaks */
+    .metrics-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 14px 16px;
+    }
+
+    .metrics-item > span:first-child {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .metrics-label {
+        font-size: 0.85rem;
+        line-height: 1.3;
+        word-break: keep-all;
+    }
+
+    .metrics-value {
+        align-self: flex-end;
+        font-size: 0.95rem;
+    }
+
+    .metrics-rank {
+        flex-shrink: 0;
+    }
+}
+
+/* Ad Section */
+.ad-section {
+    margin: 24px 0;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .result-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wr-result-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Mobile order: 예상 승률 -> 승률 개선 솔루션 -> 상위 5개 -> 하위 5개 */
+    .wr-card-prediction { order: 1; }
+    .wr-card-solution { order: 2; }
+    .wr-card-top5 { order: 3; }
+    .wr-card-bottom5 { order: 4; }
+}
+
+@media (max-width: 768px) {
+    .chart-container {
+        gap: 8px;
+    }
+
+    .chart-section {
+        width: 120px;
+    }
+
+    .chart-section canvas {
+        width: 120px !important;
+        height: 120px !important;
+    }
+
+    .chart-arrow {
+        font-size: 1.2rem;
+        height: auto;
+        margin-top: 0;
+        align-self: center;
+        padding-bottom: 40px;
+    }
+
+    /* Improvement items - stack like metrics */
+    .improvement-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 14px 16px;
+    }
+
+    .feature-name {
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+
+    .feature-values {
+        align-self: flex-end;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-section {
+        width: 100px;
+    }
+
+    .chart-section canvas {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .chart-arrow {
+        font-size: 1rem;
+        padding-bottom: 36px;
+    }
+}

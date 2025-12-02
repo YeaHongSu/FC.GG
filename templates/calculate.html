@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 수수료 계산기{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 수수료 계산기, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calculate.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="calculator-section">
+    <h1 class="page-title">BP 부족할 일 없이 팀을 맞춰볼까요?</h1>
+    <p class="page-subtitle">더 간편해진 수수료 계산기를 이용해 보세요!</p>
+
+    <!-- Ads -->
+    <div class="ad-container">
+        <ins class="kakao_ad_area" style="display:none;"
+            data-ad-unit="DAN-PWbZJXHgqkT7GvAj"
+            data-ad-width="728"
+            data-ad-height="90"></ins>
+        <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+    </div>
+
+    <div class="card-modern calculator-card">
+        <div class="card-body-modern">
+            <h4 class="section-title">판매 예정 금액 (BP)</h4>
+
+            <div id="players-container">
+                <div class="player-row">
+                    <div class="input-group">
+                        <input type="text" class="form-input price-input-trillion" placeholder="조 단위">
+                        <span class="input-suffix">조</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-input price-input-billion" placeholder="억 단위">
+                        <span class="input-suffix">억</span>
+                    </div>
+                    <div class="input-group small">
+                        <input type="number" class="form-input count-input" value="1" min="1" max="10">
+                        <span class="input-suffix">명</span>
+                    </div>
+                    <div class="input-group">
+                        <select class="form-select coupon-select">
+                            <option value="0">쿠폰 없음</option>
+                            <option value="0.1">10% 할인</option>
+                            <option value="0.15">15% 할인</option>
+                            <option value="0.2">20% 할인</option>
+                            <option value="0.25">25% 할인</option>
+                            <option value="0.3">30% 할인</option>
+                            <option value="0.35">35% 할인</option>
+                            <option value="0.4">40% 할인</option>
+                            <option value="0.5">50% 할인</option>
+                        </select>
+                    </div>
+                    <button class="btn-remove remove-player">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn-outline" id="add-player">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                입력창 추가
+            </button>
+
+            <div class="discount-section">
+                <h4 class="section-title">할인 옵션</h4>
+                <p class="discount-info">기본 수수료(40%)</p>
+
+                <label class="toggle-switch">
+                    <input type="checkbox" id="premium_pc">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">프리미엄 PC방 (30% 할인)</span>
+                </label>
+
+                <label class="toggle-switch">
+                    <input type="checkbox" id="top_class">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">TOP CLASS (20% 할인)</span>
+                </label>
+            </div>
+
+            <button class="btn-primary btn-full" id="calculate_button">수수료 계산하기</button>
+
+            <div class="result-card">
+                <p id="result_fee" class="result-fee">최종 수수료: 0 BP</p>
+                <p id="result_receive" class="result-receive">최종 받는 금액: 0 BP</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Ads -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function formatNumberWithCommas(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function removeCommas(num) {
+        return num.toString().replace(/,/g, '');
+    }
+
+    function getTotalSalePrice(player) {
+        var trillionInput = player.querySelector(".price-input-trillion");
+        var billionInput = player.querySelector(".price-input-billion");
+        var trillion = parseInt(removeCommas(trillionInput.value) || "0") * 1000000000000;
+        var billion = parseInt(removeCommas(billionInput.value) || "0") * 100000000;
+        return trillion + billion;
+    }
+
+    function addCommaFormattingAndCalculation(input) {
+        input.addEventListener('input', function(event) {
+            let value = removeCommas(event.target.value);
+            if (!isNaN(value) && value.length > 0) {
+                event.target.value = formatNumberWithCommas(Number(value));
+            }
+            calculateFees();
+        });
+    }
+
+    function calculateFees() {
+        var players = document.querySelectorAll(".player-row");
+        var totalFee = 0;
+        var totalReceive = 0;
+        var valid = true;
+
+        players.forEach(function(player) {
+            var salePrice = getTotalSalePrice(player);
+
+            if (isNaN(salePrice) || salePrice <= 0) {
+                valid = false;
+                player.querySelector(".price-input-trillion").classList.add("is-invalid");
+                player.querySelector(".price-input-billion").classList.add("is-invalid");
+            } else {
+                player.querySelector(".price-input-trillion").classList.remove("is-invalid");
+                player.querySelector(".price-input-billion").classList.remove("is-invalid");
+
+                var count = parseInt(player.querySelector(".count-input").value);
+                var discount = parseFloat(player.querySelector(".coupon-select").value);
+
+                var baseFee = salePrice * 0.4 * count;
+                var fee = baseFee;
+
+                var isPremiumPC = document.getElementById("premium_pc").checked ? 0.3 : 0;
+                var isTopClass = document.getElementById("top_class").checked ? 0.2 : 0;
+
+                var totalDiscount = discount + isPremiumPC + isTopClass;
+                fee = baseFee * (1 - totalDiscount);
+                fee = Math.round(fee);
+                var receive = (salePrice * count) - fee;
+
+                totalFee += fee;
+                totalReceive += receive;
+            }
+        });
+
+        if (!valid) {
+            document.getElementById("result_fee").textContent = "판매 금액 입력이 필요합니다!";
+            document.getElementById("result_receive").textContent = "";
+            return;
+        }
+
+        document.getElementById("result_receive").textContent = "최종 받는 금액: " + totalReceive.toLocaleString() + " BP";
+        document.getElementById("result_fee").textContent = "최종 수수료: " + totalFee.toLocaleString() + " BP";
+    }
+
+    document.getElementById("add-player").addEventListener("click", function() {
+        var container = document.getElementById("players-container");
+        var newRow = document.createElement("div");
+        newRow.classList.add("player-row");
+        newRow.innerHTML = `
+            <div class="input-group">
+                <input type="text" class="form-input price-input-trillion" placeholder="조">
+                <span class="input-suffix">조</span>
+            </div>
+            <div class="input-group">
+                <input type="text" class="form-input price-input-billion" placeholder="억">
+                <span class="input-suffix">억</span>
+            </div>
+            <div class="input-group small">
+                <input type="number" class="form-input count-input" value="1" min="1" max="10">
+                <span class="input-suffix">명</span>
+            </div>
+            <div class="input-group">
+                <select class="form-select coupon-select">
+                    <option value="0">쿠폰 없음</option>
+                    <option value="0.1">10% 할인</option>
+                    <option value="0.15">15% 할인</option>
+                    <option value="0.2">20% 할인</option>
+                    <option value="0.25">25% 할인</option>
+                    <option value="0.3">30% 할인</option>
+                    <option value="0.35">35% 할인</option>
+                    <option value="0.4">40% 할인</option>
+                    <option value="0.5">50% 할인</option>
+                </select>
+            </div>
+            <button class="btn-remove remove-player">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        container.appendChild(newRow);
+
+        addCommaFormattingAndCalculation(newRow.querySelector(".price-input-trillion"));
+        addCommaFormattingAndCalculation(newRow.querySelector(".price-input-billion"));
+        newRow.querySelector(".count-input").addEventListener("input", calculateFees);
+        newRow.querySelector(".coupon-select").addEventListener("change", calculateFees);
+
+        newRow.querySelector(".remove-player").addEventListener("click", function() {
+            newRow.remove();
+            calculateFees();
+        });
+    });
+
+    document.querySelectorAll('.price-input-trillion, .price-input-billion, .count-input, .coupon-select, #premium_pc, #top_class').forEach(function(input) {
+        if (input.classList.contains("price-input-trillion") || input.classList.contains("price-input-billion")) {
+            addCommaFormattingAndCalculation(input);
+        } else {
+            input.addEventListener("input", calculateFees);
+            input.addEventListener("change", calculateFees);
+        }
+    });
+
+    document.getElementById("calculate_button").addEventListener("click", calculateFees);
+</script>
+{% endblock %}

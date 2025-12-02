@@ -1,0 +1,182 @@
+/* ===========================================
+   Ball Game Page Specific Styles
+   =========================================== */
+
+/* Section */
+.game-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 1.1rem;
+}
+
+/* Game Card Container */
+.game-card-container .card-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.control-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Game Header */
+.game-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+/* Button overrides for game page */
+.game-header .btn-lg {
+    font-weight: 700;
+}
+
+.status-badge {
+    margin-left: auto;
+    padding: 6px 12px;
+    background: var(--bg-dark);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+/* Game Viewport */
+.game-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto 16px;
+    aspect-ratio: 3/4;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.game-viewport > canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #0b1020;
+}
+
+.game-viewport.clickable {
+    cursor: pointer;
+}
+
+/* Mobile Controls */
+.mobile-controls {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.control-btn {
+    min-width: 140px;
+    height: 80px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    transition: all 0.1s ease-in-out;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.15), 0 6px 10px rgba(0,0,0,0.1);
+}
+
+.control-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.control-left {
+    background: var(--primary-green);
+    color: white;
+}
+
+.control-right {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Game Stats */
+.game-stats {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-weight: 700;
+    color: var(--primary-green);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 1.2rem;
+    }
+
+    .game-header {
+        flex-wrap: wrap;
+    }
+
+    .btn-lg {
+        padding: 10px 18px;
+        font-size: 0.9rem;
+    }
+
+    .control-btn {
+        min-width: 100px;
+        height: 70px;
+        font-size: 1.2rem;
+    }
+
+    .game-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .stat-item {
+        justify-content: space-between;
+    }
+
+    .control-hint {
+        display: none;
+    }
+}

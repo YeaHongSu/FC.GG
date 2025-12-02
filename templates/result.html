@@ -1,0 +1,531 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 전적 검색 결과{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/result.css') }}">
+{% endblock %}
+
+{% block loading %}
+<!-- Loading Overlays -->
+<div class="loading-overlay" id="loading-win">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">유저님의 승률을 분석 중입니다!</div>
+</div>
+
+<div class="loading-overlay" id="loading-result">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">경기 데이터를 불러오는 중입니다!</div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search Section -->
+<section class="search-section">
+    <div class="search-wrapper">
+        <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요">
+        <button class="search-btn" id="search_button">검색</button>
+    </div>
+</section>
+
+<!-- Player Info Card -->
+<div class="card-modern player-info-card">
+    <div class="card-header-modern">
+        <h2 class="card-title-modern">기본정보 <button class="bookmark-btn header-bookmark" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button></h2>
+    </div>
+    <div class="card-body-modern">
+        <div class="player-info-content">
+            <!-- Mobile Layout: tier, level, nickname, bookmark in one row -->
+            <div class="player-info-mobile">
+                {% if level_data.tier_image %}
+                <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image-mobile">
+                {% else %}
+                <span class="tier-text-mobile">{{ level_data.tier_name }}</span>
+                {% endif %}
+                <span class="level-mobile">Lv.{{ level_data.level }}</span>
+                <span class="player-nickname-mobile">{{ level_data.nickname }}</span>
+                <span class="player-badge" id="title-box-mobile" style="display: none;"></span>
+            </div>
+            <!-- Desktop Layout -->
+            <div class="player-info-desktop">
+                <div class="player-main">
+                    <span class="player-nickname">{{ level_data.nickname }}</span>
+                    <span class="player-badge" id="title-box" style="display: none;"></span>
+                </div>
+                <div class="player-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">레벨</div>
+                        <div class="stat-value">{{ level_data.level }}</div>
+                    </div>
+                    {% if level_data.tier_image %}
+                    <div class="stat-item">
+                        <div class="stat-label">최고 티어</div>
+                        <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image">
+                    </div>
+                    {% else %}
+                    <div class="stat-item">
+                        <div class="stat-label">최고 티어</div>
+                        <div class="stat-value">{{ level_data.tier_name }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game Mode Tabs -->
+<div class="game-mode-tabs">
+    <button class="tab-item {% if match_type == '50' %}active{% endif %}" id='50' onclick="selectGameMode('{{ level_data.nickname }}', '50', this)">공식경기</button>
+    <button class="tab-item {% if match_type == '60' %}active{% endif %}" id='60' onclick="selectGameMode('{{ level_data.nickname }}', '60', this)">친선경기</button>
+    <button class="tab-item {% if match_type == '52' %}active{% endif %}" id='52' onclick="selectGameMode('{{ level_data.nickname }}', '52', this)">감독모드</button>
+    <button class="tab-item {% if match_type == '40' %}active{% endif %}" id='40' onclick="selectGameMode('{{ level_data.nickname }}', '40', this)">커스텀매치</button>
+</div>
+
+{% if no_recent_matches %}
+<div class="card-modern">
+    <div class="card-body-modern">
+        <p class="no-match-message">최근 전적이 존재하지 않습니다.</p>
+    </div>
+</div>
+{% else %}
+
+<!-- Play Style Card -->
+<div class="card-modern play-style-card">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">플레이스타일</h3>
+    </div>
+    <div class="card-body-modern" id="player-style">
+        <p class="play-style-text">
+            <span class="play-style-name">{{ level_data.nickname }}님은</span>
+            <span class="play-style-value">{{ play_style }}</span>
+            <span class="play-style-suffix">입니다!</span>
+        </p>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <!-- Left Column: Win Rate + Controller -->
+    <div class="stats-column">
+        <!-- Win Rate Card -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h3 class="card-title-modern">최근 <span style="color: var(--primary-green);">{{ match_data|length }}</span>경기 승률</h3>
+            </div>
+            <div class="card-body-modern winrate-section">
+                <p class="winrate-summary">
+                    {{ match_data|length }}전
+                    {{ match_data|selectattr('결과', 'equalto', '승')|list|length }}승
+                    {{ match_data|selectattr('결과', 'equalto', '무')|list|length }}무
+                    {{ match_data|selectattr('결과', 'equalto', '패')|list|length }}패
+                </p>
+                <div class="chart-wrapper">
+                    <canvas id="winRateChart"></canvas>
+                    <div class="winrate-percentage" id="winRatePercentage"></div>
+                </div>
+                <p class="winrate-message" id="winRateMessage"></p>
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">나의 승률을 높이는 방법은?</p>
+                <a class="btn-primary" href="javascript:void(0);" onclick="goToWinRateResult('{{level_data.nickname}}','{{match_type}}')">
+                    승률 개선 솔루션
+                </a>
+            </div>
+        </div>
+
+        <!-- Controller Recommendation Card -->
+        <div class="card-modern controller-card">
+            <div class="card-body-modern">
+                <p class="controller-text">
+                    <span style="color: var(--primary-green); font-weight: 600;">{{ level_data.nickname }}</span>님은
+                    <strong>{{ most_common_controller }}</strong> 유저입니다
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">{{ most_common_controller }}에 대한 팁을 찾거나 공유해 보세요!</p>
+                {% if most_common_controller == "⌨️" or most_common_controller == "탈주" %}
+                <a class="btn-accent" href="https://fcgg.kr/커뮤니티/키보드게시판" target="_blank">키보드게시판 바로가기</a>
+                {% else %}
+                <a class="btn-accent" href="https://fcgg.kr/커뮤니티/패드게시판" target="_blank">패드게시판 바로가기</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Squad Card -->
+    <div class="card-modern squad-card">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern"><span style="color: var(--primary-green);">{{ level_data.nickname }}</span>님의 스쿼드</h3>
+        </div>
+        <div class="card-body-modern">
+            <p class="squad-mode-label">
+                {% if match_type == '50' %}[공식경기 기준]
+                {% elif match_type == '60' %}[친선경기 기준]
+                {% elif match_type == '52' %}[감독모드 기준]
+                {% elif match_type == '40' %}[커스텀매치 기준]
+                {% else %}[최근 경기 기준]{% endif %}
+            </p>
+            <div class="squad-field">
+                {% for player in players %}
+                {% if player.x_coord and player.y_coord %}
+                <div class="player-marker" style="left: {{ player.x_coord }}%; top: {{ player.y_coord }}%;">
+                    {% if player.pos_desc %}
+                    <div class="position-tag">{{ player.pos_desc }}</div>
+                    {% endif %}
+                    <img src="{{ player.sd_image }}" alt="{{ player.name }}" class="player-img">
+                    <div class="player-name-tag">{{ player.name }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics Grid -->
+<div class="metrics-grid">
+    <!-- Top 5 Metrics -->
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern">랭커 대비 상위 <span style="color: var(--primary-green);">5</span>개 지표</h3>
+        </div>
+        <div class="card-body-modern">
+            <ul class="metrics-list">
+                {% for idx, value in max_data %}
+                <li class="metrics-item">
+                    <span>
+                        <span class="metrics-rank positive">Top{{ loop.index }}</span>
+                        <span class="metrics-label">{{ data_label[idx] }}</span>
+                    </span>
+                    <span class="metrics-value positive">
+                        {{ "%.2f"|format(value * 100) }}%
+                        <span>▲</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Bottom 5 Metrics -->
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h3 class="card-title-modern">랭커 대비 하위 <span style="color: var(--lose-red);">5</span>개 지표</h3>
+        </div>
+        <div class="card-body-modern">
+            <ul class="metrics-list">
+                {% for idx, value in min_data %}
+                <li class="metrics-item">
+                    <span>
+                        <span class="metrics-rank negative">Top{{ loop.index }}</span>
+                        <span class="metrics-label">{{ data_label[idx] }}</span>
+                    </span>
+                    <span class="metrics-value negative">
+                        {{ "%.2f"|format(-value * 100) }}%
+                        <span>▼</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Opponent Stats Section -->
+<section class="card-modern opponent-section" id="opponentStatsSection">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">상대 전적</h3>
+    </div>
+    <div class="card-body-modern">
+        <div class="opponent-grid" id="opponent-stats-list"></div>
+    </div>
+</section>
+
+<!-- Match History Section -->
+<section class="card-modern match-section">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">매칭 정보</h3>
+    </div>
+    <div class="card-body-modern">
+        <div class="match-header">
+            <div>매치 날짜</div>
+            <div>결과</div>
+            <div>나 vs 상대</div>
+            <div>스코어</div>
+            <div>컨트롤러</div>
+        </div>
+        <div class="match-list">
+            {% for match in match_data %}
+            <div class="match-row {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %}">
+                <span class="match-date">{{ match['매치 날짜'] }}</span>
+                <span class="match-result">{{ match['결과'] }}</span>
+                <div class="match-players">
+                    <span class="match-player">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[0] }}</span>
+                    <span class="match-vs">vs</span>
+                    <span class="match-player">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[1] }}</span>
+                </div>
+                <span class="match-score">{{ match['스코어'] }}</span>
+                <span class="match-controller">{{ match['컨트롤러'] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Ads -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const matchData = {{ match_data | tojson }};
+
+    // Opponent Stats Calculation
+    function calculateOpponentStats() {
+        const opponentStats = {};
+        matchData.forEach(match => {
+            const players = match['플레이어 1 vs 플레이어 2'].split(' vs ');
+            const opponent = players[1].trim();
+            if (!opponentStats[opponent]) {
+                opponentStats[opponent] = { total: 0, wins: 0, draws: 0, losses: 0 };
+            }
+            opponentStats[opponent].total += 1;
+            if (match['결과'] === '승') opponentStats[opponent].wins += 1;
+            else if (match['결과'] === '무') opponentStats[opponent].draws += 1;
+            else if (match['결과'] === '패') opponentStats[opponent].losses += 1;
+        });
+
+        const topOpponents = Object.entries(opponentStats)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 3);
+
+        const opponentStatsList = document.getElementById('opponent-stats-list');
+        opponentStatsList.innerHTML = '';
+
+        topOpponents.forEach(([opponent, stats], index) => {
+            const winRate = ((stats.wins / stats.total) * 100).toFixed(1);
+            const opponentCard = document.createElement('div');
+            opponentCard.classList.add('opponent-card');
+            opponentCard.innerHTML = `
+                <div class="opponent-info">
+                    <span class="opponent-rank">Top ${index + 1}</span>
+                    <div class="opponent-name">${opponent}</div>
+                    <div class="opponent-games">총 ${stats.total}전</div>
+                </div>
+                <div class="opponent-chart">
+                    <canvas id="chart-${index}" width="70" height="70"></canvas>
+                    <div class="opponent-winrate">${winRate}%</div>
+                </div>
+            `;
+            opponentStatsList.appendChild(opponentCard);
+
+            new Chart(document.getElementById(`chart-${index}`), {
+                type: 'doughnut',
+                data: {
+                    labels: ['승리', '무승부', '패배'],
+                    datasets: [{
+                        data: [stats.wins, stats.draws, stats.losses],
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '70%',
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        });
+    }
+
+    // Page Load Handler
+    document.addEventListener("DOMContentLoaded", function() {
+        const pathParts = window.location.pathname.split('/');
+        const matchTypeName = decodeURIComponent(pathParts[pathParts.length - 1]);
+        if (matchTypeName === '커스텀매치') {
+            const section = document.getElementById("opponentStatsSection");
+            if (section) {
+                section.style.display = 'block';
+                calculateOpponentStats();
+            }
+        }
+    });
+
+    function selectGameMode(nick, mode) {
+        const tabs = document.querySelectorAll('.tab-item');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        resultLoading();
+        window.location.href = `/result.html?character_name=${nick}&match_type=${mode}`;
+    }
+
+    // Title Badges
+    const influencerList = ["해설한승엽", "메시연", "교로텔리", "뀨뀨rr", "호날두", "굴리트", "크라우터", "잉유진", "신림동밀탱크", "방배우", "af박준효", "빅윈", "감스트", "천국", "lictfe", "유튜브싸커러리", "af김우다", "김칠홍", "타워"];
+    const proGamerList = ["geng박세영", "kt곽준혁", "kt박찬화", "kdf강준호", "kdf최호석", "kimyoomin"];
+    const fifaInventKingList = ["화성간정무", "무리윤주니어"];
+    const firsttenList = ["pgzi발", "관찰력", "agw펠레", "펠레해적단", "마포구3pop", "내일이되면", "터러기fc", "왕금복"];
+
+    const nickname = "{{ level_data.nickname }}".toLowerCase();
+    const titleBoxes = [document.getElementById("title-box"), document.getElementById("title-box-mobile")];
+
+    function applyBadge(badgeText, badgeClass) {
+        titleBoxes.forEach(titleBox => {
+            if (titleBox) {
+                titleBox.textContent = badgeText;
+                titleBox.classList.add(badgeClass);
+                titleBox.style.display = "inline-flex";
+            }
+        });
+    }
+
+    if (influencerList.includes(nickname)) {
+        applyBadge("인플루언서", "badge-influencer");
+    } else if (proGamerList.includes(nickname)) {
+        applyBadge("프로게이머", "badge-progamer");
+    } else if (fifaInventKingList.includes(nickname)) {
+        applyBadge("피파인벤1황", "badge-inven");
+    } else if (firsttenList.includes(nickname)) {
+        applyBadge("최초의 10인", "badge-firstten");
+    }
+
+    // Win Rate Stats
+    const matchResults = {
+        win: {{ match_data | selectattr('결과', 'equalto', '승') | list | length }},
+        draw: {{ match_data | selectattr('결과', 'equalto', '무') | list | length }},
+        lose: {{ match_data | selectattr('결과', 'equalto', '패') | list | length }}
+    };
+
+    const totalGames = matchResults.win + matchResults.draw + matchResults.lose;
+    const winRate = (matchResults.win / totalGames * 100).toFixed(1);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const matchType = urlParams.get('match_type');
+        if (matchType) {
+            const tabs = document.querySelectorAll('.tab-item');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            const activeTab = document.querySelector(`.tab-item[id='${matchType}']`);
+            if (activeTab) activeTab.classList.add('active');
+        }
+
+        document.getElementById('winRatePercentage').textContent = `${winRate}%`;
+        const winRateMessage = document.getElementById('winRateMessage');
+
+        if (winRate < 30) {
+            winRateMessage.textContent = "유저님 혹시 패작.. 아니시죠?";
+            winRateMessage.style.color = '#ef4444';
+        } else if (winRate < 40) {
+            winRateMessage.textContent = "이건 팀의 문제일 수도 있어요..!";
+            winRateMessage.style.color = '#ef4444';
+        } else if (winRate < 50) {
+            winRateMessage.textContent = "승률이 좋지않아요.. 지고 계실건가요?";
+            winRateMessage.style.color = '#ef4444';
+        } else if (winRate < 60) {
+            winRateMessage.textContent = "경기력이 좋지만 더 잘해지실 수 있어요!";
+            winRateMessage.style.color = '#f59e0b';
+        } else if (winRate < 70) {
+            winRateMessage.textContent = "최근 컨디션이 거의 12시인데요?!";
+            winRateMessage.style.color = '#f59e0b';
+        } else if (winRate < 80) {
+            winRateMessage.textContent = "완전.. 부캐의 냄새가 나는데요?";
+            winRateMessage.style.color = '#22c55e';
+        } else {
+            winRateMessage.textContent = "유저님 혹시.. 프로게이머이신가요?";
+            winRateMessage.style.color = '#22c55e';
+        }
+    });
+
+    // Search Handlers
+    document.getElementById("character_name").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") document.getElementById("search_button").click();
+    });
+
+    document.getElementById("search_button").addEventListener("click", function() {
+        var characterName = document.getElementById("character_name").value;
+        if (characterName.trim() !== "") {
+            resultLoading();
+            setTimeout(function() {
+                window.location.href = "/result.html?character_name=" + characterName + "&match_type=50";
+            }, 10);
+        }
+    });
+
+    window.addEventListener("pageshow", function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            document.getElementById("loading-win").style.display = "none";
+            document.getElementById("loading-result").style.display = "none";
+        }
+    });
+
+    function goToWinRateResult(nickname, match_type) {
+        winLoading();
+        setTimeout(function() {
+            window.location.href = "/wr_result.html?character_name=" + nickname + "&match_type=" + match_type;
+        }, 10);
+    }
+
+    function winLoading() {
+        document.getElementById('loading-win').style.display = 'flex';
+    }
+
+    function resultLoading() {
+        document.getElementById('loading-result').style.display = 'flex';
+    }
+
+    // Win Rate Chart
+    const ctx = document.getElementById('winRateChart')?.getContext('2d');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['승리', '무승부', '패배'],
+                datasets: [{
+                    data: [matchResults.win, matchResults.draw, matchResults.lose],
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                return context.label + ': ' + context.raw + ' (' + Math.round((context.raw / total) * 100) + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Bookmark
+    function toggleBookmark(nickname) {
+        let bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+        const index = bookmarks.indexOf(nickname);
+        const btn = document.getElementById('bookmark-btn');
+        if (index === -1) {
+            bookmarks.push(nickname);
+            if (btn) btn.classList.add('active');
+        } else {
+            bookmarks.splice(index, 1);
+            if (btn) btn.classList.remove('active');
+        }
+        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+        const btn = document.getElementById('bookmark-btn');
+        if (bookmarks.includes('{{ level_data.nickname }}')) {
+            if (btn) btn.classList.add('active');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,360 @@
+/* ===========================================
+   Calculate Page Specific Styles
+   =========================================== */
+
+.calculator-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 0;
+}
+
+.page-title {
+    text-align: center;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.ad-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.calculator-card {
+    padding: 0;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+/* Player Row */
+.player-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-width: 100px;
+}
+
+.input-group.small {
+    flex: 0 0 100px;
+    min-width: 100px;
+}
+
+/* Number input spinner 스타일 조정 */
+.count-input {
+    padding-right: 4px;
+}
+
+.count-input::-webkit-outer-spin-button,
+.count-input::-webkit-inner-spin-button {
+    opacity: 1;
+    width: 20px;
+    height: 100%;
+}
+
+.form-input {
+    flex: 1;
+    padding: 0 12px;
+    height: 42px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    font-size: 0.95rem;
+    line-height: 42px;
+    transition: border-color 0.2s ease;
+    min-width: 0;
+    box-sizing: border-box;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}
+
+.form-input.is-invalid {
+    border-color: var(--lose-red);
+}
+
+.input-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 42px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-left: none;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    box-sizing: border-box;
+}
+
+.form-select {
+    width: 100%;
+    padding: 0 12px;
+    height: 42px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}
+
+.btn-remove {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--lose-red);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-remove:hover {
+    background: #dc2626;
+}
+
+#add-player {
+    margin-bottom: 24px;
+}
+
+#add-player svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.5;
+}
+
+/* Discount Section */
+.discount-section {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+}
+
+.discount-info {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.toggle-switch input {
+    display: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    background: var(--border-color);
+    border-radius: 13px;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary-green);
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+    transform: translateX(22px);
+}
+
+.toggle-label {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+/* Buttons */
+.btn-primary {
+    padding: 14px 24px;
+    background: var(--primary-green);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-primary:hover {
+    background: var(--primary-green-dark);
+}
+
+.btn-full {
+    width: 100%;
+    margin-bottom: 24px;
+}
+
+/* Result Card */
+.result-card {
+    padding: 20px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.result-fee {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--lose-red);
+    margin-bottom: 8px;
+}
+
+.result-receive {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-green);
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .player-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        grid-template-areas:
+            "trillion billion remove"
+            "count coupon remove";
+        gap: 8px;
+        align-items: center;
+        padding: 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+    }
+
+    .player-row .input-group:nth-child(1) {
+        grid-area: trillion;
+    }
+
+    .player-row .input-group:nth-child(2) {
+        grid-area: billion;
+    }
+
+    .player-row .input-group:nth-child(3) {
+        grid-area: count;
+    }
+
+    .player-row .input-group:nth-child(4) {
+        grid-area: coupon;
+    }
+
+    .player-row .btn-remove {
+        grid-area: remove;
+        width: 42px;
+        height: 42px;
+        align-self: center;
+    }
+
+    .input-group {
+        min-width: 0;
+    }
+
+    .input-group.small {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .page-title {
+        font-size: 1.4rem;
+    }
+
+    .page-subtitle {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .calculator-section {
+        padding: 16px 0;
+    }
+
+    .section-title {
+        font-size: 1rem;
+    }
+
+    .form-input,
+    .form-select {
+        height: 38px;
+        padding: 0 10px;
+        font-size: 0.9rem;
+        line-height: 38px;
+    }
+
+    .count-input {
+        padding-right: 2px;
+    }
+
+    .input-suffix {
+        height: 38px;
+        padding: 0 10px;
+        font-size: 0.85rem;
+    }
+
+    .player-row {
+        padding: 10px;
+        gap: 6px;
+    }
+
+    .player-row .btn-remove {
+        width: 38px;
+        height: 38px;
+        font-size: 1.1rem;
+    }
+}

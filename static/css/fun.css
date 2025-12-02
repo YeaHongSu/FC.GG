@@ -1,0 +1,134 @@
+/* ===========================================
+   Fun Page Specific Styles
+   =========================================== */
+
+.fun-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 0;
+    text-align: center;
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.fun-section .btn-accent {
+    margin-bottom: 24px;
+}
+
+/* Results */
+.result-container {
+    margin-top: 32px;
+}
+
+.result-container.hidden {
+    display: none;
+}
+
+.result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.result-item {
+    padding: 24px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.result-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.result-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.result-value.primary { color: #3b82f6; }
+.result-value.secondary { color: #6b7280; }
+.result-value.success { color: var(--primary-green); }
+.result-value.danger { color: var(--lose-red); }
+.result-value.info { color: #06b6d4; }
+.result-value.dark { color: #1f2937; }
+
+/* Share */
+.share-section {
+    text-align: center;
+}
+
+.share-section h5 {
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.share-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.btn-facebook {
+    padding: 10px 20px;
+    background: #3b5998;
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-facebook:hover {
+    background: #2d4373;
+}
+
+.btn-link {
+    padding: 10px 20px;
+    background: var(--primary-green);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-link:hover {
+    background: var(--primary-green-dark);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .result-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-title {
+        font-size: 1.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .share-buttons {
+        flex-direction: column;
+    }
+}

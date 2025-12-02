@@ -1,0 +1,287 @@
+/* ===========================================
+   Random (Pachinko) Page Specific Styles
+   =========================================== */
+
+/* Section */
+.random-section {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.text-pink {
+    color: #ec4899;
+    font-weight: 700;
+}
+
+/* Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Probability Grid */
+.probability-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.prob-item {
+    padding: 10px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.prob-sss {
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    color: #000;
+}
+
+.prob-ss {
+    background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+    color: #000;
+}
+
+.prob-s {
+    background: linear-gradient(135deg, #cd7f32, #b8722d);
+    color: #fff;
+}
+
+.prob-a {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+}
+
+.prob-b {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+}
+
+.prob-c {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: #fff;
+}
+
+/* Game Control Card */
+.game-control-card {
+    margin-bottom: 24px;
+}
+
+.game-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+/* Mode Selector */
+.mode-selector {
+    display: flex;
+    gap: 12px;
+}
+
+.mode-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.mode-option input[type="radio"] {
+    accent-color: var(--primary-green);
+}
+
+.mode-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* FC Info */
+.fc-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.fc-balance,
+.fc-spent {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.fc-balance strong,
+.fc-spent strong {
+    color: var(--primary-green);
+    font-size: 1.1rem;
+}
+
+/* Game Board */
+.game-board-container {
+    margin-bottom: 24px;
+}
+
+.board-title {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.game-matrix {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Game Card */
+.game-card {
+    aspect-ratio: 1;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.game-card .card-front,
+.game-card .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    backface-visibility: hidden;
+    transition: transform 0.6s;
+}
+
+.game-card .card-front {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.game-card .card-back {
+    transform: rotateY(180deg);
+    color: white;
+}
+
+.game-card .card-back.sss {
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    color: #000;
+}
+
+.game-card .card-back.ss {
+    background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+    color: #000;
+}
+
+.game-card .card-back.s {
+    background: linear-gradient(135deg, #cd7f32, #b8722d);
+}
+
+.game-card .card-back.a {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.game-card .card-back.b {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.game-card .card-back.c {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.game-card.revealed .card-front {
+    transform: rotateY(180deg);
+}
+
+.game-card.revealed .card-back {
+    transform: rotateY(0deg);
+}
+
+.game-card {
+    position: relative;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Ad Section */
+.ad-section {
+    margin: 24px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .game-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .fc-info {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .game-matrix {
+        gap: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 1.2rem;
+    }
+
+    .game-matrix {
+        gap: 4px;
+    }
+
+    .game-card .card-front,
+    .game-card .card-back {
+        font-size: 0.8rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-warning {
+        width: 100%;
+        text-align: center;
+    }
+}

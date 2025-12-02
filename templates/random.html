@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 스페셜 상점 연습실{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 빠칭코, 스페셜 상점, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/random.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="random-section">
+    <h1 class="page-title">스폐셜 상점 연습으로 액뗌해 볼까요?</h1>
+    <p class="page-subtitle"><span class="text-pink">SSL</span>급 행운이 너무강함 [전반전]</p>
+
+    <!-- Ads -->
+    <div class="ad-section">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+        <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Info Section -->
+    <div class="info-grid">
+        <!-- Probability Box -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h3 class="card-title-modern">등급별 확률</h3>
+            </div>
+            <div class="card-body-modern">
+                <div class="probability-grid">
+                    <div class="prob-item prob-sss">SSS: 2.04%</div>
+                    <div class="prob-item prob-ss">SS: 4.08%</div>
+                    <div class="prob-item prob-s">S: 12.24%</div>
+                    <div class="prob-item prob-a">A: 20.41%</div>
+                    <div class="prob-item prob-b">B: 36.73%</div>
+                    <div class="prob-item prob-c">C: 24.49%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description Box -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h3 class="card-title-modern">빠칭코 연습실이란?</h3>
+            </div>
+            <div class="card-body-modern">
+                <p>빠칭코 연습실에서는 가상의 <span class="text-primary">FC</span>를 통해 카드 등급의 확률을 체험할 수 있습니다.</p>
+                <p>연습 후에 <span class="text-info">실전으로 가기</span> 버튼을 클릭하여 도전해 보세요!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- FC & Game Mode Selection -->
+    <div class="card-modern game-control-card">
+        <div class="card-body-modern">
+            <div class="game-controls">
+                <!-- Game Mode Selector -->
+                <div class="mode-selector">
+                    <label class="mode-option">
+                        <input type="radio" name="songpyeon" value="appa" checked>
+                        <span class="mode-label">일반게임</span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="songpyeon" value="mom">
+                        <span class="mode-label">스폐셜게임</span>
+                    </label>
+                </div>
+
+                <!-- FC Info -->
+                <div class="fc-info">
+                    <div class="fc-balance">
+                        <span>현재 보유:</span>
+                        <strong id="fc-balance">0</strong> FC
+                    </div>
+                    <div class="fc-spent">
+                        <span>누적 소모:</span>
+                        <strong id="fc-spent">0</strong> FC
+                    </div>
+                    <button id="charge-fc" class="btn-primary">FC 충전하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Boards -->
+    <div id="appa-container" class="game-board-container">
+        <h3 class="board-title">일반 게임</h3>
+        <div id="appa-matrix" class="game-matrix"></div>
+    </div>
+
+    <div id="mom-container" class="game-board-container" style="display:none;">
+        <h3 class="board-title">스페셜 게임</h3>
+        <div id="mom-matrix" class="game-matrix"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button id="reset-board" class="btn-warning">판 초기화</button>
+        <a href="https://shop.fconline.nexon.com/Events/250123/TheOnlySSL" target="_blank" class="btn-primary" id="real-action-button">실전으로 가기</a>
+    </div>
+
+    <!-- Ads -->
+    <div class="ad-section">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+        <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let fcBalance = 0;
+    let fcSpent = 0;
+
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    document.getElementById('charge-fc').addEventListener('click', function() {
+        fcBalance += 10000;
+        updateFCBalance();
+    });
+
+    function updateFCBalance() {
+        document.getElementById('fc-balance').innerText = formatNumber(fcBalance);
+        document.getElementById('fc-spent').innerText = formatNumber(fcSpent);
+    }
+
+    const appaConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
+    const momConfig = ['sss', 'ss', 'ss', 's', 's', 's', 's', 's', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
+
+    function shuffleWithBRule(array) {
+        let counts = { sss: 0, ss: 0, s: 0, a: 0, b: 0, c: 0 };
+        const maxCounts = { sss: 1, ss: 2, s: 6, a: 10, b: 18, c: 12 };
+
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+
+        array = array.filter(type => {
+            if (counts[type] < maxCounts[type]) {
+                counts[type]++;
+                return true;
+            }
+            return false;
+        });
+
+        for (let i = 0; i < array.length; i++) {
+            if (array[i] === 'c') {
+                if (i > 0 && array[i - 1] === 'c') {
+                    array[i - 1] = 'b';
+                }
+                if (i < array.length - 1 && array[i + 1] === 'c') {
+                    array[i + 1] = 'b';
+                }
+            }
+        }
+        return array;
+    }
+
+    function createMatrix(matrixId, config) {
+        const matrix = document.getElementById(matrixId);
+        matrix.innerHTML = '';
+        shuffleWithBRule(config).forEach((type, index) => {
+            const card = document.createElement('div');
+            card.classList.add('game-card');
+
+            const front = document.createElement('div');
+            front.classList.add('card-front');
+            front.innerText = index + 1;
+
+            const back = document.createElement('div');
+            back.classList.add('card-back', type);
+            back.innerText = type.toUpperCase();
+
+            card.appendChild(front);
+            card.appendChild(back);
+
+            card.addEventListener('click', () => {
+                if (card.classList.contains('revealed')) return;
+
+                const cost = matrixId === 'appa-matrix' ? 1200 : 2190;
+                if (fcBalance >= cost) {
+                    card.classList.add('revealed');
+                    fcBalance -= cost;
+                    fcSpent += cost;
+                    updateFCBalance();
+
+                    if (type === 'sss') {
+                        setTimeout(() => {
+                            alert("SSS가 나왔습니다! 판을 초기화합니다.");
+                            resetAllBoards();
+                        }, 150);
+                    }
+                } else {
+                    alert('FC가 부족합니다.');
+                }
+            });
+
+            matrix.appendChild(card);
+        });
+    }
+
+    function resetAllBoards() {
+        createMatrix('appa-matrix', appaConfig);
+        createMatrix('mom-matrix', momConfig);
+    }
+
+    document.querySelectorAll('input[name="songpyeon"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.getElementById('appa-container').style.display = 'none';
+            document.getElementById('mom-container').style.display = 'none';
+            if (this.value === 'appa') {
+                document.getElementById('appa-container').style.display = 'block';
+            } else if (this.value === 'mom') {
+                document.getElementById('mom-container').style.display = 'block';
+            }
+        });
+    });
+
+    document.getElementById('reset-board').addEventListener('click', resetAllBoards);
+
+    resetAllBoards();
+
+    function trackButtonClick() {
+        window.dataLayer = window.dataLayer || [];
+        dataLayer.push({
+            'event': 'realActionButtonClick',
+            'click_text': '실전으로 가기',
+            'page_url': window.location.href,
+            'button_id': 'real-action-button',
+            'event_action': 'realActionButtonClick'
+        });
+    }
+</script>
+{% endblock %}

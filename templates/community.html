@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 커뮤니티{% endblock %}
+
+{% block extra_meta %}
+<meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 커뮤니티, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/community.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Ads -->
+<div class="ad-section">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<div class="community-layout">
+    <!-- Sidebar -->
+    <aside class="community-sidebar">
+        <!-- Categories -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h3 class="card-title-modern">카테고리</h3>
+            </div>
+            <div class="card-body-modern p-0">
+                <ul class="category-list">
+                    <li><a href="/커뮤니티" class="category-link" data-category="전체">전체</a></li>
+                    <li><a href="/커뮤니티/자유게시판" class="category-link" data-category="자유게시판">자유게시판</a></li>
+                    <li><a href="/커뮤니티/키보드게시판" class="category-link" data-category="키보드게시판">키보드게시판</a></li>
+                    <li><a href="/커뮤니티/패드게시판" class="category-link" data-category="패드게시판">패드게시판</a></li>
+                    <li><a href="/커뮤니티/친추게시판" class="category-link" data-category="친추게시판">친추게시판</a></li>
+                    <li><a href="/커뮤니티/건의사항" class="category-link" data-category="건의사항">건의사항</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommended Videos -->
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h3 class="card-title-modern">FC온라인 추천 영상</h3>
+            </div>
+            <div class="card-body-modern">
+                <div class="video-list">
+                    <iframe class="video-item" src="https://www.youtube.com/embed/AY53vgnhc_8?mute=1" frameborder="0" allowfullscreen></iframe>
+                    <iframe class="video-item" src="https://www.youtube.com/embed/UvGY38Kc2Ok?mute=1" frameborder="0" allowfullscreen></iframe>
+                    <iframe class="video-item" src="https://www.youtube.com/embed/MRWer6MbKsk?mute=1" frameborder="0" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="community-main">
+        <div class="card-modern">
+            <div class="card-header-modern">
+                <h2 class="card-title-modern">{{ selected_category }} 게시글</h2>
+            </div>
+            <div class="card-body-modern">
+                <!-- Post Form -->
+                <form method="POST" class="post-form">
+                    {{ form.hidden_tag() }}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>{{ form.nickname.label.text }}</label>
+                            {{ form.nickname(class="form-input", placeholder="닉네임 입력") }}
+                        </div>
+                        <div class="form-group">
+                            <label>{{ form.category.label.text }}</label>
+                            {{ form.category(class="form-select") }}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ form.content.label.text }}</label>
+                        {{ form.content(class="form-textarea", rows="3", placeholder="내용 입력") }}
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">작성하기</button>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">!</span>
+                            <span class="tooltip-text">작성하신 글은 삭제하실 수 없습니다! 신중히 작성 부탁드립니다.</span>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Category Description -->
+                <div class="category-description">
+                    {% if selected_category == "전체" %}
+                        <p><span class="highlight">비속어</span> 사용 혹은 <span class="highlight">분쟁</span>을 조장하시는 분은 닉네임 검색 <span class="highlight">영구 제외</span>입니다.</p>
+                    {% elif selected_category == "자유게시판" %}
+                        <p>유저분들이 자유로운 의견을 남길 수 있는 게시판입니다.</p>
+                    {% elif selected_category == "키보드게시판" %}
+                        <p>키보드를 사용하는 유저들이 정보를 공유할 수 있는 게시판입니다.</p>
+                    {% elif selected_category == "패드게시판" %}
+                        <p>패드를 사용하는 유저들이 정보를 공유할 수 있는 게시판입니다.</p>
+                    {% elif selected_category == "친추게시판" %}
+                        <p>FC온라인을 같이 플레이할 유저를 구할 수 있는 게시판입니다.</p>
+                    {% elif selected_category == "건의사항" %}
+                        <p>FC.GG에 대한 건의사항을 남기실 수 있는 게시판입니다.</p>
+                    {% endif %}
+                </div>
+
+                <hr class="divider">
+
+                <!-- Posts List -->
+                <div class="posts-list">
+                    {% for post in posts %}
+                    <div class="post-card">
+                        <div class="post-header">
+                            <span class="post-category" data-category="{{ post[1] }}">{{ post[1] }}</span>
+                            <span class="post-author">{{ post[2] }}</span>
+                            <span class="post-time">{{ post[4]|timeago }}</span>
+                        </div>
+                        <div class="post-content">
+                            <p>{{ post[3] }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="empty-message">게시글이 없습니다. 첫 글을 작성해 보세요!</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Ads -->
+<div class="ad-section">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+{% endblock %}
