@@ -1,3 +1,4 @@
+google.com, pub-7970639123590302, DIRECT, f08c47fec0942fa0
 ownerdomain=fcgg.kr
 managerdomain=venatus.com
 #V 19.11.2025 VH
@@ -159,4 +160,3 @@ appnexus.com, 806, DIRECT, f5ab79cb980f11d1
 appnexus.com,1908,RESELLER,f5ab79cb980f11d1                               
 adinplay.com, FTB, DIRECT
 venatus.com, 6930056c35a47984399bef4a, DIRECT
-google.com, pub-7970639123590302, DIRECT, f08c47fec0942fa0
