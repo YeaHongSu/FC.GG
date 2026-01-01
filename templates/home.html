@@ -44,23 +44,10 @@
     </a>
 </section>
 
-<!-- ✅ Mobile Top Banner Slot (모바일에서만 mobile_banner 호출) -->
+<!-- ✅ Mobile Top Banner Slot (모바일에서만 mobile_banner) -->
 <div class="ad-section">
-    <div id="vnt-slot-home-mobile-top" class="vnt-ad"></div>
+    <div id="vnt-slot-home-mobile-top" class="vnt-ad vnt-ad--mobile-top"></div>
 </div>
-<script>
-  window.__VM = window.__VM || [];
-  window.__VM.push(function(admanager, scope) {
-    try {
-      var isMobile = window.matchMedia("(max-width: 1024px)").matches;
-      if (isMobile) {
-        scope.Config.get("mobile_banner").display("vnt-slot-home-mobile-top");
-      }
-    } catch (e) {
-      console.warn("[VENATUS] mobile_banner failed:", e);
-    }
-  });
-</script>
 
 <!-- Bookmarks -->
 <div class="bookmark-container" id="bookmark-container"></div>
@@ -101,25 +88,10 @@
     </div>
 </section>
 
-<!-- ✅ Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover (한 슬롯에서 디바이스별 자동 분기) -->
+<!-- ✅ Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover -->
 <div class="ad-section">
-    <div id="vnt-slot-home-mid" class="vnt-ad"></div>
+    <div id="vnt-slot-home-mid" class="vnt-ad vnt-ad--home-mid"></div>
 </div>
-<script>
-  window.__VM = window.__VM || [];
-  window.__VM.push(function(admanager, scope) {
-    try {
-      scope.Config.buildPlacement(function(configBuilder) {
-        // Desktop 기본
-        configBuilder.add("leaderboard");
-        // Mobile (기본 mobile breakpoint는 max-width:1024px)
-        configBuilder.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
-      }, "home-mid").display("vnt-slot-home-mid");
-    } catch (e) {
-      console.warn("[VENATUS] leaderboard/mobile_takeover buildPlacement failed:", e);
-    }
-  });
-</script>
 
 <!-- News Grid -->
 <div class="news-grid">
@@ -353,25 +325,40 @@
         renderBookmarks();
     });
 
-    // ✅ Venatus: Desktop vertical_sticky + 하단 sticky(디바이스별 1개만)
+    // ✅ Venatus
     window.__VM = window.__VM || [];
     window.__VM.push(function(admanager, scope) {
       try {
         var isMobile = window.matchMedia("(max-width: 1024px)").matches;
 
-        // 좌우 고정(Desktop only)
+        // (1) 모바일 상단 배너
+        if (isMobile) {
+          var topEl = document.getElementById("vnt-slot-home-mobile-top");
+          if (topEl) scope.Config.get("mobile_banner").display(topEl);
+        }
+
+        // (2) 중단: Desktop leaderboard / Mobile takeover
+        var midEl = document.getElementById("vnt-slot-home-mid");
+        if (midEl) {
+          scope.Config.buildPlacement(function(configBuilder) {
+            configBuilder.add("leaderboard");
+            configBuilder.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
+          }, "home-mid").display(midEl);
+        }
+
+        // (3) PC 좌우 고정: vertical_sticky (DIV 방식 아님)
         if (!isMobile) {
           scope.Config.verticalSticky().display();
         }
 
-        // 하단 고정(디바이스별 1개)
+        // (4) 하단 고정: 디바이스별 1개만
         if (isMobile) {
           scope.Config.get("mobile_horizontal_sticky").display({ body: true });
         } else {
           scope.Config.get("horizontal_sticky").display({ body: true });
         }
       } catch (e) {
-        console.warn("[VENATUS] sticky display failed:", e);
+        console.warn("[VENATUS] display failed:", e);
       }
     });
 </script>
