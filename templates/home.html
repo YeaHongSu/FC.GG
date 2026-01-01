@@ -339,7 +339,7 @@
     try {
       // Top Slot: Desktop=desktop_takeover / Mobile=mobile_banner
       scope.Config.buildPlacement(function(cb) {
-        cb.add("desktop_takeover");
+        cb.add("leaderboard");
         cb.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
       }, "home-top").display("vnt-slot-home-top");
 
