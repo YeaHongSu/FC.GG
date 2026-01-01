@@ -2,37 +2,36 @@
    Result Page Specific Styles
    =========================================== */
 
-/* Player Info Card */
-.player-info-card {
-    margin-bottom: 24px;
-}
-
-/* ✅ 기본정보 카드 내부: 좌(기본정보) + 우(비디오) 2컬럼 레이아웃 */
-.player-info-layout {
+/* ✅ 상단: 기본정보(왼쪽) + 영상(오른쪽) "카드 밖" 2컬럼 */
+.result-top-row {
     display: flex;
     align-items: stretch;
     gap: 16px;
+    margin-bottom: 24px; /* 기존 player-info-card margin-bottom 대체 */
 }
 
-/* 왼쪽 영역(기존 기본정보) */
-.player-info-left {
+.result-top-left {
     flex: 1 1 auto;
-    min-width: 0; /* 긴 텍스트 등으로 레이아웃 깨짐 방지 */
+    min-width: 0;
 }
 
-/* 오른쪽 영역(비디오) */
-.player-info-right {
-    flex: 0 0 360px;  /* ✅ 데스크탑에서 오른쪽 폭 */
+.result-top-right {
+    flex: 0 0 360px;
     max-width: 360px;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
 }
 
-/* 비디오 박스 */
+/* 기본정보 카드: 상단 래퍼에서 margin-bottom 관리하므로 0으로 */
+.player-info-card {
+    margin-bottom: 0;
+    height: 100%;
+}
+
+/* 영상 박스 */
 .result-video {
     width: 100%;
-    aspect-ratio: 16 / 9; /* ✅ 비율 유지하며 높이 자동 계산 */
+    aspect-ratio: 16 / 9;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -43,7 +42,7 @@
     justify-content: center;
 }
 
-/* 비디오 내부(iframe/video 등) 꽉 채우기 */
+/* 영상 내부(iframe/video) 꽉 채우기 */
 #video iframe,
 #video video,
 #video embed,
@@ -54,7 +53,7 @@
     border: 0 !important;
 }
 
-/* 기존 플레이어 정보 컨텐츠 */
+/* Player Info Card 내부 레이아웃 */
 .player-info-content {
     display: flex;
     justify-content: space-between;
@@ -459,18 +458,18 @@
         grid-template-columns: 1fr;
     }
 
-    /* ✅ 태블릿 이하: 기본정보/비디오를 세로 스택 */
-    .player-info-layout {
+    /* ✅ 태블릿 이하: 상단 2컬럼 -> 세로 스택 */
+    .result-top-row {
         flex-direction: column;
     }
 
-    .player-info-right {
+    .result-top-right {
         flex: 0 0 auto;
         max-width: 100%;
     }
 
     .result-video {
-        max-width: 640px;
+        max-width: 720px;
         margin: 0 auto;
     }
 }
@@ -485,13 +484,7 @@
         display: none;
     }
 
-    /* ✅ 모바일에선 비디오 높이가 너무 커보이면 조금 줄이기 */
-    .player-info-right {
-        max-width: 100%;
-    }
-
     .result-video {
-        aspect-ratio: 16 / 9;
         max-width: 520px;
         margin: 0 auto;
     }
@@ -587,7 +580,6 @@
         font-size: 1.5rem;
     }
 
-    /* ✅ 작은 화면 비디오 폭/비율 안정화 */
     .result-video {
         max-width: 100%;
     }
