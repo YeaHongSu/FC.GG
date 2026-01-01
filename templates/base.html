@@ -47,10 +47,11 @@
                     configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
                 }).display("vm-bottom-banner");
 
-                scope.Config.buildPlacement((configBuilder) => {
-                    configBuilder.add("video");
-                    configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
-                }).display("video");
+                // scope.Config.buildPlacement((configBuilder) => {
+                //     configBuilder.add("video");
+                //     configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
+                // }).display("video");
+                scope.Config.get("video").display("video");
                 
                 /* 좌/우 Sticky 광고 */
                 scope.Config.get("vertical_sticky").display('vertical-sticky');
