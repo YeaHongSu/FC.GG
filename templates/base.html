@@ -50,8 +50,12 @@
 
                 scope.Config.get('desktop_takeover').display('desktop-takeover');
 
-                scope.Config.get('video').display('video');
-
+                scope.Config.buildPlacement(function (configBuilder) {
+                    configBuilder.add(video");
+                    configBuilder.addDefaultOrUnique("video")
+                                 .setBreakPoint("mobile");
+                }, "home-center").display("video");
+                
                 /* 좌/우 Sticky 광고 */
                 scope.Config.get("vertical_sticky").display('vertical-sticky');
 
