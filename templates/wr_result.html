@@ -18,7 +18,7 @@
     <div id="vm-top-banner"
          style="width:100%; display:flex; justify-content:center; margin:32px 0;">
     </div>
-    
+
     <div class="search-wrapper">
         <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요.">
         <button class="search-btn" id="search_button">검색</button>
@@ -101,6 +101,12 @@
                     {% endfor %}
                 </ul>
             </div>
+
+            <!-- ✅ 여기! (사진 빨간 박스 위치) 솔루션 박스 아래에 비디오 광고 -->
+            <div class="wr-solution-video-wrap">
+                <div id="video" class="wr-solution-video"></div>
+            </div>
+
             {% else %}
             <p class="no-improvement">현재 모델로 개선이 불가능합니다.</p>
             {% endif %}
@@ -259,6 +265,5 @@
             futureWinRateChart.resize();
         }, 100);
     });
-
 </script>
 {% endblock %}
