@@ -21,6 +21,34 @@
         s.async = true;
         s.src = 'https://hb.vntsm.com/v4/live/vms/sites/fcgg.kr/index.js';
         document.head.appendChild(s);
+
+        var initScript = document.createElement('script');
+        initScript.text = `
+            self.__VM = self.__VM || [];
+            self.__VM.push(function (admanager, scope) {
+
+                /* 중앙 배너 */
+                scope.Config.buildPlacement(function (configBuilder) {
+                    configBuilder.add("billboard");
+                    configBuilder.addDefaultOrUnique("mobile_banner")
+                                 .setBreakPoint("mobile");
+                }, "home-center").display("vm-center-banner");
+
+                /* 하단 배너 */
+                scope.Config.buildPlacement(function (configBuilder) {
+                    configBuilder.add("leaderboard");
+                    configBuilder.addDefaultOrUnique("mobile_banner")
+                                 .setBreakPoint("mobile");
+                }, "home-bottom").display("vm-bottom-banner");
+
+                /* 좌/우 Sticky 광고 */
+                scope.Config.get("vertical_sticky").display('vertical-sticky');
+
+                scope.Config.get("horizontal_sticky").display('horizontal-sticky');
+
+            });
+        `;
+    document.head.appendChild(initScript);
       })();
     </script>
 
