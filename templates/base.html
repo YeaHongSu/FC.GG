@@ -130,7 +130,7 @@
 
           // 1) 좌/우 sticky (PC에서만) - ★ 정석 호출 (딱 1번만)
           if (!isMobile) {
-            scope.Config.verticalSticky().display();
+            scope.Config.get('vertical_sticky').display({body: true});
           }
 
           // 2) 하단 고정 sticky (PC/모바일 1개만)
