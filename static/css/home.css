@@ -210,44 +210,23 @@
     color: var(--primary-green);
 }
 
-/* =========================================================
-   Venatus Ads (Home)
-   ========================================================= */
-
-/* 슬롯 기본 레이아웃: 가운데 정렬 + 적당한 여백 */
-.ad-slot {
+/* ===========================================
+   ✅ Venatus Ad Wrap (추가)
+   =========================================== */
+.ad-wrap {
+    margin: 10px 0 14px;
     width: 100%;
     display: flex;
     justify-content: center;
-    margin: 12px 0;
 }
 
-.ad-slot__inner {
-    width: 100%;
-    display: block;
-    /* leaderboard/배너가 로딩될 공간 확보 (CLS 방지) */
-    min-height: 90px;
-    max-width: 970px;
-}
-
-/* PC/모바일 노출 제어 */
+/* base.html에도 동일 토글이 있지만,
+   페이지 단에서 보수적으로 한 번 더 둬도 괜찮음 */
 .ad-slot--mobile { display: none; }
-.ad-slot--pc { display: flex; }
 
-/* 모바일 슬롯 크기 힌트 */
 @media (max-width: 768px) {
     .ad-slot--pc { display: none; }
-    .ad-slot--mobile { display: flex; }
-
-    .ad-slot__inner {
-        max-width: 320px;
-        min-height: 50px;
-    }
-
-    /* 하단 sticky가 컨텐츠를 덮는 경우를 대비한 여유(필요 시) */
-    .news-grid {
-        margin-bottom: 120px;
-    }
+    .ad-slot--mobile { display: block; }
 }
 
 /* News Grid */
