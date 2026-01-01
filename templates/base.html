@@ -21,6 +21,25 @@
         s.async = true;
         s.src = 'https://hb.vntsm.com/v4/live/vms/sites/fcgg.kr/index.js';
         document.head.appendChild(s);
+
+        var initScript = document.createElement('script');
+        initScript.text = `
+            self.__VM = self.__VM || [];
+            self.__VM.push(function (admanager, scope) {
+
+                // 중앙 메인 배너 (Desktop / Mobile)
+                scope.Config.buildPlacement(function (configBuilder) {
+                    configBuilder.add("billboard");
+                    configBuilder.addDefaultOrUnique("mobile_banner")
+                                 .setBreakPoint("mobile");
+                }, "home-center").display("vm-center-banner");
+
+                // 좌/우 Sticky 광고
+                scope.Config.get("vertical_sticky").display();
+
+            });
+        `;
+        document.head.appendChild(initScript);
       })();
     </script>
 
