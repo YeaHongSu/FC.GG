@@ -34,11 +34,6 @@
     {% endif %}
 {% endwith %}
 
-<!-- ✅ (모바일) 페이지 최상단 배너 -->
-<div class="ad-wrap ad-slot--mobile">
-  <div class="vnt-ad vnt-minh-100" id="vnt-home-mobile-banner"></div>
-</div>
-
 <!-- Hero Section -->
 <section class="hero-section">
     <h1 class="hero-title">
@@ -48,6 +43,24 @@
         💬 챗봇 채널 바로가기
     </a>
 </section>
+
+<!-- ✅ Mobile Top Banner Slot (모바일에서만 mobile_banner 호출) -->
+<div class="ad-section">
+    <div id="vnt-slot-home-mobile-top" class="vnt-ad"></div>
+</div>
+<script>
+  window.__VM = window.__VM || [];
+  window.__VM.push(function(admanager, scope) {
+    try {
+      var isMobile = window.matchMedia("(max-width: 1024px)").matches;
+      if (isMobile) {
+        scope.Config.get("mobile_banner").display("vnt-slot-home-mobile-top");
+      }
+    } catch (e) {
+      console.warn("[VENATUS] mobile_banner failed:", e);
+    }
+  });
+</script>
 
 <!-- Bookmarks -->
 <div class="bookmark-container" id="bookmark-container"></div>
@@ -88,15 +101,25 @@
     </div>
 </section>
 
-<!-- ✅ (PC) 콘텐츠 중단: leaderboard / (모바일) 콘텐츠 중단: mobile_takeover -->
-<div class="ad-wrap">
-  <div class="ad-slot--pc">
-    <div class="vnt-ad vnt-minh-90" id="vnt-home-leaderboard"></div>
-  </div>
-  <div class="ad-slot--mobile">
-    <div class="vnt-ad vnt-minh-250" id="vnt-home-mobile-takeover"></div>
-  </div>
+<!-- ✅ Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover (한 슬롯에서 디바이스별 자동 분기) -->
+<div class="ad-section">
+    <div id="vnt-slot-home-mid" class="vnt-ad"></div>
 </div>
+<script>
+  window.__VM = window.__VM || [];
+  window.__VM.push(function(admanager, scope) {
+    try {
+      scope.Config.buildPlacement(function(configBuilder) {
+        // Desktop 기본
+        configBuilder.add("leaderboard");
+        // Mobile (기본 mobile breakpoint는 max-width:1024px)
+        configBuilder.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
+      }, "home-mid").display("vnt-slot-home-mid");
+    } catch (e) {
+      console.warn("[VENATUS] leaderboard/mobile_takeover buildPlacement failed:", e);
+    }
+  });
+</script>
 
 <!-- News Grid -->
 <div class="news-grid">
@@ -197,17 +220,6 @@
 {% endblock %}
 
 {% block extra_js %}
-
-<!-- ✅ 이 페이지에서만 필요한 Venatus 슬롯 렌더링 (Non-SPA/MPA 방식) -->
-<script>
-  window.__VM = window.__VM || [];
-  window.__VM.push(function(admanager, scope) {
-    try { scope.Config.get('leaderboard').display('vnt-home-leaderboard'); } catch(e) {}
-    try { scope.Config.get('mobile_banner').display('vnt-home-mobile-banner'); } catch(e) {}
-    try { scope.Config.get('mobile_takeover').display('vnt-home-mobile-takeover'); } catch(e) {}
-  });
-</script>
-
 <script>
     // Calculate time ago (months or days)
     function calculateDaysAgo(uploadDate) {
@@ -339,6 +351,28 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         renderBookmarks();
+    });
+
+    // ✅ Venatus: Desktop vertical_sticky + 하단 sticky(디바이스별 1개만)
+    window.__VM = window.__VM || [];
+    window.__VM.push(function(admanager, scope) {
+      try {
+        var isMobile = window.matchMedia("(max-width: 1024px)").matches;
+
+        // 좌우 고정(Desktop only)
+        if (!isMobile) {
+          scope.Config.verticalSticky().display();
+        }
+
+        // 하단 고정(디바이스별 1개)
+        if (isMobile) {
+          scope.Config.get("mobile_horizontal_sticky").display({ body: true });
+        } else {
+          scope.Config.get("horizontal_sticky").display({ body: true });
+        }
+      } catch (e) {
+        console.warn("[VENATUS] sticky display failed:", e);
+      }
     });
 </script>
 {% endblock %}
