@@ -34,6 +34,11 @@
     {% endif %}
 {% endwith %}
 
+<!-- ✅ (모바일) 페이지 최상단 배너 -->
+<div class="ad-wrap ad-slot--mobile">
+  <div class="vnt-ad vnt-minh-100" id="vnt-home-mobile-banner"></div>
+</div>
+
 <!-- Hero Section -->
 <section class="hero-section">
     <h1 class="hero-title">
@@ -43,11 +48,6 @@
         💬 챗봇 채널 바로가기
     </a>
 </section>
-
-<!-- (모바일) Top Banner -->
-<div class="ad-slot ad-slot--mobile">
-    <div id="home-ad-mobile-banner" class="ad-slot__inner"></div>
-</div>
 
 <!-- Bookmarks -->
 <div class="bookmark-container" id="bookmark-container"></div>
@@ -88,13 +88,14 @@
     </div>
 </section>
 
-<!-- (PC) 중앙 Leaderboard / (모바일) 중단 Takeover -->
-<div class="ad-slot ad-slot--pc">
-    <div id="home-ad-leaderboard" class="ad-slot__inner"></div>
-</div>
-
-<div class="ad-slot ad-slot--mobile">
-    <div id="home-ad-mobile-takeover" class="ad-slot__inner"></div>
+<!-- ✅ (PC) 콘텐츠 중단: leaderboard / (모바일) 콘텐츠 중단: mobile_takeover -->
+<div class="ad-wrap">
+  <div class="ad-slot--pc">
+    <div class="vnt-ad vnt-minh-90" id="vnt-home-leaderboard"></div>
+  </div>
+  <div class="ad-slot--mobile">
+    <div class="vnt-ad vnt-minh-250" id="vnt-home-mobile-takeover"></div>
+  </div>
 </div>
 
 <!-- News Grid -->
@@ -196,41 +197,19 @@
 {% endblock %}
 
 {% block extra_js %}
+
+<!-- ✅ 이 페이지에서만 필요한 Venatus 슬롯 렌더링 (Non-SPA/MPA 방식) -->
 <script>
-  // --- Venatus Prosper (MPA / Non-SPA) page-level placements ---
-  // Non-SPA 가이드는 특정 슬롯 id에 display()로 렌더링하는 예시를 제공합니다. :contentReference[oaicite:7]{index=7}
   window.__VM = window.__VM || [];
-  window.__VM.push(function (admanager, scope) {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    if (isMobile) {
-      // 모바일: 상단 배너 + 콘텐츠 중단 takeover + 하단 고정 sticky
-      if (document.getElementById("home-ad-mobile-banner")) {
-        scope.Config.get("mobile_banner").display("home-ad-mobile-banner");
-      }
-      if (document.getElementById("home-ad-mobile-takeover")) {
-        scope.Config.get("mobile_takeover").display("home-ad-mobile-takeover");
-      }
-
-      // mobile_horizontal_sticky는 injected 성격이라 body에 주입되는 형태가 일반적입니다. :contentReference[oaicite:8]{index=8}
-      scope.Config.get("mobile_horizontal_sticky").display({ body: true });
-
-    } else {
-      // PC: 콘텐츠 중단 leaderboard + 좌우 vertical_sticky + 하단 고정 horizontal_sticky
-      if (document.getElementById("home-ad-leaderboard")) {
-        scope.Config.get("leaderboard").display("home-ad-leaderboard");
-      }
-
-      // vertical_sticky는 컨테이너 div 대신 주입형 display() 사용 예시가 있습니다. :contentReference[oaicite:9]{index=9}
-      scope.Config.verticalSticky().display();
-
-      scope.Config.get("horizontal_sticky").display({ body: true });
-    }
+  window.__VM.push(function(admanager, scope) {
+    try { scope.Config.get('leaderboard').display('vnt-home-leaderboard'); } catch(e) {}
+    try { scope.Config.get('mobile_banner').display('vnt-home-mobile-banner'); } catch(e) {}
+    try { scope.Config.get('mobile_takeover').display('vnt-home-mobile-takeover'); } catch(e) {}
   });
 </script>
 
 <script>
-    // (이 아래는 기존 home.html의 JS 그대로 유지)
+    // Calculate time ago (months or days)
     function calculateDaysAgo(uploadDate) {
         const now = new Date();
         const uploaded = new Date(uploadDate);
@@ -238,10 +217,13 @@
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const diffMonths = Math.floor(diffDays / 30);
 
-        if (diffMonths >= 1) return diffMonths + "달 전";
+        if (diffMonths >= 1) {
+            return diffMonths + "달 전";
+        }
         return diffDays + "일 전";
     }
 
+    // Set notice dates
     document.getElementById("notice12-date").textContent = calculateDaysAgo("2025-01-23");
     document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
     document.getElementById("notice14-date").textContent = calculateDaysAgo("2025-07-01");
@@ -254,6 +236,7 @@
     document.getElementById("upcoming10-date").textContent = calculateDaysAgo("2025-09-24");
     document.getElementById("upcoming11-date").textContent = calculateDaysAgo("2025-10-05");
 
+    // Notice toggle
     document.querySelectorAll('.notice-item').forEach(item => {
         item.querySelector('.notice-title').addEventListener('click', function() {
             const content = item.querySelector('.notice-content');
@@ -261,6 +244,7 @@
         });
     });
 
+    // Loading
     function showLoading() {
         document.getElementById("loading-overlay").style.display = "flex";
     }
@@ -271,6 +255,7 @@
         }
     });
 
+    // Search
     document.getElementById("search_button").addEventListener("click", function() {
         var characterName = document.getElementById("character_name").value;
         if (characterName.trim() !== "") {
@@ -287,6 +272,7 @@
         }
     });
 
+    // Popular player click
     document.querySelectorAll('.popular-item').forEach(function(element) {
         element.addEventListener('click', function() {
             const characterName = this.getAttribute('data-nickname');
@@ -297,6 +283,7 @@
         });
     });
 
+    // Bookmark functions
     function setupClickableNicknames() {
         document.querySelectorAll('.bookmark-nickname').forEach(function(element) {
             element.addEventListener('click', function(event) {
