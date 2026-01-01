@@ -24,6 +24,20 @@
 {% endblock %}
 
 {% block content %}
+
+<!-- =========================
+     PC: Side Sticky Ads (좌/우)
+     ========================= -->
+<div class="ad-slot ad-slot--pc ad-slot--side ad-slot--side-left">
+    <!-- 필요 시: data-vnt-placement="vertical_sticky_left" 로 변경 -->
+    <div class="vnt-ad" data-vnt-placement="vertical_sticky"></div>
+</div>
+
+<div class="ad-slot ad-slot--pc ad-slot--side ad-slot--side-right">
+    <!-- 필요 시: data-vnt-placement="vertical_sticky_right" 로 변경 -->
+    <div class="vnt-ad" data-vnt-placement="vertical_sticky"></div>
+</div>
+
 <!-- Flash Alert -->
 {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -83,11 +97,19 @@
     </div>
 </section>
 
-<!-- Ads (베나투스 광고 기입 예정) -->
+<!-- =========================
+     중앙 광고 (PC/모바일 분기)
+     PC: leaderboard
+     Mobile: mobile_banner
+     ========================= -->
 <div class="ad-section">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
-    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <div class="ad-slot ad-slot--pc ad-slot--leaderboard">
+        <div class="vnt-ad" data-vnt-placement="leaderboard"></div>
+    </div>
+
+    <div class="ad-slot ad-slot--mobile ad-slot--mobile-banner">
+        <div class="vnt-ad" data-vnt-placement="mobile_banner"></div>
+    </div>
 </div>
 
 <!-- News Grid -->
@@ -187,12 +209,28 @@
     </div>
 </div>
 
-<!-- Ads (베나투스 광고 기입 예정)-->
+<!-- =========================
+     Mobile 추가 1개: mobile_mpu (공지/업데이트 아래)
+     ========================= -->
 <div class="ad-section">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
-    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <div class="ad-slot ad-slot--mobile ad-slot--mobile-mpu">
+        <div class="vnt-ad" data-vnt-placement="mobile_mpu"></div>
+    </div>
 </div>
+
+<!-- =========================
+     하단 고정 (PC/모바일 분기)
+     PC: horizontal_sticky
+     Mobile: mobile_horizontal_sticky
+     ========================= -->
+<div class="ad-slot ad-slot--pc ad-slot--sticky-bottom">
+    <div class="vnt-ad" data-vnt-placement="horizontal_sticky"></div>
+</div>
+
+<div class="ad-slot ad-slot--mobile ad-slot--sticky-bottom">
+    <div class="vnt-ad" data-vnt-placement="mobile_horizontal_sticky"></div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
