@@ -44,18 +44,10 @@
     </a>
 </section>
 
-<!-- 🔹 중앙 배너 -->
-<div id="vm-center-banner"
-     style="width:100%; display:flex; justify-content:center; margin:32px 0;">
+<!-- ✅ Top Slot: Desktop=desktop_takeover / Mobile=mobile_banner -->
+<div class="ad-section">
+  <div id="vnt-slot-home-top" class="vnt-ad vnt-minh-250"></div>
 </div>
-
-<!-- 🔹 측면 배너 -->
-<section id="content" style=display:flex>
-    <div id="vertical-sticky"></div>
-</section>
-
-
-
 
 <!-- Bookmarks -->
 <div class="bookmark-container" id="bookmark-container"></div>
@@ -96,9 +88,9 @@
     </div>
 </section>
 
-<!-- 🔹 하단 배너 -->
-<div id="vm-bottom-banner"
-     style="width:100%; display:flex; justify-content:center; margin:40px 0;">
+<!-- ✅ Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover -->
+<div class="ad-section">
+  <div id="vnt-slot-home-mid" class="vnt-ad vnt-minh-100"></div>
 </div>
 
 <!-- News Grid -->
@@ -197,7 +189,6 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -332,6 +323,27 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         renderBookmarks();
+    });
+
+    // ✅ Venatus (home 페이지 슬롯형 광고만 여기서 처리)
+    // - injected(좌우/하단 sticky)는 base.html에서만 처리됨 (중복 호출 금지)
+    window.__VM = window.__VM || [];
+    window.__VM.push(function(admanager, scope) {
+      try {
+        // Top Slot: Desktop=desktop_takeover / Mobile=mobile_banner
+        scope.Config.buildPlacement(function(cb) {
+          cb.add("desktop_takeover");
+          cb.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
+        }, "home-top").display("vnt-slot-home-top");
+
+        // Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover
+        scope.Config.buildPlacement(function(cb) {
+          cb.add("leaderboard");
+          cb.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
+        }, "home-mid").display("vnt-slot-home-mid");
+      } catch (e) {
+        console.warn("[VENATUS] home placements failed:", e);
+      }
     });
 </script>
 {% endblock %}
