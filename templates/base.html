@@ -23,23 +23,30 @@
         document.head.appendChild(s);
 
         var initScript = document.createElement('script');
-        initScript.text = `
-            self.__VM = self.__VM || [];
-            self.__VM.push(function (admanager, scope) {
+            initScript.text = `
+                self.__VM = self.__VM || [];
+                self.__VM.push(function (admanager, scope) {
 
-                // 중앙 메인 배너 (Desktop / Mobile)
-                scope.Config.buildPlacement(function (configBuilder) {
-                    configBuilder.add("billboard");
-                    configBuilder.addDefaultOrUnique("mobile_banner")
-                                 .setBreakPoint("mobile");
-                }, "home-center").display("vm-center-banner");
+                    /* 중앙 배너 */
+                    scope.Config.buildPlacement(function (configBuilder) {
+                        configBuilder.add("billboard");
+                        configBuilder.addDefaultOrUnique("mobile_banner")
+                                     .setBreakPoint("mobile");
+                    }, "home-center").display("vm-center-banner");
 
-                // 좌/우 Sticky 광고
-                scope.Config.get("vertical_sticky").display();
+                    /* 하단 배너 */
+                    scope.Config.buildPlacement(function (configBuilder) {
+                        configBuilder.add("leaderboard");
+                        configBuilder.addDefaultOrUnique("mobile_banner")
+                                     .setBreakPoint("mobile");
+                    }, "home-bottom").display("vm-bottom-banner");
 
-            });
-        `;
-        document.head.appendChild(initScript);
+                    /* 좌/우 Sticky 광고 */
+                    scope.Config.get("vertical_sticky").display();
+
+                });
+            `;
+            document.head.appendChild(initScript);
       })();
     </script>
 
