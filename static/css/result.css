@@ -7,6 +7,54 @@
     margin-bottom: 24px;
 }
 
+/* ✅ 기본정보 카드 내부: 좌(기본정보) + 우(비디오) 2컬럼 레이아웃 */
+.player-info-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+}
+
+/* 왼쪽 영역(기존 기본정보) */
+.player-info-left {
+    flex: 1 1 auto;
+    min-width: 0; /* 긴 텍스트 등으로 레이아웃 깨짐 방지 */
+}
+
+/* 오른쪽 영역(비디오) */
+.player-info-right {
+    flex: 0 0 360px;  /* ✅ 데스크탑에서 오른쪽 폭 */
+    max-width: 360px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 비디오 박스 */
+.result-video {
+    width: 100%;
+    aspect-ratio: 16 / 9; /* ✅ 비율 유지하며 높이 자동 계산 */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 비디오 내부(iframe/video 등) 꽉 채우기 */
+#video iframe,
+#video video,
+#video embed,
+#video object {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
+}
+
+/* 기존 플레이어 정보 컨텐츠 */
 .player-info-content {
     display: flex;
     justify-content: space-between;
@@ -410,6 +458,21 @@
     .opponent-grid {
         grid-template-columns: 1fr;
     }
+
+    /* ✅ 태블릿 이하: 기본정보/비디오를 세로 스택 */
+    .player-info-layout {
+        flex-direction: column;
+    }
+
+    .player-info-right {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+
+    .result-video {
+        max-width: 640px;
+        margin: 0 auto;
+    }
 }
 
 @media (max-width: 768px) {
@@ -420,6 +483,17 @@
 
     .player-info-desktop {
         display: none;
+    }
+
+    /* ✅ 모바일에선 비디오 높이가 너무 커보이면 조금 줄이기 */
+    .player-info-right {
+        max-width: 100%;
+    }
+
+    .result-video {
+        aspect-ratio: 16 / 9;
+        max-width: 520px;
+        margin: 0 auto;
     }
 
     /* Play Style - 3 lines on mobile */
@@ -511,5 +585,10 @@
 
     .winrate-percentage {
         font-size: 1.5rem;
+    }
+
+    /* ✅ 작은 화면 비디오 폭/비율 안정화 */
+    .result-video {
+        max-width: 100%;
     }
 }
