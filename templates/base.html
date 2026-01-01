@@ -1,37 +1,39 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- (옵션) 카카오 인앱 브라우저 감지: 원하면 Venatus도 숨기기 -->
     <script>
-        // 카카오 인앱 브라우저 감지
+      (function () {
         var isKakaoInApp = /KAKAOTALK/i.test(navigator.userAgent);
 
-        if (!isKakaoInApp) {
-            // 카카오가 아닐 때만 AdSense 로드
-            var adScript = document.createElement('script');
-            adScript.async = true;
-            adScript.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302';
-            adScript.crossOrigin = 'anonymous';
-            document.head.appendChild(adScript);
-        } else {
-            // 카카오 인앱 브라우저일 때 광고 숨김 스타일 추가
-            var style = document.createElement('style');
-            style.textContent = '.adsbygoogle, ins.adsbygoogle, .ad-container, .ad-section { display: none !important; }';
-            document.head.appendChild(style);
+        // 카카오 인앱에서 광고를 아예 숨기고 싶다면 유지
+        if (isKakaoInApp) {
+          var style = document.createElement('style');
+          style.textContent = `
+            /* Venatus 광고 컨테이너 숨김 */
+            .vnt-ad, [data-vnt-placement] { display: none !important; }
+          `;
+          document.head.appendChild(style);
+          return;
         }
+
+        // ✅ Venatus Head Script (모든 페이지 공통)
+        // 가이드: <head>에 Venatus Head Script 추가 :contentReference[oaicite:5]{index=5}
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://hb.vntsm.com/v4/live/vms/sites/fcgg.kr/index.js';
+        document.head.appendChild(s);
+      })();
     </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
-    <meta name="google-adsense-account" content="ca-pub-7970639123590302">
     <meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 피파 전적, 피파 전적 검색, FC온라인 전적, FC온라인 전적검색, 플레이스타일, 승률 개선, 수수료 계산기, 빠칭코, 선수 티어, 에프씨지지, fcgg, fc.gg">
     <meta name="robots" content="max-snippet:50, max-image-preview:large" />
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-67J7MBCLN9"></script>
-    <script>
-      window.redirectTarget = "https://aros100.com";
-    </script>
-    <script src="https://cdn.jsdelivr.net/gh/abaeksite/aros_adsense_blocker@main/aros_adsense_blocker_v7-1.js"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
@@ -67,7 +69,21 @@
     <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
     <meta property="og:type" content="website">
     {% block extra_meta %}{% endblock %}
+
+    <!-- (권장) Venatus 광고 컨테이너 공통 CSS: 중앙정렬 + 최소높이 -->
+    <style>
+      .vnt-ad {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+      /* 예시: takeover는 큰 사이즈가 올 수 있어 최소 높이 확보 권장 */
+      .vnt-ad--desktop-takeover { min-height: 250px; }
+      .vnt-ad--mobile-banner { min-height: 100px; }
+    </style>
 </head>
+
 <body>
     <!-- Google Tag Manager (noscript) -->
     <noscript>
@@ -86,6 +102,7 @@
     {% include 'components/header.html' %}
 
     <main class="main-container">
+        <!-- ✅ 페이지별로 여기에 원하는 광고 div를 넣으면 됨 -->
         {% block content %}{% endblock %}
     </main>
 
@@ -94,9 +111,37 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- ✅ Venatus placements 자동 디스플레이 (SSR/Flask용) -->
+    <script>
+      // 가이드의 핵심: __VM.push 안에서 placement를 display()로 붙임 :contentReference[oaicite:6]{index=6}
+      window.__VM = window.__VM || [];
+      window.__VM.push(function(admanager, scope) {
+        document.querySelectorAll('[data-vnt-placement]').forEach(function(el) {
+          var placementName = el.getAttribute('data-vnt-placement');
+          var instanceName = el.getAttribute('data-vnt-instance') || undefined;
+
+          // injected/sticky 계열은 body에 붙이는 방식 사용 예시가 있음 :contentReference[oaicite:7]{index=7}
+          var injected = ['horizontal_sticky','mobile_horizontal_sticky','video_slider','interstitial'].includes(placementName);
+
+          try {
+            if (placementName === 'vertical_sticky') {
+              // vertical_sticky는 별도 API 예시가 있음 :contentReference[oaicite:8]{index=8}
+              scope.Config.verticalSticky().display();
+              return;
+            }
+
+            // 일반 배치: display(el)
+            // injected 배치: display({ body:true })
+            scope.Config.get(placementName, instanceName).display(injected ? { body: true } : el);
+          } catch (e) {
+            console.warn('[VENATUS] placement display failed:', placementName, e);
+          }
+        });
+      });
+    </script>
+
     <!-- Common Scripts -->
     <script>
-        // Loading Overlay Functions
         function showLoading() {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.style.display = 'flex';
@@ -107,19 +152,16 @@
             if (overlay) overlay.style.display = 'none';
         }
 
-        // Hide loading on page show (back button)
         window.addEventListener('pageshow', function(event) {
             if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
                 hideLoading();
             }
         });
 
-        // Mobile Menu Toggle
         document.getElementById('menuToggle')?.addEventListener('click', () => {
             document.getElementById('headerNav').classList.toggle('active');
         });
 
-        // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             const nav = document.getElementById('headerNav');
             const toggle = document.getElementById('menuToggle');
@@ -128,7 +170,6 @@
             }
         });
 
-        // Sponsor Popup
         document.getElementById('happyButton')?.addEventListener('click', () => {
             document.getElementById('happyPopup').style.display = 'block';
             document.getElementById('popupOverlay').style.display = 'block';
