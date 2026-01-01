@@ -26,35 +26,31 @@
         initScript.text = `
             self.__VM = self.__VM || [];
             self.__VM.push(function (admanager, scope) {
-
+                
+                scope.Config.setBreakPoint("mobile", "max-width:800px");
+                
                 /* 상단 배너 */
-                scope.Config.buildPlacement(function (configBuilder) {
+                scope.Config.buildPlacement((configBuilder) => {
                     configBuilder.add("desktop_takeover");
-                    configBuilder.addDefaultOrUnique("mobile_banner")
-                                 .setBreakPoint("mobile");
-                }, "home-top").display("vm-top-banner");
+                    configBuilder.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
+                }).display("vm-top-banner");
                 
                 /* 중앙 배너 */
-                scope.Config.buildPlacement(function (configBuilder) {
+                scope.Config.buildPlacement((configBuilder) => {
                     configBuilder.add("leaderboard");
-                    configBuilder.addDefaultOrUnique("mobile_banner")
-                                 .setBreakPoint("mobile");
-                }, "home-center").display("vm-center-banner");
+                    configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
+                }).display("vm-center-banner");
 
                 /* 하단 배너 */
-                scope.Config.buildPlacement(function (configBuilder) {
+                scope.Config.buildPlacement((configBuilder) => {
                     configBuilder.add("leaderboard");
-                    configBuilder.addDefaultOrUnique("mobile_banner")
-                                 .setBreakPoint("mobile");
-                }, "home-bottom").display("vm-bottom-banner");
+                    configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
+                }).display("vm-bottom-banner");
 
-                scope.Config.get('desktop_takeover').display('desktop-takeover');
-
-                scope.Config.buildPlacement(function (configBuilder) {
+                scope.Config.buildPlacement((configBuilder) => {
                     configBuilder.add("video");
-                    configBuilder.addDefaultOrUnique("video")
-                                 .setBreakPoint("mobile");
-                }, "video").display("video");
+                    configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
+                }).display("video");
                 
                 /* 좌/우 Sticky 광고 */
                 scope.Config.get("vertical_sticky").display('vertical-sticky');
