@@ -33,21 +33,18 @@
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
 
-<!-- Player Info Card -->
-<div class="card-modern player-info-card">
-    <div class="card-header-modern">
-        <h2 class="card-title-modern">
-            기본정보
-            <button class="bookmark-btn header-bookmark" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button>
-        </h2>
-    </div>
-
-    <div class="card-body-modern">
-        <!-- ✅ 여기부터: 좌(기본정보) + 우(비디오) 레이아웃 래퍼 -->
-        <div class="player-info-layout">
-
-            <!-- LEFT: 기존 기본정보 영역 -->
-            <div class="player-info-left">
+<!-- ✅ 상단 2컬럼 래퍼: (왼쪽)기본정보 카드 / (오른쪽)영상 광고 -->
+<div class="result-top-row">
+    <!-- Left: Player Info Card (그대로) -->
+    <div class="result-top-left">
+        <div class="card-modern player-info-card">
+            <div class="card-header-modern">
+                <h2 class="card-title-modern">
+                    기본정보
+                    <button class="bookmark-btn header-bookmark" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button>
+                </h2>
+            </div>
+            <div class="card-body-modern">
                 <div class="player-info-content">
                     <!-- Mobile Layout: tier, level, nickname, bookmark in one row -->
                     <div class="player-info-mobile">
@@ -87,14 +84,12 @@
                     </div>
                 </div>
             </div>
-
-            <!-- RIGHT: 비디오 영역 (✅ 빨간 박스 자리) -->
-            <aside class="player-info-right" aria-label="video">
-                <div id="video" class="result-video"></div>
-            </aside>
-
         </div>
-        <!-- ✅ 여기까지 -->
+    </div>
+
+    <!-- Right: Video (기본정보 박스 밖!) -->
+    <div class="result-top-right">
+        <div id="video" class="result-video"></div>
     </div>
 </div>
 
@@ -299,11 +294,11 @@
 </section>
 {% endif %}
 
+<!-- Ads (베나투스 광고 기입 예정)-->
 <!-- 🔹 중앙 배너 -->
 <div id="vm-bottom-banner"
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
