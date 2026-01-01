@@ -15,21 +15,10 @@
     margin-bottom: 16px;
 }
 
-.text-primary {
-    color: var(--primary-green);
-}
-
-.text-info {
-    color: #3b82f6;
-}
-
-.text-danger {
-    color: #ef4444;
-}
-
-.text-pink {
-    color: #ec4899;
-}
+.text-primary { color: var(--primary-green); }
+.text-info { color: #3b82f6; }
+.text-danger { color: #ef4444; }
+.text-pink { color: #ec4899; }
 
 .chatbot-link {
     display: inline-block;
@@ -143,9 +132,7 @@
     transition: background 0.2s ease;
 }
 
-.popular-item:last-child {
-    border-bottom: none;
-}
+.popular-item:last-child { border-bottom: none; }
 
 .popular-item:hover {
     background: rgba(40, 167, 69, 0.05);
@@ -211,22 +198,68 @@
 }
 
 /* ===========================================
-   ✅ Venatus Ad Wrap (추가)
+   ✅ Venatus Ad Area (고정 박스 방식)
+   - 광고 "소재" 크기는 강제 불가
+   - 대신 "박스"를 고정해서 레이아웃 흔들림 제거
    =========================================== */
-.ad-wrap {
-    margin: 10px 0 14px;
+
+.ad-section {
     width: 100%;
     display: flex;
     justify-content: center;
 }
 
-/* base.html에도 동일 토글이 있지만,
-   페이지 단에서 보수적으로 한 번 더 둬도 괜찮음 */
-.ad-slot--mobile { display: none; }
+.ad-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
+    /* 광고가 작게 뜨더라도 중앙 정렬 + 박스 밖으로 넘치지 않게 */
+    overflow: hidden;
+
+    /* 페이지 간격 */
+    margin: 24px auto;
+}
+
+/* TOP: 데스크탑에서 빨간 박스(큰 배너) 느낌 */
+.ad-box--top {
+    max-width: 728px;
+    height: 250px; /* billboard/desktop_takeover가 728x250 계열이라고 가정 */
+}
+
+/* MID: 데스크탑 leaderboard */
+.ad-box--mid {
+    max-width: 728px;
+    height: 90px;
+}
+
+/* Venatus 내부에 iframe/img 들어오는 경우 */
+.ad-box iframe,
+.ad-box img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    display: block;
+}
+
+/* Mobile: 빈 공간 커 보이는 문제 완화
+   - top: mobile_banner(보통 320x100 계열)
+   - mid: mobile_takeover(보통 300x250 계열)
+   ※ 정확 사이즈가 다르면 height만 Venatus가 권장하는 값으로 바꿔줘 */
 @media (max-width: 768px) {
-    .ad-slot--pc { display: none; }
-    .ad-slot--mobile { display: block; }
+    .ad-box {
+        margin: 18px auto;
+    }
+
+    .ad-box--top {
+        max-width: 360px;
+        height: 100px;
+    }
+
+    .ad-box--mid {
+        max-width: 360px;
+        height: 250px;
+    }
 }
 
 /* News Grid */
@@ -303,9 +336,7 @@
 }
 
 @media (max-width: 768px) {
-    .hero-title {
-        font-size: 1.4rem;
-    }
+    .hero-title { font-size: 1.4rem; }
 
     .popular-item {
         padding: 10px 12px;
@@ -323,9 +354,7 @@
         min-width: 55px;
     }
 
-    .popular-nickname {
-        font-size: 0.9rem;
-    }
+    .popular-nickname { font-size: 0.9rem; }
 
     .popular-tier {
         width: 28px;
@@ -334,24 +363,14 @@
 }
 
 @media (max-width: 480px) {
-    .hero-section {
-        padding: 16px 0;
-    }
-
-    .hero-title {
-        font-size: 1.2rem;
-    }
+    .hero-section { padding: 16px 0; }
+    .hero-title { font-size: 1.2rem; }
 
     .chatbot-link {
         padding: 8px 16px;
         font-size: 0.9rem;
     }
 
-    .bookmark-item {
-        padding: 4px 10px;
-    }
-
-    .bookmark-nickname {
-        font-size: 0.8rem;
-    }
+    .bookmark-item { padding: 4px 10px; }
+    .bookmark-nickname { font-size: 0.8rem; }
 }
