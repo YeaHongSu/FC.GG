@@ -20,40 +20,41 @@
          style="width:100%; display:flex; justify-content:center; margin:32px 0;">
     </div>
 
-    <!-- ✅ 상단 2컬럼: (왼쪽)포지션별 선수 티어 카드 / (오른쪽)비디오 광고 -->
-    <div class="tier-top-row">
-        <!-- Left: Position Container (기존 카드 그대로) -->
-        <div class="tier-top-left">
-            <div class="card-modern position-container">
-                <div class="card-header-modern">
-                    <h2 class="card-title-modern">포지션별 선수 티어</h2>
+    <!-- ✅ 상단: 좌(포지션별 선수 티어 카드) + 우(비디오 광고 카드) -->
+    <div class="tier-top-grid">
+        <!-- Left: Position Container -->
+        <div class="card-modern position-container tier-left-card">
+            <div class="card-header-modern">
+                <h2 class="card-title-modern">포지션별 선수 티어</h2>
+            </div>
+            <div class="card-body-modern">
+                <div class="position-controls">
+                    <!-- Position Tabs -->
+                    <div class="position-tabs">
+                        <button class="position-tab active" data-position-options="ST,CF,LW,RW">공격수</button>
+                        <button class="position-tab" data-position-options="CAM,CM,CDM">미드필더</button>
+                        <button class="position-tab" data-position-options="CB,LB,RB">수비수</button>
+                        <button class="position-tab" data-position-options="GK">골키퍼</button>
+                    </div>
+
+                    <!-- Position Dropdown -->
+                    <select id="positionDropdown" class="position-dropdown"></select>
                 </div>
-                <div class="card-body-modern">
-                    <div class="position-controls">
-                        <!-- Position Tabs -->
-                        <div class="position-tabs">
-                            <button class="position-tab active" data-position-options="ST,CF,LW,RW">공격수</button>
-                            <button class="position-tab" data-position-options="CAM,CM,CDM">미드필더</button>
-                            <button class="position-tab" data-position-options="CB,LB,RB">수비수</button>
-                            <button class="position-tab" data-position-options="GK">골키퍼</button>
-                        </div>
 
-                        <!-- Position Dropdown -->
-                        <select id="positionDropdown" class="position-dropdown"></select>
-                    </div>
-
-                    <!-- Player Search -->
-                    <div class="player-search">
-                        <input type="text" id="playerSearchInput" class="search-input" placeholder="선수 이름을 입력하세요">
-                        <button class="search-btn" id="searchPlayerButton">검색</button>
-                    </div>
+                <!-- Player Search -->
+                <div class="player-search">
+                    <input type="text" id="playerSearchInput" class="search-input" placeholder="선수 이름을 입력하세요">
+                    <button class="search-btn" id="searchPlayerButton">검색</button>
                 </div>
             </div>
         </div>
 
-        <!-- Right: Video Ad (카드 밖 오른쪽!) -->
-        <div class="tier-top-right">
-            <div id="video" class="tier-video"></div>
+        <!-- Right: Video Ad (카드 밖 오른쪽) -->
+        <div class="card-modern tier-video-card">
+            <div class="card-body-modern tier-video-body">
+                <!-- ✅ 여기 안에 광고 스크립트가 iframe/video 등을 주입 -->
+                <div id="video" class="tier-video-slot"></div>
+            </div>
         </div>
     </div>
 
@@ -227,9 +228,11 @@
                     tiers[tier].forEach(player => {
                         const tierItem = document.createElement('div');
                         tierItem.classList.add('tier-item', `tier-${tier.charAt(0)}`);
+
                         const tierIcon = document.createElement('div');
                         tierIcon.classList.add('tier-icon');
                         tierIcon.innerText = tier.charAt(0) === '0' ? 'OP' : `${tier.charAt(0)}티어`;
+
                         const playerDetails = `
                             <div class="tier-column"><img src="${player['시즌']}" alt="시즌" class="season-img"></div>
                             <div class="tier-column player-cell">
@@ -238,6 +241,7 @@
                             </div>
                             <div class="tier-column">${player['FC스코어']}</div>
                             <div class="tier-column">${player['출전']}</div>`;
+
                         tierItem.innerHTML = tierIcon.outerHTML + playerDetails;
                         tierListContainer.appendChild(tierItem);
                     });
