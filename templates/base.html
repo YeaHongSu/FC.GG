@@ -1,24 +1,22 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <!-- (옵션) 카카오 인앱 브라우저 감지: 원하면 Venatus도 숨기기 -->
+    <!-- ✅ (옵션) 카카오 인앱 브라우저 감지: 광고 완전 비활성화(원하면 유지) -->
     <script>
       (function () {
         var isKakaoInApp = /KAKAOTALK/i.test(navigator.userAgent);
 
-        // 카카오 인앱에서 광고를 아예 숨기고 싶다면 유지
         if (isKakaoInApp) {
           var style = document.createElement('style');
           style.textContent = `
             /* Venatus 광고 컨테이너 숨김 */
-            .vnt-ad, [data-vnt-placement] { display: none !important; }
+            .vnt-ad, [id^="vnt-"], [data-vnt-placement] { display: none !important; }
           `;
           document.head.appendChild(style);
           return;
         }
 
         // ✅ Venatus Head Script (모든 페이지 공통)
-        // 가이드: <head>에 Venatus Head Script 추가 :contentReference[oaicite:5]{index=5}
         var s = document.createElement('script');
         s.async = true;
         s.src = 'https://hb.vntsm.com/v4/live/vms/sites/fcgg.kr/index.js';
@@ -70,17 +68,27 @@
     <meta property="og:type" content="website">
     {% block extra_meta %}{% endblock %}
 
-    <!-- (권장) Venatus 광고 컨테이너 공통 CSS: 중앙정렬 + 최소높이 -->
+    <!-- ✅ Venatus 공통 CSS (레이아웃 밀림 방지 + 중앙정렬) -->
     <style>
-      .vnt-ad {
+      .vnt-ad{
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 100%;
       }
-      /* 예시: takeover는 큰 사이즈가 올 수 있어 최소 높이 확보 권장 */
-      .vnt-ad--desktop-takeover { min-height: 250px; }
-      .vnt-ad--mobile-banner { min-height: 100px; }
+
+      /* 최소 높이(권장): 페이지가 밀리지 않게 */
+      .vnt-minh-90  { min-height: 90px; }
+      .vnt-minh-100 { min-height: 100px; }
+      .vnt-minh-250 { min-height: 250px; }
+      .vnt-minh-600 { min-height: 600px; }
+
+      /* PC/모바일 슬롯 토글 (너 사이트 기준 768px) */
+      .ad-slot--mobile { display: none; }
+      @media (max-width: 768px) {
+        .ad-slot--pc { display: none; }
+        .ad-slot--mobile { display: block; }
+      }
     </style>
 </head>
 
@@ -102,7 +110,6 @@
     {% include 'components/header.html' %}
 
     <main class="main-container">
-        <!-- ✅ 페이지별로 여기에 원하는 광고 div를 넣으면 됨 -->
         {% block content %}{% endblock %}
     </main>
 
@@ -111,32 +118,34 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- ✅ Venatus placements 자동 디스플레이 (SSR/Flask용) -->
+    <!-- ✅ Venatus (Non-SPA/MPA) : 공통으로 "주입형" 광고만 여기서 처리
+         - vertical_sticky (PC 좌/우)
+         - horizontal_sticky / mobile_horizontal_sticky (하단 고정)
+         * leaderboard/mobile_banner/mobile_takeover 같은 "콘텐츠 안" 배치는 각 페이지에서 슬롯ID로 display() -->
     <script>
-      // 가이드의 핵심: __VM.push 안에서 placement를 display()로 붙임 :contentReference[oaicite:6]{index=6}
       window.__VM = window.__VM || [];
-      window.__VM.push(function(admanager, scope) {
-        document.querySelectorAll('[data-vnt-placement]').forEach(function(el) {
-          var placementName = el.getAttribute('data-vnt-placement');
-          var instanceName = el.getAttribute('data-vnt-instance') || undefined;
+      window.__VM.push(function (admanager, scope) {
+        var isMobile = window.matchMedia('(max-width: 768px)').matches;
 
-          // injected/sticky 계열은 body에 붙이는 방식 사용 예시가 있음 :contentReference[oaicite:7]{index=7}
-          var injected = ['horizontal_sticky','mobile_horizontal_sticky','video_slider','interstitial'].includes(placementName);
-
+        // 1) 좌/우 sticky (PC에서만)
+        if (!isMobile) {
           try {
-            if (placementName === 'vertical_sticky') {
-              // vertical_sticky는 별도 API 예시가 있음 :contentReference[oaicite:8]{index=8}
-              scope.Config.verticalSticky().display();
-              return;
-            }
-
-            // 일반 배치: display(el)
-            // injected 배치: display({ body:true })
-            scope.Config.get(placementName, instanceName).display(injected ? { body: true } : el);
+            scope.Config.verticalSticky().display();
           } catch (e) {
-            console.warn('[VENATUS] placement display failed:', placementName, e);
+            console.warn('[VENATUS] verticalSticky display failed', e);
           }
-        });
+        }
+
+        // 2) 하단 고정 sticky (PC/모바일 1개만)
+        try {
+          if (isMobile) {
+            scope.Config.get('mobile_horizontal_sticky').display({ body: true });
+          } else {
+            scope.Config.get('horizontal_sticky').display({ body: true });
+          }
+        } catch (e) {
+          console.warn('[VENATUS] bottom sticky display failed', e);
+        }
       });
     </script>
 
