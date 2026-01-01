@@ -136,6 +136,28 @@
           } catch (e) {
             console.warn('[VENATUS] placement display failed:', placementName, e);
           }
+
+          /* ======================
+          Desktop Takeover
+          ====================== */
+          if (window.innerWidth >= 1024) {
+            try {
+              scope.Config.get('desktop_takeover').display();
+            } catch (e) {
+              console.warn('[VENATUS] desktop_takeover failed', e);
+            }
+          }
+        
+          /* ======================
+          Mobile Takeover
+          ====================== */
+          if (window.innerWidth < 1024) {
+            try {
+              scope.Config.get('mobile_takeover').display();
+            } catch (e) {
+              console.warn('[VENATUS] mobile_takeover failed', e);
+            }
+          }
         });
       });
     </script>
