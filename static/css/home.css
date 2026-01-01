@@ -209,43 +209,62 @@
     justify-content: center;
 }
 
+/* ✅ 핵심: 높이 흔들림(커졌다 작아졌다) 방지용 "완전 고정" */
 .ad-box {
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
 
-    /* 광고가 작게 뜨더라도 중앙 정렬 + 박스 밖으로 넘치지 않게 */
-    overflow: hidden;
+    /* 광고가 커져도 레이아웃을 늘리지 못하게 */
+    overflow: hidden !important;
+
+    /* flex 컨텍스트에서 늘어나는 케이스 방지 */
+    flex: 0 0 auto;
 
     /* 페이지 간격 */
     margin: 24px auto;
 }
 
-/* TOP: 데스크탑에서 빨간 박스(큰 배너) 느낌 */
+/* TOP: 데스크탑 (예: 728x250 계열) - ✅ 높이 절대 고정 */
 .ad-box--top {
     max-width: 728px;
-    height: 250px; /* billboard/desktop_takeover가 728x250 계열이라고 가정 */
+
+    height: 250px !important;
+    min-height: 250px !important;
+    max-height: 250px !important;
+
+    overflow: hidden !important;
 }
 
-/* MID: 데스크탑 leaderboard */
+/* MID: 데스크탑 (예: 728x90 계열) - ✅ 높이 절대 고정 */
 .ad-box--mid {
     max-width: 728px;
-    height: 90px;
+
+    height: 90px !important;
+    min-height: 90px !important;
+    max-height: 90px !important;
+
+    overflow: hidden !important;
 }
 
-/* Venatus 내부에 iframe/img 들어오는 경우 */
+/* ✅ Venatus 내부에 iframe/img/div가 들어오면서 height를 바꾸는 것 방지 */
+.ad-box > div,
 .ad-box iframe,
 .ad-box img {
     max-width: 100% !important;
     max-height: 100% !important;
-    display: block;
+}
+
+/* iframe 특유의 인라인 여백/라인박스 방지 */
+.ad-box iframe {
+    display: block !important;
 }
 
 /* Mobile: 빈 공간 커 보이는 문제 완화
    - top: mobile_banner(보통 320x100 계열)
    - mid: mobile_takeover(보통 300x250 계열)
-   ※ 정확 사이즈가 다르면 height만 Venatus가 권장하는 값으로 바꿔줘 */
+*/
 @media (max-width: 768px) {
     .ad-box {
         margin: 18px auto;
@@ -253,12 +272,22 @@
 
     .ad-box--top {
         max-width: 360px;
-        height: 100px;
+
+        height: 100px !important;
+        min-height: 100px !important;
+        max-height: 100px !important;
+
+        overflow: hidden !important;
     }
 
     .ad-box--mid {
         max-width: 360px;
-        height: 250px;
+
+        height: 250px !important;
+        min-height: 250px !important;
+        max-height: 250px !important;
+
+        overflow: hidden !important;
     }
 }
 
