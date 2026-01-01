@@ -27,53 +27,74 @@
         <button class="search-btn" id="search_button">검색</button>
     </div>
 </section>
+
 <!-- 🔹 중앙 배너 -->
 <div id="vm-top-banner"
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
+
 <!-- Player Info Card -->
 <div class="card-modern player-info-card">
     <div class="card-header-modern">
-        <h2 class="card-title-modern">기본정보 <button class="bookmark-btn header-bookmark" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button></h2>
+        <h2 class="card-title-modern">
+            기본정보
+            <button class="bookmark-btn header-bookmark" id="bookmark-btn" onclick="toggleBookmark('{{ level_data.nickname }}')">★</button>
+        </h2>
     </div>
+
     <div class="card-body-modern">
-        <div class="player-info-content">
-            <!-- Mobile Layout: tier, level, nickname, bookmark in one row -->
-            <div class="player-info-mobile">
-                {% if level_data.tier_image %}
-                <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image-mobile">
-                {% else %}
-                <span class="tier-text-mobile">{{ level_data.tier_name }}</span>
-                {% endif %}
-                <span class="level-mobile">Lv.{{ level_data.level }}</span>
-                <span class="player-nickname-mobile">{{ level_data.nickname }}</span>
-                <span class="player-badge" id="title-box-mobile" style="display: none;"></span>
-            </div>
-            <!-- Desktop Layout -->
-            <div class="player-info-desktop">
-                <div class="player-main">
-                    <span class="player-nickname">{{ level_data.nickname }}</span>
-                    <span class="player-badge" id="title-box" style="display: none;"></span>
+        <!-- ✅ 여기부터: 좌(기본정보) + 우(비디오) 레이아웃 래퍼 -->
+        <div class="player-info-layout">
+
+            <!-- LEFT: 기존 기본정보 영역 -->
+            <div class="player-info-left">
+                <div class="player-info-content">
+                    <!-- Mobile Layout: tier, level, nickname, bookmark in one row -->
+                    <div class="player-info-mobile">
+                        {% if level_data.tier_image %}
+                        <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image-mobile">
+                        {% else %}
+                        <span class="tier-text-mobile">{{ level_data.tier_name }}</span>
+                        {% endif %}
+                        <span class="level-mobile">Lv.{{ level_data.level }}</span>
+                        <span class="player-nickname-mobile">{{ level_data.nickname }}</span>
+                        <span class="player-badge" id="title-box-mobile" style="display: none;"></span>
+                    </div>
+
+                    <!-- Desktop Layout -->
+                    <div class="player-info-desktop">
+                        <div class="player-main">
+                            <span class="player-nickname">{{ level_data.nickname }}</span>
+                            <span class="player-badge" id="title-box" style="display: none;"></span>
+                        </div>
+                        <div class="player-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">레벨</div>
+                                <div class="stat-value">{{ level_data.level }}</div>
+                            </div>
+                            {% if level_data.tier_image %}
+                            <div class="stat-item">
+                                <div class="stat-label">최고 티어</div>
+                                <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image">
+                            </div>
+                            {% else %}
+                            <div class="stat-item">
+                                <div class="stat-label">최고 티어</div>
+                                <div class="stat-value">{{ level_data.tier_name }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                <div class="player-stats">
-                    <div class="stat-item">
-                        <div class="stat-label">레벨</div>
-                        <div class="stat-value">{{ level_data.level }}</div>
-                    </div>
-                    {% if level_data.tier_image %}
-                    <div class="stat-item">
-                        <div class="stat-label">최고 티어</div>
-                        <img src="{{ level_data.tier_image }}" alt="티어" class="tier-image">
-                    </div>
-                    {% else %}
-                    <div class="stat-item">
-                        <div class="stat-label">최고 티어</div>
-                        <div class="stat-value">{{ level_data.tier_name }}</div>
-                    </div>
-                    {% endif %}
-                </div>
             </div>
+
+            <!-- RIGHT: 비디오 영역 (✅ 빨간 박스 자리) -->
+            <aside class="player-info-right" aria-label="video">
+                <div id="video" class="result-video"></div>
+            </aside>
+
         </div>
+        <!-- ✅ 여기까지 -->
     </div>
 </div>
 
@@ -240,10 +261,12 @@
         <div class="opponent-grid" id="opponent-stats-list"></div>
     </div>
 </section>
+
 <!-- 🔹 중앙 배너 -->
 <div id="vm-center-banner"
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
+
 <!-- Match History Section -->
 <section class="card-modern match-section">
     <div class="card-header-modern">
@@ -276,14 +299,11 @@
 </section>
 {% endif %}
 
-<!-- Ads (베나투스 광고 기입 예정)-->
 <!-- 🔹 중앙 배너 -->
 <div id="vm-bottom-banner"
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
-<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
-<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+
 {% endblock %}
 
 {% block extra_js %}
