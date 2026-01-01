@@ -15,36 +15,45 @@
 <section class="tier-section">
     <h1 class="page-title">내가 쓰는 선수 티어는 무엇일까?</h1>
     <p class="page-subtitle">랭커 기준 선수 티어를 확인해 보세요!</p>
-    
+
     <div id="vm-center-banner"
          style="width:100%; display:flex; justify-content:center; margin:32px 0;">
     </div>
 
-    <!-- Position Container -->
-    <div class="card-modern position-container">
-        <div class="card-header-modern">
-            <h2 class="card-title-modern">포지션별 선수 티어</h2>
-        </div>
-        <div class="card-body-modern">
-            <div class="position-controls">
-                <!-- Position Tabs -->
-                <div class="position-tabs">
-                    <button class="position-tab active" data-position-options="ST,CF,LW,RW">공격수</button>
-                    <button class="position-tab" data-position-options="CAM,CM,CDM">미드필더</button>
-                    <button class="position-tab" data-position-options="CB,LB,RB">수비수</button>
-                    <button class="position-tab" data-position-options="GK">골키퍼</button>
+    <!-- ✅ 상단 2컬럼: (왼쪽)포지션별 선수 티어 카드 / (오른쪽)비디오 광고 -->
+    <div class="tier-top-row">
+        <!-- Left: Position Container (기존 카드 그대로) -->
+        <div class="tier-top-left">
+            <div class="card-modern position-container">
+                <div class="card-header-modern">
+                    <h2 class="card-title-modern">포지션별 선수 티어</h2>
                 </div>
+                <div class="card-body-modern">
+                    <div class="position-controls">
+                        <!-- Position Tabs -->
+                        <div class="position-tabs">
+                            <button class="position-tab active" data-position-options="ST,CF,LW,RW">공격수</button>
+                            <button class="position-tab" data-position-options="CAM,CM,CDM">미드필더</button>
+                            <button class="position-tab" data-position-options="CB,LB,RB">수비수</button>
+                            <button class="position-tab" data-position-options="GK">골키퍼</button>
+                        </div>
 
-                <!-- Position Dropdown -->
-                <select id="positionDropdown" class="position-dropdown">
-                </select>
-            </div>
+                        <!-- Position Dropdown -->
+                        <select id="positionDropdown" class="position-dropdown"></select>
+                    </div>
 
-            <!-- Player Search -->
-            <div class="player-search">
-                <input type="text" id="playerSearchInput" class="search-input" placeholder="선수 이름을 입력하세요">
-                <button class="search-btn" id="searchPlayerButton">검색</button>
+                    <!-- Player Search -->
+                    <div class="player-search">
+                        <input type="text" id="playerSearchInput" class="search-input" placeholder="선수 이름을 입력하세요">
+                        <button class="search-btn" id="searchPlayerButton">검색</button>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <!-- Right: Video Ad (카드 밖 오른쪽!) -->
+        <div class="tier-top-right">
+            <div id="video" class="tier-video"></div>
         </div>
     </div>
 
@@ -72,8 +81,6 @@
         </div>
     </div>
 </section>
-
-
 {% endblock %}
 
 {% block extra_js %}
