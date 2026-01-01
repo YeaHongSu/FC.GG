@@ -113,70 +113,32 @@
 
     <!-- ✅ Venatus placements 자동 디스플레이 (SSR/Flask용) -->
     <script>
-    window.__VM = window.__VM || [];
-    window.__VM.push(function(admanager, scope) {
-    
-      /* ==================================================
-         1. DOM 슬롯 기반 광고 (leaderboard, mpu 등)
-         ================================================== */
-      document.querySelectorAll('[data-vnt-placement]').forEach(function(el) {
-        var placementName = el.getAttribute('data-vnt-placement');
-        var instanceName  = el.getAttribute('data-vnt-instance') || undefined;
-    
-        // DOM 슬롯 광고만 처리
-        if ([
-          'leaderboard',
-          'billboard',
-          'mpu',
-          'mobile_banner',
-          'mobile_mpu'
-        ].includes(placementName)) {
-          try {
-            scope.Config.get(placementName, instanceName).display(el);
-          } catch (e) {
-            console.warn('[VENATUS] slot failed:', placementName, e);
-          }
-        }
-      });
-    
-      /* ==================================================
-         2. Side Sticky (좌/우) – 페이지당 1회
-         ================================================== */
-      try {
-        scope.Config.verticalSticky().display();
-      } catch (e) {
-        console.warn('[VENATUS] vertical_sticky failed', e);
-      }
-    
-      /* ==================================================
-         3. Takeover (페이지당 1회)
-         ================================================== */
-      try {
-        if (window.innerWidth >= 1024) {
-          scope.Config.get('desktop_takeover').display();
-        } else {
-          scope.Config.get('mobile_takeover').display();
-        }
-      } catch (e) {
-        console.warn('[VENATUS] takeover failed', e);
-      }
-    
-      /* ==================================================
-         4. 하단 고정 Sticky
-         ================================================== */
-      try {
-        if (window.innerWidth >= 1024) {
-          scope.Config.get('horizontal_sticky').display({ body: true });
-        } else {
-          scope.Config.get('mobile_horizontal_sticky').display({ body: true });
-        }
-      } catch (e) {
-        console.warn('[VENATUS] bottom sticky failed', e);
-      }
-    
-    });
-    </script>
+      // 가이드의 핵심: __VM.push 안에서 placement를 display()로 붙임 :contentReference[oaicite:6]{index=6}
+      window.__VM = window.__VM || [];
+      window.__VM.push(function(admanager, scope) {
+        document.querySelectorAll('[data-vnt-placement]').forEach(function(el) {
+          var placementName = el.getAttribute('data-vnt-placement');
+          var instanceName = el.getAttribute('data-vnt-instance') || undefined;
 
+          // injected/sticky 계열은 body에 붙이는 방식 사용 예시가 있음 :contentReference[oaicite:7]{index=7}
+          var injected = ['horizontal_sticky','mobile_horizontal_sticky','video_slider','interstitial'].includes(placementName);
+
+          try {
+            if (placementName === 'vertical_sticky') {
+              // vertical_sticky는 별도 API 예시가 있음 :contentReference[oaicite:8]{index=8}
+              scope.Config.verticalSticky().display();
+              return;
+            }
+
+            // 일반 배치: display(el)
+            // injected 배치: display({ body:true })
+            scope.Config.get(placementName, instanceName).display(injected ? { body: true } : el);
+          } catch (e) {
+            console.warn('[VENATUS] placement display failed:', placementName, e);
+          }
+        });
+      });
+    </script>
 
     <!-- Common Scripts -->
     <script>
