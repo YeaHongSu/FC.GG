@@ -22,9 +22,54 @@
     margin-bottom: 24px;
 }
 
+/* ✅ 상단: (왼쪽)포지션 카드 / (오른쪽)비디오 광고 */
+.tier-top-row {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.tier-top-left {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.tier-top-right {
+    flex: 0 0 360px;
+    max-width: 360px;
+    display: flex;
+    align-items: stretch;
+}
+
+/* ✅ 비디오 박스 */
+.tier-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 비디오 내부 요소 꽉 채우기 */
+#video iframe,
+#video video,
+#video embed,
+#video object {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
+}
+
 /* Position Container */
 .position-container {
-    margin-bottom: 24px;
+    margin-bottom: 0; /* ✅ 상단 래퍼에서 간격을 관리하므로 0 */
 }
 
 .position-controls {
@@ -343,6 +388,23 @@
 }
 
 /* Responsive */
+@media (max-width: 992px) {
+    /* ✅ 태블릿 이하: 2컬럼 -> 세로 스택 */
+    .tier-top-row {
+        flex-direction: column;
+    }
+
+    .tier-top-right {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+
+    .tier-video {
+        max-width: 720px;
+        margin: 0 auto;
+    }
+}
+
 @media (max-width: 768px) {
     .tier-header,
     .tier-item {
@@ -384,6 +446,11 @@
     .player-search {
         max-width: 100%;
     }
+
+    .tier-video {
+        max-width: 520px;
+        margin: 0 auto;
+    }
 }
 
 @media (max-width: 480px) {
@@ -419,5 +486,9 @@
 
     .player-cell span {
         font-size: 0.8rem;
+    }
+
+    .tier-video {
+        max-width: 100%;
     }
 }
