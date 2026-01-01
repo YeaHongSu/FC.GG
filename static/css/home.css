@@ -2,134 +2,6 @@
    Home Page Specific Styles
    =========================================== */
 
-/* ----------------------------
-   Venatus Ad Slots (NEW)
-   ---------------------------- */
-
-/* 기본: 모바일 슬롯은 숨기고 PC 슬롯만 보이게 */
-.ad-slot--mobile { display: none; }
-
-/* 공통 광고 슬롯 컨테이너 */
-.ad-slot {
-    width: 100%;
-}
-
-/* 광고 슬롯 내부 정렬 (가이드: 중앙정렬) */
-.ad-slot .vnt-ad {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* 기존 ad-section(중앙 광고 영역) 유지 + 살짝 정리 */
-.ad-section {
-    margin: 8px 0;
-}
-
-/* PC leaderboard 영역(중앙) */
-.ad-slot--leaderboard {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* 콘텐츠 흔들림 방지: 가장 큰 높이 기준(970x90) */
-    min-height: 90px;
-    padding: 8px 0;
-}
-
-/* Mobile banner 영역 */
-.ad-slot--mobile-banner {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* 320x100까지 고려 */
-    min-height: 100px;
-    padding: 8px 0;
-}
-
-/* Mobile MPU 영역 */
-.ad-slot--mobile-mpu {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    min-height: 250px; /* 300x250 기준 */
-    padding: 8px 0;
-}
-
-/* PC 좌/우 vertical sticky */
-.ad-slot--side {
-    position: fixed;
-    top: 120px; /* 헤더 높이에 맞춰 조절 가능 */
-    z-index: 50;
-
-    /* 슬롯 가시영역 */
-    width: 300px;
-    min-height: 600px;
-
-    /* 중앙 정렬 */
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-
-    /* 너무 튀지 않게 */
-    pointer-events: auto;
-}
-
-/* 좌/우 위치 */
-.ad-slot--side-left {
-    left: 16px;
-}
-
-.ad-slot--side-right {
-    right: 16px;
-}
-
-/* PC에서 사이드 광고가 본문을 가리지 않도록,
-   큰 화면에서만 main 콘텐츠 폭 제한 느낌을 주고 싶다면 여기서 조절 가능
-   (현재는 최소 변경: home 페이지 max-width는 그대로 유지) */
-
-/* 하단 고정 sticky (PC/모바일 공통 클래스) */
-.ad-slot--sticky-bottom {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 60;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    padding: 6px 0;
-}
-
-/* PC 하단 sticky 높이(728x90/970x90 고려) */
-.ad-slot--pc.ad-slot--sticky-bottom {
-    min-height: 90px;
-}
-
-/* Mobile 하단 sticky 높이(320x100까지 고려) */
-.ad-slot--mobile.ad-slot--sticky-bottom {
-    min-height: 100px;
-}
-
-/* 하단 sticky 때문에 페이지 끝 콘텐츠가 가리지 않도록 여유 공간 확보
-   (가장 안전한 곳은 base.css의 body/main-container 이지만,
-   home에서만 일단 처리) */
-body {
-    padding-bottom: 110px; /* mobile sticky 100px + 여유 */
-}
-
-/* ----------------------------
-   기존 Home 스타일
-   ---------------------------- */
-
 /* Hero Section */
 .hero-section {
     text-align: center;
@@ -338,6 +210,46 @@ body {
     color: var(--primary-green);
 }
 
+/* =========================================================
+   Venatus Ads (Home)
+   ========================================================= */
+
+/* 슬롯 기본 레이아웃: 가운데 정렬 + 적당한 여백 */
+.ad-slot {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.ad-slot__inner {
+    width: 100%;
+    display: block;
+    /* leaderboard/배너가 로딩될 공간 확보 (CLS 방지) */
+    min-height: 90px;
+    max-width: 970px;
+}
+
+/* PC/모바일 노출 제어 */
+.ad-slot--mobile { display: none; }
+.ad-slot--pc { display: flex; }
+
+/* 모바일 슬롯 크기 힌트 */
+@media (max-width: 768px) {
+    .ad-slot--pc { display: none; }
+    .ad-slot--mobile { display: flex; }
+
+    .ad-slot__inner {
+        max-width: 320px;
+        min-height: 50px;
+    }
+
+    /* 하단 sticky가 컨텐츠를 덮는 경우를 대비한 여유(필요 시) */
+    .news-grid {
+        margin-bottom: 120px;
+    }
+}
+
 /* News Grid */
 .news-grid {
     display: grid;
@@ -409,23 +321,9 @@ body {
     .news-grid {
         grid-template-columns: 1fr;
     }
-
-    /* 태블릿/작은 화면에서는 PC 사이드 sticky 제거 */
-    .ad-slot--side {
-        display: none;
-    }
 }
 
 @media (max-width: 768px) {
-    /* 모바일/작은 화면: PC 슬롯 숨기고 모바일 슬롯 표시 */
-    .ad-slot--pc { display: none; }
-    .ad-slot--mobile { display: block; }
-
-    /* mobile sticky 높이가 더 커질 수 있으니 padding-bottom 조금 더 */
-    body {
-        padding-bottom: 120px;
-    }
-
     .hero-title {
         font-size: 1.4rem;
     }
@@ -478,10 +376,3 @@ body {
         font-size: 0.8rem;
     }
 }
-
-/* 초대형 화면에서 사이드 광고가 너무 바깥에 붙는 느낌이면 옵션:
-@media (min-width: 1600px) {
-    .ad-slot--side-left { left: 32px; }
-    .ad-slot--side-right { right: 32px; }
-}
-*/
