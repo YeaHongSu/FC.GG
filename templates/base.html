@@ -124,11 +124,11 @@
           var injected = ['horizontal_sticky','mobile_horizontal_sticky','video_slider','interstitial'].includes(placementName);
 
           try {
-            if (placementName === 'vertical_sticky') {
-              // vertical_sticky는 별도 API 예시가 있음 :contentReference[oaicite:8]{index=8}
-              scope.Config.verticalSticky().display();
-              return;
-            }
+            scope.Config.verticalSticky().display();
+          } catch (e) {
+            console.warn('[VENATUS] vertical_sticky failed', e);
+          }
+
 
             // 일반 배치: display(el)
             // injected 배치: display({ body:true })
