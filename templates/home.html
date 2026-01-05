@@ -83,12 +83,10 @@
   </div>
 </section>
 
-<!-- ✅ Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover (박스 크기 고정) -->
-<section class="ad-section">
-  <div class="ad-box ad-box--mid">
-    <div id="vnt-slot-home-mid" class="vnt-ad"></div>
-  </div>
-</section>
+<!-- ✅ Mid Slot -->
+<div id="vm-top-banner"
+     style="width:100%; display:flex; justify-content:center; margin:32px 0;">
+</div>
 
 <!-- News Grid -->
 <div class="news-grid">
@@ -324,26 +322,6 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     renderBookmarks();
-  });
-
-  // ✅ Venatus (home 페이지 슬롯형 광고만 여기서 처리)
-  window.__VM = window.__VM || [];
-  window.__VM.push(function(admanager, scope) {
-    try {
-      // Top Slot: Desktop=desktop_takeover / Mobile=mobile_banner
-      scope.Config.buildPlacement(function(cb) {
-        cb.add("leaderboard");
-        cb.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
-      }, "home-top").display("vnt-slot-home-top");
-
-      // Mid Slot: Desktop=leaderboard / Mobile=mobile_takeover
-      scope.Config.buildPlacement(function(cb) {
-        cb.add("leaderboard");
-        cb.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
-      }, "home-mid").display("vnt-slot-home-mid");
-    } catch (e) {
-      console.warn("[VENATUS] home placements failed:", e);
-    }
   });
 </script>
 {% endblock %}
