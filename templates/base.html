@@ -54,10 +54,24 @@
                 scope.Config.get("video").display("video");
                 
                 /* 좌/우 Sticky 광고 */
-                scope.Config.get("vertical_sticky").display('vertical-sticky');
+                try{
+                    var isMobile = window.matchMedia('(max-width: 1024px)').matches;
 
-                scope.Config.get("horizontal_sticky").display('horizontal-sticky');
+                    // 1) 좌/우 sticky (Only PC)
+                    if (!isMobile) {
+                        scope.Config.get('vertical_sticky').display({body: true});
+                    }
 
+                    // 2) 하단 고정 sticky (PC/모바일)
+                    if (isMobile) {
+                        scope.Config.get('mobile_horizontal_sticky').display({body: true});
+                    } else {
+                        scope.Config.get('horizontal_sticky').display({body: true});
+                    }
+                } catch (e) {
+                    console.warn('[VENATUS] injected placements failed:', e);
+                }
+                    
             });
         `;
     document.head.appendChild(initScript);
