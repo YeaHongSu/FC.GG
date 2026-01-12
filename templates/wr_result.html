@@ -15,6 +15,10 @@
 {% block content %}
 <!-- Search Section -->
 <section class="search-section">
+    <div id="vm-top-banner"
+         style="width:100%; display:flex; justify-content:center; margin:32px 0;">
+    </div>
+
     <div class="search-wrapper">
         <input type="text" id="character_name" class="search-input" placeholder="닉네임을 입력하세요.">
         <button class="search-btn" id="search_button">검색</button>
@@ -97,6 +101,12 @@
                     {% endfor %}
                 </ul>
             </div>
+
+            <!-- ✅ 여기! (사진 빨간 박스 위치) 솔루션 박스 아래에 비디오 광고 -->
+            <div class="wr-solution-video-wrap">
+                <div id="video" class="wr-solution-video"></div>
+            </div>
+
             {% else %}
             <p class="no-improvement">현재 모델로 개선이 불가능합니다.</p>
             {% endif %}
@@ -127,12 +137,10 @@
     </div>
 </div>
 
-<!-- Ads -->
-<div class="ad-section">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
-    <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+<div id="vm-bottom-banner"
+     style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -257,6 +265,5 @@
             futureWinRateChart.resize();
         }, 100);
     });
-
 </script>
 {% endblock %}
