@@ -15,21 +15,10 @@
     margin-bottom: 16px;
 }
 
-.text-primary {
-    color: var(--primary-green);
-}
-
-.text-info {
-    color: #3b82f6;
-}
-
-.text-danger {
-    color: #ef4444;
-}
-
-.text-pink {
-    color: #ec4899;
-}
+.text-primary { color: var(--primary-green); }
+.text-info { color: #3b82f6; }
+.text-danger { color: #ef4444; }
+.text-pink { color: #ec4899; }
 
 .chatbot-link {
     display: inline-block;
@@ -143,9 +132,7 @@
     transition: background 0.2s ease;
 }
 
-.popular-item:last-child {
-    border-bottom: none;
-}
+.popular-item:last-child { border-bottom: none; }
 
 .popular-item:hover {
     background: rgba(40, 167, 69, 0.05);
@@ -210,9 +197,98 @@
     color: var(--primary-green);
 }
 
-/* Ad Section */
+/* ===========================================
+   ✅ Venatus Ad Area (고정 박스 방식)
+   - 광고 "소재" 크기는 강제 불가
+   - 대신 "박스"를 고정해서 레이아웃 흔들림 제거
+   =========================================== */
+
 .ad-section {
-    margin: 8px 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* ✅ 핵심: 높이 흔들림(커졌다 작아졌다) 방지용 "완전 고정" */
+.ad-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* 광고가 커져도 레이아웃을 늘리지 못하게 */
+    overflow: hidden !important;
+
+    /* flex 컨텍스트에서 늘어나는 케이스 방지 */
+    flex: 0 0 auto;
+
+    /* 페이지 간격 */
+    margin: 24px auto;
+}
+
+/* TOP: 데스크탑 (예: 728x250 계열) - ✅ 높이 절대 고정 */
+.ad-box--top {
+    max-width: 728px;
+
+    height: 250px !important;
+    min-height: 250px !important;
+    max-height: 250px !important;
+
+    overflow: hidden !important;
+}
+
+/* MID: 데스크탑 (예: 728x90 계열) - ✅ 높이 절대 고정 */
+.ad-box--mid {
+    max-width: 728px;
+
+    height: 90px !important;
+    min-height: 90px !important;
+    max-height: 90px !important;
+
+    overflow: hidden !important;
+}
+
+/* ✅ Venatus 내부에 iframe/img/div가 들어오면서 height를 바꾸는 것 방지 */
+.ad-box > div,
+.ad-box iframe,
+.ad-box img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+/* iframe 특유의 인라인 여백/라인박스 방지 */
+.ad-box iframe {
+    display: block !important;
+}
+
+/* Mobile: 빈 공간 커 보이는 문제 완화
+   - top: mobile_banner(보통 320x100 계열)
+   - mid: mobile_takeover(보통 300x250 계열)
+*/
+@media (max-width: 768px) {
+    .ad-box {
+        margin: 18px auto;
+    }
+
+    .ad-box--top {
+        max-width: 360px;
+
+        height: 100px !important;
+        min-height: 100px !important;
+        max-height: 100px !important;
+
+        overflow: hidden !important;
+    }
+
+    .ad-box--mid {
+        max-width: 360px;
+
+        height: 250px !important;
+        min-height: 250px !important;
+        max-height: 250px !important;
+
+        overflow: hidden !important;
+    }
 }
 
 /* News Grid */
@@ -289,9 +365,7 @@
 }
 
 @media (max-width: 768px) {
-    .hero-title {
-        font-size: 1.4rem;
-    }
+    .hero-title { font-size: 1.4rem; }
 
     .popular-item {
         padding: 10px 12px;
@@ -309,9 +383,7 @@
         min-width: 55px;
     }
 
-    .popular-nickname {
-        font-size: 0.9rem;
-    }
+    .popular-nickname { font-size: 0.9rem; }
 
     .popular-tier {
         width: 28px;
@@ -320,24 +392,14 @@
 }
 
 @media (max-width: 480px) {
-    .hero-section {
-        padding: 16px 0;
-    }
-
-    .hero-title {
-        font-size: 1.2rem;
-    }
+    .hero-section { padding: 16px 0; }
+    .hero-title { font-size: 1.2rem; }
 
     .chatbot-link {
         padding: 8px 16px;
         font-size: 0.9rem;
     }
 
-    .bookmark-item {
-        padding: 4px 10px;
-    }
-
-    .bookmark-nickname {
-        font-size: 0.8rem;
-    }
+    .bookmark-item { padding: 4px 10px; }
+    .bookmark-nickname { font-size: 0.8rem; }
 }
