@@ -1,37 +1,73 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- ✅ (옵션) 카카오 인앱 브라우저 감지: 광고 완전 비활성화(원하면 유지) -->
     <script>
-        // 카카오 인앱 브라우저 감지
+      (function () {
         var isKakaoInApp = /KAKAOTALK/i.test(navigator.userAgent);
 
-        if (!isKakaoInApp) {
-            // 카카오가 아닐 때만 AdSense 로드
-            var adScript = document.createElement('script');
-            adScript.async = true;
-            adScript.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302';
-            adScript.crossOrigin = 'anonymous';
-            document.head.appendChild(adScript);
-        } else {
-            // 카카오 인앱 브라우저일 때 광고 숨김 스타일 추가
-            var style = document.createElement('style');
-            style.textContent = '.adsbygoogle, ins.adsbygoogle, .ad-container, .ad-section { display: none !important; }';
-            document.head.appendChild(style);
+        if (isKakaoInApp) {
+          // 카카오 인앱이면 Venatus 포함 광고 영역 숨김
+          var style = document.createElement('style');
+          style.textContent = `
+            .vnt-ad, [id^="vnt-"], [data-vnt-placement] { display: none !important; }
+          `;
+          document.head.appendChild(style);
+          return;
         }
+
+        // ✅ Venatus Head Script (Non-SPA/MPA 공통)
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://hb.vntsm.com/v4/live/vms/sites/fcgg.kr/index.js';
+        document.head.appendChild(s);
+
+        var initScript = document.createElement('script');
+        initScript.text = `
+            self.__VM = self.__VM || [];
+            self.__VM.push(function (admanager, scope) {
+                
+                scope.Config.setBreakPoint("mobile", "max-width:800px");
+                
+                /* 상단 배너 */
+                scope.Config.buildPlacement((configBuilder) => {
+                    configBuilder.add("desktop_takeover");
+                    configBuilder.addDefaultOrUnique("mobile_takeover").setBreakPoint("mobile");
+                }).display("vm-top-banner");
+                
+                /* 중앙 배너 */
+                scope.Config.buildPlacement((configBuilder) => {
+                    configBuilder.add("leaderboard");
+                    configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
+                }).display("vm-center-banner");
+
+                /* 하단 배너 */
+                scope.Config.buildPlacement((configBuilder) => {
+                    configBuilder.add("leaderboard");
+                    configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
+                }).display("vm-bottom-banner");
+
+                // scope.Config.buildPlacement((configBuilder) => {
+                //     configBuilder.add("video");
+                //     configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
+                // }).display("video");
+                scope.Config.get("video").display("video");
+                
+                
+            });
+        `;
+    document.head.appendChild(initScript);
+      })();
     </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="naver-site-verification" content="c1b0a71b768a10669f82da810f13bc34f3953457" />
-    <meta name="google-adsense-account" content="ca-pub-7970639123590302">
     <meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 피파 전적, 피파 전적 검색, FC온라인 전적, FC온라인 전적검색, 플레이스타일, 승률 개선, 수수료 계산기, 빠칭코, 선수 티어, 에프씨지지, fcgg, fc.gg">
     <meta name="robots" content="max-snippet:50, max-image-preview:large" />
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-67J7MBCLN9"></script>
-    <script>
-      window.redirectTarget = "https://aros100.com";
-    </script>
-    <script src="https://cdn.jsdelivr.net/gh/abaeksite/aros_adsense_blocker@main/aros_adsense_blocker_v7-1.js"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
@@ -67,7 +103,31 @@
     <meta property="og:image" content="{{ url_for('static', filename='fcgglogo.jpg', _external=True) }}">
     <meta property="og:type" content="website">
     {% block extra_meta %}{% endblock %}
+
+    <!-- ✅ Venatus 공통 CSS (레이아웃 밀림 방지 + 중앙정렬) -->
+    <style>
+      .vnt-ad{
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* 최소 높이(권장): CLS 줄이기 */
+      .vnt-minh-90  { min-height: 90px; }
+      .vnt-minh-100 { min-height: 100px; }
+      .vnt-minh-250 { min-height: 250px; }
+      .vnt-minh-600 { min-height: 600px; }
+
+      /* 광고용 breakpoint는 Venatus 기준(1024px)로 통일 추천 */
+      .ad-slot--mobile { display: none; }
+      @media (max-width: 1024px) {
+        .ad-slot--pc { display: none; }
+        .ad-slot--mobile { display: block; }
+      }
+    </style>
 </head>
+
 <body>
     <!-- Google Tag Manager (noscript) -->
     <noscript>
@@ -85,7 +145,7 @@
 
     {% include 'components/header.html' %}
 
-    <main class="main-container">
+    <main id="content-container" class="main-container">
         {% block content %}{% endblock %}
     </main>
 
@@ -94,9 +154,10 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    
+
     <!-- Common Scripts -->
     <script>
-        // Loading Overlay Functions
         function showLoading() {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.style.display = 'flex';
@@ -107,19 +168,16 @@
             if (overlay) overlay.style.display = 'none';
         }
 
-        // Hide loading on page show (back button)
         window.addEventListener('pageshow', function(event) {
             if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
                 hideLoading();
             }
         });
 
-        // Mobile Menu Toggle
         document.getElementById('menuToggle')?.addEventListener('click', () => {
             document.getElementById('headerNav').classList.toggle('active');
         });
 
-        // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             const nav = document.getElementById('headerNav');
             const toggle = document.getElementById('menuToggle');
@@ -128,7 +186,6 @@
             }
         });
 
-        // Sponsor Popup
         document.getElementById('happyButton')?.addEventListener('click', () => {
             document.getElementById('happyPopup').style.display = 'block';
             document.getElementById('popupOverlay').style.display = 'block';
