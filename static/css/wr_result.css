@@ -84,7 +84,7 @@
     padding: 24px;
 }
 
-/* Video Section */
+/* Video Section (기존 - 사용 안 할 수도 있지만 유지) */
 .video-description {
     text-align: center;
     margin-bottom: 16px;
@@ -168,6 +168,35 @@
 .feature-target {
     font-weight: 600;
     color: var(--primary-green);
+}
+
+/* ✅ 솔루션 카드 내부 비디오 영역 (사진 빨간 박스 위치) */
+.wr-solution-video-wrap {
+    margin-top: 16px;
+}
+
+.wr-solution-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 비디오 내부 요소 꽉 채우기 */
+#video iframe,
+#video video,
+#video embed,
+#video object {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
 }
 
 /* Win Rate Cards */
