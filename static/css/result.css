@@ -2,11 +2,58 @@
    Result Page Specific Styles
    =========================================== */
 
-/* Player Info Card */
-.player-info-card {
-    margin-bottom: 24px;
+/* ✅ 상단: 기본정보(왼쪽) + 영상(오른쪽) "카드 밖" 2컬럼 */
+.result-top-row {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 24px; /* 기존 player-info-card margin-bottom 대체 */
 }
 
+.result-top-left {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.result-top-right {
+    flex: 0 0 360px;
+    max-width: 360px;
+    display: flex;
+    align-items: stretch;
+}
+
+/* 기본정보 카드: 상단 래퍼에서 margin-bottom 관리하므로 0으로 */
+.player-info-card {
+    margin-bottom: 0;
+    height: 100%;
+}
+
+/* 영상 박스 */
+.result-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 영상 내부(iframe/video) 꽉 채우기 */
+#video iframe,
+#video video,
+#video embed,
+#video object {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
+}
+
+/* Player Info Card 내부 레이아웃 */
 .player-info-content {
     display: flex;
     justify-content: space-between;
@@ -410,6 +457,21 @@
     .opponent-grid {
         grid-template-columns: 1fr;
     }
+
+    /* ✅ 태블릿 이하: 상단 2컬럼 -> 세로 스택 */
+    .result-top-row {
+        flex-direction: column;
+    }
+
+    .result-top-right {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+
+    .result-video {
+        max-width: 720px;
+        margin: 0 auto;
+    }
 }
 
 @media (max-width: 768px) {
@@ -420,6 +482,11 @@
 
     .player-info-desktop {
         display: none;
+    }
+
+    .result-video {
+        max-width: 520px;
+        margin: 0 auto;
     }
 
     /* Play Style - 3 lines on mobile */
@@ -511,5 +578,9 @@
 
     .winrate-percentage {
         font-size: 1.5rem;
+    }
+
+    .result-video {
+        max-width: 100%;
     }
 }
