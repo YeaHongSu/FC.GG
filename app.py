@@ -2557,813 +2557,136 @@ def kakao_penalty():
             }
         })
 
-# ------------------------------------------------------------
-# 선수 초성 퀴즈 - 채팅방(room_id) 단위 진행
-#  - 제한시간: QUIZ_DURATION(초)
-#  - 힌트: 4단계 (출생년도/국적/포지션/한줄소개)
-#  - 정답: name_ko + aliases(별칭) 허용
-# ------------------------------------------------------------
-import time as _time
-import re as _re
-
-try:
-    # player_info.py에 300명 정도 채워 넣는 것을 전제로 함
-    from player_info import all_players as _all_players, make_chosung as _make_chosung
-except Exception:
-    def _all_players():
-        return []
-
-    def _make_chosung(text: str) -> str:
-        return text
-
-
-QUIZ_STATE = {}   # { room_id: {player, hint_step, attempts, started_at, expires_at} }
-QUIZ_HISTORY = {} # { room_id: [player_id, ...] }
-Q_LOCK = threading.Lock()
-
-QUIZ_DURATION = 60
-QUIZ_MAX_ATTEMPTS = 10
-QUIZ_RECENT_KEEP = 20
-
-
-def _norm_answer(s: str) -> str:
-    s = (s or "").strip()
-    # '정답: xxx' / '정답 xxx' 허용
-    s = _re.sub(r"^정답\s*[:：]?\s*", "", s)
-    # 공백/특수문자 제거, 영문은 소문자
-    s = _re.sub(r"[^0-9a-zA-Z가-힣]", "", s).lower()
-    return s
-
-
-def _pick_quiz_player(room_id: str):
-    players = list(_all_players() or [])
-    if not players:
-        return None
-    hist = QUIZ_HISTORY.setdefault(room_id, [])
-    recent = set(hist[-QUIZ_RECENT_KEEP:])
-    candidates = [p for p in players if p.get("id") not in recent]
-    if not candidates:
-        candidates = players
-    # 직전 문제와 동일 선수는 가급적 피함
-    if hist and len(candidates) > 1:
-        last = hist[-1]
-        non_last = [p for p in candidates if p.get("id") != last]
-        if non_last:
-            candidates = non_last
-    picked = random.choice(candidates)
-    pid = picked.get("id")
-    if pid:
-        hist.append(pid)
-        if len(hist) > 200:
-            del hist[:100]
-    return picked
-
-
-def _quiz_start(room_id: str):
-    player = _pick_quiz_player(room_id)
-    if not player:
-        return None, "선수 DB가 비어있어요. player_info.py에 PLAYER_DB를 채워주세요!"
-
-    # 초성이 비어있으면 name_ko에서 자동 생성(운영 편의)
-    if not player.get("chosung") and player.get("name_ko"):
-        try:
-            player = dict(player)
-            player["chosung"] = _make_chosung(player["name_ko"])
-        except Exception:
-            pass
-
-    now = _time.time()
-    st = {
-        "player": player,
-        "hint_step": 0,
-        "attempts": 0,
-        "started_at": now,
-        "expires_at": now + QUIZ_DURATION,
-    }
-    QUIZ_STATE[room_id] = st
-    return st, ""
-
-
-def _quiz_clear(room_id: str):
-    if room_id in QUIZ_STATE:
-        del QUIZ_STATE[room_id]
-
-
-def _quiz_remaining(st: dict) -> int:
-    return max(0, int(st.get("expires_at", 0) - _time.time()))
-
-
-def _quiz_is_correct(st: dict, user_text: str) -> bool:
-    ans = _norm_answer(user_text)
-    if not ans:
-        return False
-    p = st.get("player") or {}
-    targets = [p.get("name_ko", "")] + list(p.get("aliases") or [])
-    targets = [_norm_answer(x) for x in targets if x]
-    return ans in targets
-
-
-def _quiz_hint_text(st: dict) -> str:
-    p = st.get("player") or {}
-    step = int(st.get("hint_step") or 0)
-    # step은 0~3 (총 4개)
-    if step == 0:
-        return f"🎯 1번째 힌트 - 출생년도: {p.get('birth_year', '?')}"
-    if step == 1:
-        return f"🎯 2번째 힌트 - 국적: {p.get('nationality', '?')}"
-    if step == 2:
-        return f"🎯 3번째 힌트 - 포지션: {p.get('position', '?')}"
-    if step == 3:
-        return f"🎯 4번째 힌트 - 소개: {p.get('one_liner', '?')}"
-    return "힌트가 더 없어요."
-
-
-
-# ========================= 누적/리더보드 유틸 =========================
-def _career_add(room_id: str, uid: str, goals: int, shots: int):
-    """이번 게임 성적을 해당 room_id(채팅방) 커리어에 누적."""
-    if shots <= 0:
-        return
-    with C_LOCK:
-        room_stat = CAREER.setdefault(room_id, {})
-        st = room_stat.setdefault(uid, {"goals": 0, "shots": 0})
-        st["goals"] += goals
-        st["shots"] += shots
-
-
-def _career_rate(room_id: str, uid: str):
-    """room_id 안에서 uid의 누적 성공률(0~1). 없으면 None."""
-    with C_LOCK:
-        room_stat = CAREER.get(room_id, {})
-        st = room_stat.get(uid)
-        if not st or st["shots"] <= 0:
-            return None
-        return st["goals"] / st["shots"]
-
-
-def _leaders(room_id: str):
-    """
-    room_id(현재 채팅방) 내에서 성공률 기준 내림차순 정렬 리스트 반환
-    [(uid, rate, goals, shots), ...]
-    """
-    with C_LOCK:
-        room_stat = CAREER.get(room_id, {})
-        items = []
-        for k, v in room_stat.items():
-            shots = v.get("shots", 0)
-            goals = v.get("goals", 0)
-            if shots > 0:
-                rate = goals / shots
-                items.append((k, rate, goals, shots))
-    # 동률 안정화를 위해: 성공률↓, 시도수↓, uid↑
-    items.sort(key=lambda x: (-x[1], -x[3], x[0]))
-    return items
-
-
-def _rank_of(room_id: str, uid: str):
-    """(등수, 총원). 해당 room_id 내에서만 계산. 기록 없으면 (None, 총원)"""
-    items = _leaders(room_id)
-    total = len(items)
-    for i, (k, *_rest) in enumerate(items, start=1):
-        if k == uid:
-            return i, total
-    return None, total
-
-
-def _short(u: str, n: int = 6) -> str:
-    return u[:n] if u else "unknown"
-
-
-def _save_name(uid: str, name: str):
-    with N_LOCK:
-        if name:
-            NAMEBOOK[uid] = name
-
-
-def _get_name(uid: str, fallback_short: bool = True) -> str:
-    with N_LOCK:
-        nm = NAMEBOOK.get(uid)
-    if nm:
-        return nm
-    return _short(uid, 6) if fallback_short else uid
-
-
-def _format_leaderboard_and_mentions(room_id: str, uid: str, limit: int = 10):
-    """
-    특정 room_id(=채팅방) 기준으로만 리더보드 텍스트와 extra.mentions 딕셔너리를 생성.
-    - user1은 항상 요청자(uid)
-    - 상위 limit명까지 user2, user3 ... 로 멘션 키 자동 할당
-    - 본문에는 "{{#mentions.userX}}" 토큰을 정확히 매칭
-    """
-    items = _leaders(room_id)
-    if not items:
-        text = "아직 이 채팅방에는 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
-        mentions = {"user1": {"type": "botUserKey", "id": uid}}
-        return text, mentions
-
-    top_uid, top_rate, _, _ = items[0]
-    header = (
-        "승부차기 평균 성공률 결과\n\n"
-        f"🥇현재 1등 : {round(top_rate * 100)}%\n\n"
-    )
-
-    # mentions: user1은 항상 요청자
-    mentions = {"user1": {"type": "botUserKey", "id": uid}}
-
-    lines = []
-    dyn_idx = 2  # user2부터 시작
-    for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
-        if k == uid:
-            # 요청자 줄: user1 멘션 사용
-            line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate * 100)}%"
-        else:
-            # 다른 유저도 멘션으로 표시하려면 user2, user3 ... 동적 할당
-            key = f"user{dyn_idx}"
-            mentions[key] = {"type": "botUserKey", "id": k}
-            line = (
-                f"{i}. "
-                + "{{#mentions." + key + "}}"
-                + f" {round(rate * 100)}%"
-            )
-            dyn_idx += 1
-        lines.append(line)
-
-    # 내 현재 등수도 보여주자 (채팅방 기준)
-    my_rank, total = _rank_of(room_id, uid)
-    if my_rank:
-        lines.append(f"\n내 현재 등수: {my_rank}등")
-
-    lines.append("\n랭킹은 주기적으로 갱신됩니다.")
-
-    text = header + "\n".join(lines)
-    return text, mentions
-
-# ====================================================================
-
-
-# ---- Payload helpers ---------------------------------------------------------
-def _uid(body: dict) -> str:
-    """
-    Kakao 스펙 기준: user.id (type=botUserKey).
-    환경에 따라 accountId 등도 들어올 수 있어 안전 처리.
-    """
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    uid = (user.get("id") or "").strip()
-    return uid or "unknown"
-
-
-def _uname(body: dict) -> str:
-    """
-    카카오 문서에는 nickname 필드가 보장되지 않음 → 표시명은 uid로 대체.
-    가능하면 properties.nickname 사용.
-    """
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    props = user.get("properties") or {}
-    nickname = (props.get("nickname") or "").strip()
-    uid = (user.get("id") or "").strip() or "unknown"
-    return nickname or uid
-
-
-def _room_id(body: dict) -> str:
-    """
-    채팅방(그룹채팅방) 식별자 추출.
-
-    우선순위
-    1) userRequest.chat.properties.botGroupKey  -> 문서상 '팀채팅방 식별키'
-    2) userRequest.chat.id                      -> chat.id 도 botGroupKey와 동일하게 내려온다고 명시
-    3) conversation.id                          -> 일부 환경에서만 존재
-    4) "global"                                 -> 최후 fallback
-    """
-    ur = body.get("userRequest") or {}
-
-    chat = ur.get("chat") or {}
-    chat_props = chat.get("properties") or {}
-
-    group_key_from_props = (chat_props.get("botGroupKey") or "").strip()
-    group_key_from_chat_id = (chat.get("id") or "").strip()
-
-    conv = body.get("conversation") or {}
-    conv_id = (conv.get("id") or "").strip()
-
-    room = (
-        group_key_from_props
-        or group_key_from_chat_id
-        or conv_id
-        or "global"
-    )
-    return str(room)
-
-
-def _param_from_action(body: dict, key: str) -> str:
-    """action.params 우선, 없으면 action.detailParams[key].value"""
-    action = body.get("action") or {}
-    params = action.get("params") or {}
-    if key in params and params[key] is not None:
-        return str(params[key])
-    dparams = action.get("detailParams") or {}
-    if key in dparams and dparams[key] is not None:
-        val = (dparams[key] or {}).get("value")
-        if val is not None:
-            return str(val)
-    return ""
-
-
-def _get_kick_input(body: dict, cur_idx: int) -> str:
-    """
-    1) 다중 슬롯: dir{cur_idx} (예: dir0, dir1 ...)
-    2) 단일 슬롯: dir
-    둘 다 없으면 빈 문자열
-    """
-    key = f"dir{cur_idx}"
-    v = _param_from_action(body, key)
-    if v:
-        return v
-    return _param_from_action(body, "dir")
-
-
-# ---- Game helpers ------------------------------------------------------------
-def _board(shots, total=5):
-    marks = "".join("⭕️" if s else "❌️" for s in shots)
-    return marks + "⬜️" * (total - len(shots))
-
-
-def _kick_prob(direction_text: str) -> float:
-    s = (direction_text or "").strip().lower()
-    # 가운데(센터)만 33%, 그 외(왼/오/사분면 포함) 66%
-    return 0.33 if s in {"가운데", "center", "c"} else 0.66
-
-
-def _start(uid: str):
-    with PG_LOCK:
-        PENALTY_GAMES[uid] = {"shots": [], "max": 5}
-
-
-def _state(uid: str):
-    with PG_LOCK:
-        return PENALTY_GAMES.get(uid)
-
-
-def _reset(uid: str):
-    """현재 사용자 게임 상태 완전 초기화"""
-    with PG_LOCK:
-        if uid in PENALTY_GAMES:
-            del PENALTY_GAMES[uid]
-
-
-def _record(uid: str, success: bool):
-    with PG_LOCK:
-        st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
-        st["shots"].append(success)
-        done = len(st["shots"]) >= st["max"]
-        if done:
-            final = st["shots"][:]
-            del PENALTY_GAMES[uid]
-            return final, True
-        return st["shots"][:], False
-
-
-def _quick_replies():
-    opts = ["왼쪽", "가운데", "오른쪽", "왼쪽위", "왼쪽아래", "오른쪽위", "오른쪽아래"]
-    # Kakao QuickReply(message) 포맷
-    return [{"action": "message", "label": o, "messageText": o} for o in opts]
-
-
-# ---- Endpoint ----------------------------------------------------------------
-@app.route("/kakao/penalty", methods=["POST"])
-def kakao_penalty():
+# =============================================================================
+# [NEW] 카카오톡 스킬 엔드포인트: 축구 선수 초성퀴즈 전용 (/kakao/playerquiz)
+# - 오픈빌더에서 "미처리 발화"(Fallback) 블록까지 이 URL로 연결해야
+#   사용자가 정답을 자유 입력해도(예: "네이마르") 서버가 판정할 수 있습니다.
+# =============================================================================
+
+@app.route("/kakao/playerquiz", methods=["POST"])
+def kakao_playerquiz():
     try:
-        # ---------------- 멘트/연출 유틸 ----------------
-        def _streak_tail(shots, val):
-            """shots의 끝에서부터 val(True/False)와 같은 값이 몇 번 연속인지 카운트"""
-            c = 0
-            for s in reversed(shots):
-                if s is val:
-                    c += 1
-                else:
-                    break
-            return c
-
-        def _pick(arr):
-            return random.choice(arr) if arr else ""
-
-        # 골/노골 기본 멘트 풀
-        GOAL_BASE = [
-            "🔥 절정의 컨디션!",
-            "💥 강슛이네요!",
-            "🥳 완벽한 코스!",
-            "😎 침착했다!",
-            "🎯 정확도 미쳤다!",
-            "🚀 골망이 찢어지겠어!"
-        ]
-        MISS_BASE = [
-            "😰 긴장했나 봐요!",
-            "🧤 골키퍼 선방!",
-            "🙈 아깝다, 포스트!",
-            "😵 살짝 빗나갔어요.",
-            "😬 다음엔 더 과감하게!",
-            "🌪️ 페인트에 걸렸나?"
-        ]
-
-        # 연속 상황 멘트 (상황별로 우선 적용)
-        def goal_streak_msg(st):
-            if st >= 5: return "🔥🔥🔥 5연속 골! 오늘은 당신의 날!"
-            if st == 4: return "🔥🔥 4연속 골! 멈출 수 없다!"
-            if st == 3: return "🔥 3연속 골! 흐름 제대로 탔다!"
-            if st == 2: return "⚡ 2연속 골! 페이스 좋아요!"
-            return ""
-
-        def miss_streak_msg(st):
-            if st >= 3: return "🧊 연속 실축… 호흡 가다듬고 다시!"
-            if st == 2: return "🧊 2연속 실축… 코스 바꿔볼까요?"
-            return ""
-
-        # 엔딩 보상/칭호
-        def end_badge(total):
-            if total == 5: return "🏆 5골 입니다. 퍼펙트 키커!"
-            if total == 4: return "🥇 4골 입니다. 엘리트 스트라이커!"
-            if total == 3: return "🥈 3골 입니다. 안정적인 피니셔!"
-            if total == 2: return "🥉 2골 입니다. 아직 워밍업이네요!"
-            return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
-
-        # ----------------------------------------------
         body = request.get_json(silent=True) or {}
 
-        uid = _uid(body)
-        uname = _uname(body)
-        room_id = _room_id(body)  # ★ 채팅방 ID 추출 (핵심)
-        print("[DEBUG] room_id =", _room_id(body), "| botGroupKey =", ((body.get("userRequest") or {}).get("bot") or {}).get("botGroupKey"))
+        room_id = _room_id(body)
+        utter = (body.get("userRequest") or {}).get("utterance") or ""
 
-        # 닉네임 캐싱
-        _save_name(uid, uname)
+        raw = utter.strip()
+        raw_no_mention = re.sub(r'^@\S+\s*', '', raw).strip()
 
-        # 원문 발화(카톡에서는 '@봇이름 ...' 형태가 섞일 수 있음)
-        uter_raw = (body.get("userRequest") or {}).get("utterance") or ""
-        uter = (uter_raw or "").strip()
-        # '@피파봇개발 ...' 같은 멘션 제거
-        uter = re.sub(r"^@\S+\s*", "", uter).strip()
+        # 토큰(정확 매칭)
+        start_tokens = {"초성퀴즈", "선수퀴즈", "퀴즈", "초성"}
+        next_tokens  = {"다음", "다음문제", "다음퀴즈"}
+        hint_tokens  = {"힌트"}
+        giveup_tokens = {"포기", "패스", "정답공개"}
+        end_tokens = {"종료", "나가기", "그만", "끝"}
 
-        st = _state(uid)
-
-        GM_id = ((body.get("userRequest")).get("block")).get("id")  # "블록ID 예: 68c7f4b6..."
-
-        # ------------------------------------------------------------------
-        # [선수 초성 퀴즈] 라우팅
-        #  - 퀴즈는 room_id(채팅방) 단위 진행
-        #  - 승부차기는 uid 단위 개인 진행
-        #  - 서로의 명령어를 침범하지 않도록 최우선으로 분기
-        # ------------------------------------------------------------------
-        def _simple(text: str):
+        def _kakao_text(msg: str):
             return jsonify({
                 "version": "2.0",
-                "template": {"outputs": [{"simpleText": {"text": text}}]},
+                "template": {"outputs": [{"simpleText": {"text": msg}}]}
             })
 
-        START_QUIZ = {"초성퀴즈", "선수퀴즈", "초성", "퀴즈"}
-        QUIZ_HINT = {"힌트", "hint"}
-        QUIZ_NEXT = {"다음", "다음문제", "다음 문제", "next"}
-        QUIZ_GIVEUP = {"포기", "정답", "정답보기", "정답 보기", "gg"}
-        QUIZ_HELP = {"도움말", "help", "사용법"}
-        FUN_EXIT = {"종료", "나가기", "홈으로"}
+        # 현재 상태
+        st = _quiz_get(room_id)
 
-        # 현재 퀴즈 상태 확인
-        with Q_LOCK:
-            qst = QUIZ_STATE.get(room_id)
+        # ---- 시간 초과 체크(진행 중이면 어떤 입력이든 먼저 검사) ----
+        if st and st.get('active'):
+            left = _quiz_time_left(st)
+            if left <= 0:
+                p = st.get('player') or {}
+                _quiz_clear(room_id)
+                return _kakao_text(_quiz_timeout_message(p))
 
-        # (0) 도움말
-        if uter in QUIZ_HELP:
-            return _simple(
-                "🎮 피파봇 미니게임 도움말\n"
-                "- 승부차기 시작: '승부차기'\n"
-                "- 초성퀴즈 시작: '초성퀴즈'\n"
-                "- 힌트: '힌트' (최대 4개)\n"
-                "- 포기/정답공개: '포기'\n"
-                "- 다음문제: '다음문제'\n"
-                "- 종료: '종료'"
-            )
+        # ---- 종료 ----
+        if raw_no_mention in end_tokens:
+            if st and st.get('active'):
+                _quiz_clear(room_id)
+                return _kakao_text("🛑 초성퀴즈를 종료했어요!\n다시 시작하려면 '초성퀴즈'라고 말해요.")
+            return _kakao_text("진행 중인 초성퀴즈가 없어요.\n'초성퀴즈'라고 말하면 시작돼요!")
 
-        # (1) 초성퀴즈 시작 명령
-        if uter in START_QUIZ:
-            # 진행 중인 승부차기(개인)는 사용자가 원하면 전환할 수 있도록 종료
-            _reset(uid)
-            with Q_LOCK:
-                st2, err = _quiz_start(room_id)
-            if err:
-                return _simple(err)
-            p = st2["player"]
-            rem = _quiz_remaining(st2)
-            return _simple(
-                "📣 축구 선수 초성 퀴즈!\n"
-                "초성을 보고 선수 이름을 맞춰보세요!\n\n"
-                f"초성은 [{p.get('chosung','?')}] 입니다.\n"
-                f"⏱ 제한시간: {QUIZ_DURATION}초 (남은 시간: {rem}초)\n\n"
-                "정답은 채팅에 입력해 주세요! (예: 메시 / 호날두 / CR7)\n"
-                "힌트가 필요하면 '힌트'라고 말해요!"
-            )
+        # ---- 시작/다음문제 ----
+        if raw_no_mention in start_tokens or raw_no_mention in next_tokens:
+            try:
+                st = _quiz_start(room_id)
+            except Exception:
+                return _kakao_text("선수 DB가 비어 있어요. player_info.py의 PLAYER_DB를 채워주세요.")
 
-        # (2) 퀴즈가 진행 중이면 퀴즈가 우선권을 가짐
-        if qst:
-            # 시간초과 체크
-            if _time.time() > float(qst.get("expires_at", 0)):
-                ans = (qst.get("player") or {}).get("name_ko", "")
-                with Q_LOCK:
-                    _quiz_clear(room_id)
-                # 다음문제면 바로 새 문제 출제
-                if uter in QUIZ_NEXT:
-                    with Q_LOCK:
-                        st2, err = _quiz_start(room_id)
-                    if err:
-                        return _simple(f"⏱ 시간 초과! 정답은 '{ans}' 입니다.\n\n{err}")
-                    p = st2["player"]
-                    rem = _quiz_remaining(st2)
-                    return _simple(
-                        f"⏱ 시간 초과! 정답은 '{ans}' 입니다.\n\n"
-                        "📣 다음 문제!\n"
-                        f"초성은 [{p.get('chosung','?')}] 입니다.\n"
-                        f"⏱ 제한시간: {QUIZ_DURATION}초 (남은 시간: {rem}초)\n"
-                        "힌트가 필요하면 '힌트'라고 말해요!"
-                    )
-                return _simple(f"⏱ 시간 초과! 정답은 '{ans}' 입니다.\n다음 문제를 풀려면 '다음문제'라고 말해요.")
+            p = st.get('player') or {}
+            left = _quiz_time_left(st)
+            return _kakao_text(_quiz_build_question(p, left))
 
-            # 종료/포기/다음/힌트 처리
-            if uter in FUN_EXIT:
-                with Q_LOCK:
-                    _quiz_clear(room_id)
-                return _simple("📣 초성퀴즈 종료!\n다시 시작하려면 '초성퀴즈'라고 말해요.")
+        # ---- 힌트 ----
+        if raw_no_mention in hint_tokens:
+            if not (st and st.get('active')):
+                return _kakao_text("먼저 '초성퀴즈'라고 말해 시작해 주세요!")
 
-            if uter in QUIZ_GIVEUP:
-                ans = (qst.get("player") or {}).get("name_ko", "")
-                with Q_LOCK:
-                    _quiz_clear(room_id)
-                return _simple(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n다음 문제를 원하면 '다음문제'라고 말해요.")
+            # 힌트 단계 증가(최대 4)
+            lvl = int(st.get('hint_level') or 0)
+            if lvl >= 4:
+                left = _quiz_time_left(st)
+                return _kakao_text(_quiz_hint_text(st.get('player') or {}, 999, left))
 
-            if uter in QUIZ_NEXT:
-                ans = (qst.get("player") or {}).get("name_ko", "")
-                with Q_LOCK:
-                    _quiz_clear(room_id)
-                    st2, err = _quiz_start(room_id)
-                if err:
-                    return _simple(err)
-                p = st2["player"]
-                rem = _quiz_remaining(st2)
-                return _simple(
-                    "📣 다음 문제!\n"
-                    f"초성은 [{p.get('chosung','?')}] 입니다.\n"
-                    f"⏱ 제한시간: {QUIZ_DURATION}초 (남은 시간: {rem}초)\n\n"
-                    "정답은 채팅에 입력해 주세요!\n힌트가 필요하면 '힌트'라고 말해요!"
+            lvl += 1
+            st['hint_level'] = lvl
+            _quiz_set(room_id, st)
+
+            left = _quiz_time_left(st)
+            return _kakao_text(_quiz_hint_text(st.get('player') or {}, lvl, left))
+
+        # ---- 포기/정답공개 ----
+        if raw_no_mention in giveup_tokens:
+            if not (st and st.get('active')):
+                return _kakao_text("진행 중인 초성퀴즈가 없어요.\n'초성퀴즈'로 시작해 주세요!")
+
+            p = st.get('player') or {}
+            _quiz_clear(room_id)
+            return _kakao_text(f"정답은 '{p.get('name_ko','')}' 입니다!\n다음 문제는 '다음문제'라고 말해요!")
+
+        # ---- 정답 시도 ----
+        if st and st.get('active'):
+            p = st.get('player') or {}
+
+            # 빈 입력 방지
+            if not _norm_answer(raw_no_mention):
+                left = _quiz_time_left(st)
+                return _kakao_text(f"정답을 입력해 주세요! (남은 시간: {left}초)")
+
+            if _quiz_is_correct(p, raw_no_mention):
+                _quiz_clear(room_id)
+                return _kakao_text(f"🎉 정답! '{p.get('name_ko','')}' 입니다!\n다음 문제는 '다음문제'라고 말해요!")
+
+            # 오답 처리
+            tries = int(st.get('tries_left') or 0)
+            tries = max(0, tries - 1)
+            st['tries_left'] = tries
+            _quiz_set(room_id, st)
+
+            left = _quiz_time_left(st)
+            if tries <= 0:
+                _quiz_clear(room_id)
+                return _kakao_text(
+                    f"❌ 기회를 모두 사용했어요!\n정답은 '{p.get('name_ko','')}' 입니다.\n\n다음 문제는 '다음문제'라고 말해요!"
                 )
 
-            if uter in QUIZ_HINT:
-                # 힌트 단계 증가
-                with Q_LOCK:
-                    cur = QUIZ_STATE.get(room_id)
-                    if not cur:
-                        return _simple("퀴즈가 진행 중이 아니에요. '초성퀴즈'로 시작해 주세요!")
-                    step = int(cur.get("hint_step") or 0)
-                    if step >= 4:
-                        return _simple("힌트가 더 없어요. 정답을 입력해 주세요!")
-                    txt = _quiz_hint_text(cur)
-                    cur["hint_step"] = step + 1
-                    rem = _quiz_remaining(cur)
-                return _simple(f"{txt}\n(남은 시간: {rem}초)")
+            return _kakao_text(f"❌ 땡! 남은 기회는 {tries}번!\n(남은 시간: {left}초)\n힌트가 필요하면 '힌트'라고 말해요.")
 
-            # 승부차기로 전환 요청(퀴즈 종료 후 진행)
-            if uter in {"승부차기", "승차"}:
-                with Q_LOCK:
-                    _quiz_clear(room_id)
-                # 아래 승부차기 로직으로 계속 진행
-                st = _state(uid)
-
-            else:
-                # 정답 시도
-                if _quiz_is_correct(qst, uter):
-                    ans = (qst.get("player") or {}).get("name_ko", "")
-                    with Q_LOCK:
-                        _quiz_clear(room_id)
-                    return _simple(f"🎉 정답! '{ans}' 입니다!\n다음 문제를 풀려면 '다음문제'라고 말해요.")
-
-                # 오답
-                with Q_LOCK:
-                    cur = QUIZ_STATE.get(room_id)
-                    if not cur:
-                        return _simple("퀴즈가 진행 중이 아니에요. '초성퀴즈'로 시작해 주세요!")
-                    cur["attempts"] = int(cur.get("attempts") or 0) + 1
-                    attempts = int(cur["attempts"])
-                    rem = _quiz_remaining(cur)
-                left = max(0, QUIZ_MAX_ATTEMPTS - attempts)
-                if attempts >= QUIZ_MAX_ATTEMPTS:
-                    ans = (qst.get("player") or {}).get("name_ko", "")
-                    with Q_LOCK:
-                        _quiz_clear(room_id)
-                    return _simple(f"🚫 기회 소진! 정답은 '{ans}' 입니다.\n다음 문제를 원하면 '다음문제'라고 말해요.")
-                return _simple(f"❌ 땡! 남은 기회는 {left}번!\n(남은 시간: {rem}초)")
-
-        # ---- (A) '결과보기' 요청 처리 -----------------------------------------
-        if uter in ['결과보기', '결과 보기', '랭킹', '랭킹보기', '결과']:
-            # 이 채팅방(room_id) 기준으로만 리더보드 생성
-            lb_text, mentions = _format_leaderboard_and_mentions(room_id, uid, limit=10)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {"text": lb_text}
-                    }, {
-                        "textCard": {
-                            "title": "다시 도전할까요? 😀",
-                            "buttons": [
-                                {"label": "승부차기", "action": "block", "blockId": GM_id}
-                            ]
-                        }
-                    }],
-                },
-                "extra": {
-                    # 여러 명 멘션 동적 삽입 (예: user1~userN)
-                    "mentions": mentions
-                }
-            })
-
-        # 종료/나가기
-        if uter in ['종료', '나가기', '홈으로']:
-            _reset(uid)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": "📣 승부차기 종료!\n다시 시작하려면 '승부차기'라고 말해주세요!"
-                        }
-                    }]
-                }
-            })
-
-        # 시작 트리거
-        if not st and uter in ['승부차기', '승차']:
-            _start(uid)
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "🧍‍ vs 🧤\n"
-                                "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
-                            )
-                        }
-                    }],
-                    "quickReplies": _quick_replies()
-                }
-            })
-
-        # 현재 상태/회차
-        st = _state(uid)
-        if not st:
-            # 잘못된 진입 보호
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": "먼저 '승부차기'로 시작해 주세요!"
-                        }
-                    }]
-                }
-            })
-
-        cur_idx = len(st["shots"])
-
-        # 입력 파싱
-        dir_text = _get_kick_input(body, cur_idx)
-
-        # 입력 없으면 현재 보드만 안내
-        if not dir_text or uter in ['승부차기', '승차']:
-            board = _board(st["shots"], st["max"])
-            n = cur_idx
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": (
-                                f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
-                                f"현재: {board}\n"
-                                f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
-                            )
-                        }
-                    }]
-                },
-                "extra": {
-                    "mentions": {
-                        "user1": {"type": "botUserKey", "id": uid}
-                    }
-                }
-            })
-
-        # 판정
-        success = (random.random() < _kick_prob(dir_text))
-        shots, done = _record(uid, success)
-
-        # 보드/스코어/연출
-        board = _board(shots, 5)
-        n = len(shots)
-        total = sum(1 for s in shots if s)
-
-        # 연속 카운트 계산
-        def _streak_tail_local(shots_local, val):
-            c = 0
-            for s in reversed(shots_local):
-                if s is val:
-                    c += 1
-                else:
-                    break
-            return c
-
-        g_streak = _streak_tail_local(shots, True)   # 연속 골
-        m_streak = _streak_tail_local(shots, False)  # 연속 노골
-
-        # 멘트 조립
-        if success:
-            head = "골! "
-            vibe = goal_streak_msg(g_streak) or _pick(GOAL_BASE)
-            gk_line = _pick([
-                "🧤 골키퍼가 움직이기도 전에 훅!",
-                "🧤 골키퍼가 반대편으로 뛰었네요!",
-                "🧤 완벽하게 속였습니다!"
-            ])
-        else:
-            head = "노골! "
-            vibe = miss_streak_msg(m_streak) or _pick(MISS_BASE)
-            gk_line = _pick([
-                "🧤 골키퍼가 읽었어요!",
-                "🧤 손끝에 살짝 걸렸습니다!",
-                "🧤 코스가 들켰나 봐요!"
-            ])
-
-        # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2골"
-        prefix = (
-            "{{#mentions.user1}}"
-            + f" {head} {board} ({n}/5회)\n"
-            + "🧍‍ vs 🧤  |  현재 스코어 "
-            + f"{total}골"
+        # ---- 아무것도 진행 중이 아닐 때: 도움말 ----
+        return _kakao_text(
+            "⚽️ 축구 선수 초성퀴즈 사용법\n"
+            "- 시작: '초성퀴즈'\n"
+            "- 힌트: '힌트' (최대 4개)\n"
+            "- 포기: '포기'\n"
+            "- 종료: '종료'\n"
+            "- 다음문제: '다음문제'\n\n"
+            "※ 정답(선수 이름/별칭)은 그냥 채팅에 입력하면 돼요!"
         )
-        reaction = f"\n{vibe}\n{gk_line}"
-
-        if done:
-            # ---- 게임 종료: 커리어 누적 & 요약 + 버튼(승부차기/결과보기) ----------
-            _career_add(room_id, uid, total, len(shots))  # ★ 방별 커리어 누적
-
-            badge = end_badge(total)
-            summary = (
-                f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
-                f"{badge}\n"
-            )
-            card = {
-                "textCard": {
-                    "title": "다시 도전할까요? 😀",
-                    "buttons": [
-                        {"label": "승부차기",  "action": "block", "blockId": GM_id},
-                        {"label": "결과보기", "action": "message", "messageText": "결과보기"}
-                    ]
-                }
-            }
-            return jsonify({
-                "version": "2.0",
-                "template": {
-                    "outputs": [
-                        {"simpleText": {"text": prefix + reaction + summary}},
-                        card
-                    ]
-                },
-                "extra": {
-                    # 종료 메시지는 요청자 멘션만 유지(짧게)
-                    "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-                }
-            })
-
-        # 진행 중이면 다음 입력 유도
-        return jsonify({
-            "version": "2.0",
-            "template": {
-                "outputs": [{"simpleText": {"text": prefix + reaction}}],
-                "quickReplies": _quick_replies()
-            },
-            "extra": {
-                "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-            }
-        })
 
     except Exception:
         return jsonify({
             "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "simpleText": {
-                        "text": "문제가 발생했어요. '승부차기'로 다시 시작해 주세요."
-                    }
-                }]
-            }
+            "template": {"outputs": [{"simpleText": {"text": "문제가 발생했어요. '초성퀴즈'로 다시 시작해 주세요."}}]}
         })
-
 
 # 포트 설정 및 웹에 띄우기
 # 초기화 실행 및 Flask 앱 실행
