@@ -1,34 +1,16 @@
-"""player_info.py
+"""축구 선수 초성퀴즈용 선수 DB.
 
-축구 선수 퀴즈용 데이터.
+- PLAYER_DB에 선수 dict를 채우면 됩니다.
+- app.py의 /kakao/playerquiz에서 사용합니다.
 
-사용 방식
-1) PLAYER_DB 리스트에 선수 dict를 300명 정도 채워 넣습니다.
-2) app.py(카카오 스킬)에서 이 파일을 import 해서 랜덤으로 1명을 뽑습니다.
-
-필수 필드(권장)
-- id: 문자열(고유)
-- name_ko: 한국어 표기
-- aliases: 별칭/약칭 리스트(정답 인정용)
-- chosung: 초성 문자열(공백 포함 가능)
-- birth_year: 출생년도(int)
-- nationality: 국적(문자열)
-- position: 포지션(예: FW/MF/DF/GK)
-- one_liner: 나무위키 한줄 소개 스타일(힌트4)
-
-주의
-- one_liner는 "창의적인 드리블" 같은 범용 문구보다, 떠올리기 쉬운 키워드(별명/대표 클럽/대표 업적/역할)를 1~2개 넣는 걸 추천합니다.
-- 사실성 이슈를 피하려면, 너무 구체적 수상/횟수 대신 널리 알려진 식별자(별명, 대표 팀, 포지션, 플레이 특징)를 권장합니다.
+필드(권장)
+- id, name_ko, aliases, birth_year, nationality, position, one_liner
+- chosung은 없어도 됩니다(없으면 app.py에서 자동 생성).
 """
 
 from __future__ import annotations
-
 from typing import Dict, List
 
-
-# -----------------------------------------------------------------------------
-# 초성 생성 유틸 (name_ko에서 자동 생성하고 싶을 때 사용)
-# -----------------------------------------------------------------------------
 
 _CHOSUNG_LIST = [
     "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
@@ -42,7 +24,6 @@ def make_chosung(text: str) -> str:
     for ch in text:
         code = ord(ch)
         if 0xAC00 <= code <= 0xD7A3:
-            # (초성*21*28) + (중성*28) + 종성 + 0xAC00
             idx = (code - 0xAC00) // 588
             out.append(_CHOSUNG_LIST[idx])
         else:
@@ -50,44 +31,109 @@ def make_chosung(text: str) -> str:
     return "".join(out)
 
 
-# -----------------------------------------------------------------------------
-# 선수 DB (여기에 300명 채우기)
-# -----------------------------------------------------------------------------
-
 PLAYER_DB: List[Dict] = [
     {
         "id": "cristiano_ronaldo",
         "name_ko": "크리스티아누 호날두",
-        "aliases": ["호날두", "CR7"],
-        "chosung": "ㅋㄹㅅㅌㅇㄴ ㅎㄴㄷ",
+        "aliases": ["호날두", "CR7", "Ronaldo"],
+        "chosung": "",  # 비워도 됨(자동 생성)
         "birth_year": 1985,
         "nationality": "포르투갈",
         "position": "FW",
-        "one_liner": "포르투갈의 'CR7'로 불리며 득점력과 자기관리로 유명한 공격수",
+        "one_liner": "‘CR7’로 불리는 포르투갈 공격수, 강력한 득점력과 피지컬로 상징되는 선수",
     },
     {
         "id": "lionel_messi",
         "name_ko": "리오넬 메시",
-        "aliases": ["메시", "La Pulga"],
-        "chosung": "ㄹㅇㄴ ㄴ ㅁㅅ",
+        "aliases": ["메시", "Messi", "LaPulga", "라풀가"],
+        "chosung": "",
         "birth_year": 1987,
         "nationality": "아르헨티나",
         "position": "FW",
-        "one_liner": "'메시'라는 이름 자체가 상징이 된, 압도적인 볼 컨트롤과 창조성을 가진 공격수",
+        "one_liner": "바르셀로나 ‘라 마시아’ 출신으로 떠오르는, 왼발 드리블·창의성이 상징인 선수",
     },
     {
         "id": "neymar",
         "name_ko": "네이마르",
-        "aliases": ["네이마르 주니오르", "네이마르 Jr", "Ney"],
-        "chosung": "ㄴㅇㅁㄹ",
+        "aliases": ["네이마르 주니오르", "네이마르 Jr", "Neymar", "Ney"],
+        "chosung": "",
         "birth_year": 1992,
         "nationality": "브라질",
         "position": "FW",
-        "one_liner": "브라질 특유의 개인기와 쇼맨십으로 화제를 모은 스타 플레이어",
+        "one_liner": "브라질 특유의 개인기·쇼맨십 이미지로 유명한 스타 윙어/공격수",
+    },
+    {
+        "id": "kylian_mbappe",
+        "name_ko": "킬리안 음바페",
+        "aliases": ["음바페", "Mbappe", "Mbappé"],
+        "chosung": "",
+        "birth_year": 1998,
+        "nationality": "프랑스",
+        "position": "FW",
+        "one_liner": "폭발적인 스피드와 뒷공간 침투로 떠오르는 프랑스 대표 공격수",
+    },
+    {
+        "id": "erling_haaland",
+        "name_ko": "엘링 홀란",
+        "aliases": ["홀란", "Haaland", "홀란드"],
+        "chosung": "",
+        "birth_year": 2000,
+        "nationality": "노르웨이",
+        "position": "FW",
+        "one_liner": "강한 피지컬과 박스 안 결정력으로 유명한 노르웨이 스트라이커",
+    },
+    {
+        "id": "son_heung_min",
+        "name_ko": "손흥민",
+        "aliases": ["손흥민", "Son", "쏘니"],
+        "chosung": "",
+        "birth_year": 1992,
+        "nationality": "대한민국",
+        "position": "FW",
+        "one_liner": "양발 슈팅과 빠른 침투 이미지가 강한 대한민국 대표 공격수",
+    },
+    {
+        "id": "robert_lewandowski",
+        "name_ko": "로베르트 레반도프스키",
+        "aliases": ["레반도프스키", "레반", "Lewandowski", "Lewy"],
+        "chosung": "",
+        "birth_year": 1988,
+        "nationality": "폴란드",
+        "position": "FW",
+        "one_liner": "박스 안 움직임·결정력이 상징인 폴란드 대표 골잡이",
+    },
+    {
+        "id": "kevin_de_bruyne",
+        "name_ko": "케빈 더브라위너",
+        "aliases": ["더브라위너", "데브라위너", "KDB", "DeBruyne", "De Bruyne"],
+        "chosung": "",
+        "birth_year": 1991,
+        "nationality": "벨기에",
+        "position": "MF",
+        "one_liner": "‘KDB’로 불리며 킬패스·크로스·중거리로 떠오르는 플레이메이커",
+    },
+    {
+        "id": "luka_modric",
+        "name_ko": "루카 모드리치",
+        "aliases": ["모드리치", "Modric", "Modrić"],
+        "chosung": "",
+        "birth_year": 1985,
+        "nationality": "크로아티아",
+        "position": "MF",
+        "one_liner": "중원에서 템포 조절과 탈압박 이미지가 강한 크로아티아 레전드급 미드필더",
+    },
+    {
+        "id": "virgil_van_dijk",
+        "name_ko": "버질 반다이크",
+        "aliases": ["반다이크", "VanDijk", "Van Dijk", "VVD"],
+        "chosung": "",
+        "birth_year": 1991,
+        "nationality": "네덜란드",
+        "position": "DF",
+        "one_liner": "공중볼·대인수비·수비 리더 이미지로 유명한 네덜란드 센터백",
     },
 ]
 
 
 def all_players() -> List[Dict]:
-    """외부에서 안전하게 사용할 수 있도록 복사본 반환."""
     return list(PLAYER_DB)
