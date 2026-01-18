@@ -2557,6 +2557,300 @@ def kakao_penalty():
             }
         })
 
+# ============================================================================
+# 선수 이름 맞추기(초성) 퀴즈
+# - 채팅방(room_id) 단위로 "현재 문제"를 유지
+# - 제한시간 60초: 다음 입력(정답/힌트/포기/다음문제) 시 만료 여부를 판정
+# - 힌트는 최대 4개(출생년도/국적/포지션/나무위키 한줄)
+# ============================================================================
+
+import re
+import time
+import random
+import threading
+
+from player_info import PLAYER_DB
+
+
+# room_id -> quiz state
+# {
+#   "player": {..},
+#   "started_at": float,
+#   "hint_level": int,
+#   "solved": bool,
+# }
+PLAYER_QUIZZES = {}
+PQ_LOCK = threading.Lock()
+
+
+def _norm_answer(s: str) -> str:
+    """정답 비교용 정규화: 공백/특수문자 제거 + 소문자."""
+    s = (s or "").strip().lower()
+    # 한글/영문/숫자만 남기기
+    s = re.sub(r"[^0-9a-z가-힣]", "", s)
+    return s
+
+
+def _quiz_pick_player() -> dict:
+    if not PLAYER_DB:
+        return {
+            "id": "_empty",
+            "name_ko": "(데이터 없음)",
+            "aliases": [],
+            "chosung": "",
+            "birth_year": 0,
+            "nationality": "",
+            "position": "",
+            "one_liner": "player_info.py에 PLAYER_DB를 채워주세요.",
+        }
+    return random.choice(PLAYER_DB)
+
+
+def _quiz_get(room_id: str):
+    with PQ_LOCK:
+        return PLAYER_QUIZZES.get(room_id)
+
+
+def _quiz_set(room_id: str, st: dict):
+    with PQ_LOCK:
+        PLAYER_QUIZZES[room_id] = st
+
+
+def _quiz_reset(room_id: str):
+    with PQ_LOCK:
+        PLAYER_QUIZZES.pop(room_id, None)
+
+
+def _quiz_remaining_seconds(st: dict, limit_sec: int = 60) -> int:
+    if not st:
+        return 0
+    elapsed = time.time() - float(st.get("started_at") or 0)
+    remain = int(limit_sec - elapsed)
+    return max(remain, 0)
+
+
+def _quiz_answer_set(player: dict):
+    answers = [player.get("name_ko") or ""]
+    for a in (player.get("aliases") or []):
+        answers.append(a)
+    # 정규화
+    return { _norm_answer(x) for x in answers if _norm_answer(x) }
+
+
+def _quiz_quick_replies():
+    opts = [
+        ("힌트", "힌트"),
+        ("다음문제", "다음문제"),
+        ("포기", "포기"),
+    ]
+    return [{"action": "message", "label": l, "messageText": t} for (l, t) in opts]
+
+
+def _quiz_question_text(st: dict) -> str:
+    p = st["player"]
+    remain = _quiz_remaining_seconds(st, 60)
+    return (
+        "⚽️ 축구 선수 초성 퀴즈!\n"
+        "초성을 보고 선수 이름을 맞춰보세요!\n\n"
+        f"초성은 [{p.get('chosung','')}] 입니다.\n"
+        f"⏱️ 제한시간: 60초 (남은 시간: {remain}초)\n\n"
+        "정답을 채팅에 입력하세요. (예: 크리스티아누 호날두 / 호날두 / CR7)\n"
+        "힌트가 필요하면 '힌트'라고 말해요!"
+    )
+
+
+def _quiz_hint_text(st: dict) -> str:
+    p = st["player"]
+    lvl = int(st.get("hint_level") or 0)
+    # lvl은 1~4
+    if lvl == 1:
+        return f"🧩 1번째 힌트 - 출생년도: {p.get('birth_year','?')}"
+    if lvl == 2:
+        return f"🧩 2번째 힌트 - 국적: {p.get('nationality','?')}"
+    if lvl == 3:
+        return f"🧩 3번째 힌트 - 포지션: {p.get('position','?')}"
+    if lvl == 4:
+        return f"🧩 4번째 힌트 - 소개: {p.get('one_liner','')}"
+    return "힌트가 없어요."
+
+
+@app.route("/kakao/playerquiz", methods=["POST"])
+def kakao_player_quiz():
+    """카카오 오픈빌더 스킬: 선수 초성 퀴즈"""
+    try:
+        body = request.get_json(silent=True) or {}
+        room_id = _room_id(body)
+        uid = _uid(body)
+        utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+
+        # @피파봇 제거(그룹에서 멘션 형태)
+        utter_clean = re.sub(r"^@\S+\s*", "", utter).strip()
+        cmd = utter_clean
+
+        # 현재 상태
+        st = _quiz_get(room_id)
+
+        # 만료 체크(어떤 입력이든 우선)
+        if st and _quiz_remaining_seconds(st, 60) <= 0:
+            ans = st["player"].get("name_ko", "")
+            _quiz_reset(room_id)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": f"⏱️ 시간 초과! 정답은 '{ans}' 입니다.\n\n다음 문제를 풀려면 '다음문제'라고 말해요!"
+                        }
+                    }],
+                    "quickReplies": _quiz_quick_replies(),
+                }
+            })
+
+        # (1) 시작/다음문제
+        if cmd in ["선수퀴즈", "퀴즈", "선수맞추기", "초성퀴즈", "시작", "다음문제", "다음", "다음퀴즈"]:
+            # 진행 중인데 '선수퀴즈/퀴즈/시작'만 들어오면 같은 문제 유지
+            if st and cmd in ["선수퀴즈", "퀴즈", "선수맞추기", "초성퀴즈", "시작"] and not st.get("solved"):
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": _quiz_question_text(st)}}],
+                        "quickReplies": _quiz_quick_replies(),
+                    }
+                })
+
+            # 새 문제
+            p = _quiz_pick_player()
+            st = {
+                "player": p,
+                "started_at": time.time(),
+                "hint_level": 0,
+                "solved": False,
+            }
+            _quiz_set(room_id, st)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"simpleText": {"text": _quiz_question_text(st)}}],
+                    "quickReplies": _quiz_quick_replies(),
+                }
+            })
+
+        # (2) 힌트
+        if cmd.startswith("힌트"):
+            if not st:
+                # 문제 없으면 새로 시작 유도
+                p = _quiz_pick_player()
+                st = {"player": p, "started_at": time.time(), "hint_level": 0, "solved": False}
+                _quiz_set(room_id, st)
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": _quiz_question_text(st)}}],
+                        "quickReplies": _quiz_quick_replies(),
+                    }
+                })
+
+            lvl = int(st.get("hint_level") or 0)
+            if lvl >= 4:
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": "힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!"}}],
+                        "quickReplies": _quiz_quick_replies(),
+                    }
+                })
+
+            st["hint_level"] = lvl + 1
+            _quiz_set(room_id, st)
+            remain = _quiz_remaining_seconds(st, 60)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": _quiz_hint_text(st) + f"\n\n(남은 시간: {remain}초)"
+                        }
+                    }],
+                    "quickReplies": _quiz_quick_replies(),
+                }
+            })
+
+        # (3) 포기/정답보기
+        if cmd in ["포기", "정답", "정답보기", "답", "답보기"]:
+            if not st:
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": "진행 중인 문제가 없어요. '선수퀴즈'라고 말하면 시작해요!"}}],
+                        "quickReplies": _quiz_quick_replies(),
+                    }
+                })
+            ans = st["player"].get("name_ko", "")
+            _quiz_reset(room_id)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"simpleText": {"text": f"😵 포기! 정답은 '{ans}' 입니다.\n다음 문제는 '다음문제'!"}}],
+                    "quickReplies": _quiz_quick_replies(),
+                }
+            })
+
+        # (4) 정답 시도(기본: 어떤 텍스트든 정답으로 처리)
+        if not st:
+            # 문제 없는데 정답만 치는 경우 → 시작 안내
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"simpleText": {"text": "먼저 '선수퀴즈'라고 말해 문제를 시작해 주세요!"}}],
+                    "quickReplies": _quiz_quick_replies(),
+                }
+            })
+
+        guess = cmd
+        p = st["player"]
+        answers = _quiz_answer_set(p)
+        if _norm_answer(guess) in answers:
+            ans = p.get("name_ko", "")
+            st["solved"] = True
+            _quiz_reset(room_id)
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": f"✅ 정답! '{ans}' 입니다!\n\n다음 문제는 '다음문제'라고 말해요!"
+                        }
+                    }],
+                    "quickReplies": _quiz_quick_replies(),
+                },
+                "extra": {
+                    "mentions": {"user1": {"type": "botUserKey", "id": uid}}
+                }
+            })
+
+        # 오답
+        remain = _quiz_remaining_seconds(st, 60)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{
+                    "simpleText": {
+                        "text": f"❌ 땡! 다시 시도해 보세요.\n(남은 시간: {remain}초)\n힌트가 필요하면 '힌트'!"
+                    }
+                }],
+                "quickReplies": _quiz_quick_replies(),
+            }
+        })
+
+    except Exception as e:
+        print("[playerquiz error]", e)
+        return jsonify({
+            "version": "2.0",
+            "template": {
+                "outputs": [{"simpleText": {"text": "퀴즈 처리 중 오류가 발생했어요. 다시 '선수퀴즈'로 시작해 주세요!"}}]
+            }
+        })
+
 
 
 # 포트 설정 및 웹에 띄우기
