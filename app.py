@@ -2566,27 +2566,48 @@ def kakao_penalty():
 #   - 정답: name_ko 또는 aliases
 # ============================================================================
 
-# ===== 초성퀴즈 전용: /kakao/playerquiz =====
+# =========================================================
+# /kakao/playerquiz  (초성퀴즈 엔드포인트)
+# - 미처리 발화(Fallback)를 이 URL로 연결하면
+#   선수 이름 같은 자유 입력도 여기로 들어와 정답 판정 가능
+# - 승부차기(/kakao/penalty)는 별도 URL로 유지 가능
+# =========================================================
+
 import time, random, threading, re
 from flask import request, jsonify
 
-# player_info.py에서 PLAYER_DB 가져오기
 from player_info import all_players as _all_players
 from player_info import make_chosung as _make_chosung
 
-PQ_LOCK = threading.Lock()
-PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "recent_ids":[...]}
-
+# ---------- 설정 ----------
 PQ_TIME_LIMIT = 60
 PQ_MAX_HINTS = 4
 PQ_RECENT_WINDOW = 20
 
-MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")
+# “진행 중이 아닐 때” 안내 문구에 넣고 싶은 게임들
+GAME_START_GUIDE = [
+    "초성퀴즈",
+    "승부차기",
+    "공피하기",
+    # 필요하면 더 추가
+]
+
+# ---------- 상태 ----------
+PQ_LOCK = threading.Lock()
+PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "recent_ids":[...]}
+
+# ---------- 정규식/유틸 ----------
+MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇개발 ' 같은 멘션 제거용
 
 def pq_text(msg: str):
-    return jsonify({"version":"2.0","template":{"outputs":[{"simpleText":{"text":msg}}]}})
+    """카카오 스킬 응답(simpleText)"""
+    return jsonify({
+        "version": "2.0",
+        "template": {"outputs": [{"simpleText": {"text": msg}}]}
+    })
 
 def pq_strip_mention(s: str) -> str:
+    """문장 앞의 @채널명 멘션 제거(여러 번 붙은 경우도 제거)"""
     s = (s or "").strip()
     while True:
         ns = MENTION_RE.sub("", s).strip()
@@ -2595,22 +2616,41 @@ def pq_strip_mention(s: str) -> str:
         s = ns
 
 def pq_norm(s: str) -> str:
+    """정답 비교용 정규화: 공백/특수문자 제거 + lower"""
     s = (s or "").strip().lower()
-    # '정답:' 같은 접두도 허용
-    s = re.sub(r"^(정답|답)\s*[:：]\s*", "", s)
-    s = re.sub(r"[^0-9a-z가-힣]+", "", s)
+    s = re.sub(r"^(정답|답)\s*[:：]\s*", "", s)     # "정답: 메시" 허용
+    s = re.sub(r"[^0-9a-z가-힣]+", "", s)          # 한글/영문/숫자만
     return s
+
+def extract_utterance(body: dict) -> str:
+    """카카오 payload에서 utterance 뽑기(방어적으로)"""
+    ur = body.get("userRequest") or {}
+    utter = ur.get("utterance")
+    if utter:
+        return utter
+
+    action = body.get("action") or {}
+    params = action.get("params") or {}
+    if isinstance(params, dict) and params.get("utterance"):
+        return str(params.get("utterance"))
+
+    detail = action.get("detailParams") or {}
+    if isinstance(detail, dict):
+        for v in detail.values():
+            if isinstance(v, dict) and v.get("value"):
+                return str(v.get("value"))
+
+    return ""
 
 def get_room_id(body: dict) -> str:
     """
-    room_id가 없으면 user id로라도 묶어서 상태 유지.
-    (오픈빌더 payload 구조가 환경마다 다를 수 있어 방어적으로 작성)
+    방/사용자 식별자. (오픈빌더 환경에 따라 구조가 다를 수 있어 최대한 방어)
+    - groupChat/room id가 있으면 그걸 사용
+    - 없으면 user id로 대체
     """
     ur = body.get("userRequest") or {}
-    # 보통 user id는 있음
     user_id = ((ur.get("user") or {}).get("id")) or "anon"
-    # 그룹/방 식별자가 들어오는 경우가 있어서 최대한 찾아봄
-    # (없으면 user_id로 대체)
+
     room_id = (
         ((ur.get("context") or {}).get("groupChat") or {}).get("id")
         or ((ur.get("context") or {}).get("room") or {}).get("id")
@@ -2620,14 +2660,32 @@ def get_room_id(body: dict) -> str:
     return str(room_id)
 
 def load_players():
+    """DB 로드 + 초성 자동 보정"""
     players = _all_players() or []
     out = []
     for p in players:
         p = dict(p)
         if not p.get("chosung"):
-            p["chosung"] = _make_chosung(p.get("name_ko",""))
+            p["chosung"] = _make_chosung(p.get("name_ko", ""))
         out.append(p)
     return out
+
+def get_state(room_id: str):
+    with PQ_LOCK:
+        return PQ_STATE.get(room_id)
+
+def clear_state(room_id: str):
+    with PQ_LOCK:
+        PQ_STATE.pop(room_id, None)
+
+def remaining(st) -> int:
+    elapsed = time.time() - float(st.get("started_at") or 0)
+    return max(0, PQ_TIME_LIMIT - int(elapsed))
+
+def start_guide_text() -> str:
+    # 예: "초성퀴즈 / 승부차기 / 공피하기"
+    joined = " / ".join(GAME_START_GUIDE)
+    return f"진행 중인 초성퀴즈가 없어요!\n'{joined}' 중 하나로 시작해 주세요."
 
 def pick_player(room_id: str):
     players = load_players()
@@ -2642,6 +2700,7 @@ def pick_player(room_id: str):
     candidates = [p for p in players if p.get("id") not in recent_set] or players
     chosen = random.choice(candidates)
 
+    # 최근 출제 기록 갱신
     recent.append(chosen.get("id"))
     recent = recent[-PQ_RECENT_WINDOW:]
 
@@ -2653,18 +2712,6 @@ def pick_player(room_id: str):
             "recent_ids": recent,
         }
     return chosen
-
-def get_state(room_id: str):
-    with PQ_LOCK:
-        return PQ_STATE.get(room_id)
-
-def clear_state(room_id: str):
-    with PQ_LOCK:
-        PQ_STATE.pop(room_id, None)
-
-def remaining(st) -> int:
-    elapsed = time.time() - float(st.get("started_at") or 0)
-    return max(0, PQ_TIME_LIMIT - int(elapsed))
 
 def problem_text(player: dict, remain: int) -> str:
     return (
@@ -2685,27 +2732,29 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
         return f"🧩 3번째 힌트 - 포지션: {player.get('position')}\n\n(남은 시간: {remain}s)"
     return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
 
+# ---------- 라우트 ----------
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
     body = request.get_json(silent=True) or {}
     room_id = get_room_id(body)
 
-    utter_raw = ((body.get("userRequest") or {}).get("utterance") or "")
+    utter_raw = extract_utterance(body)
     utter = pq_strip_mention(utter_raw)
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
 
-    start_cmds = {pq_norm(x) for x in ["초성퀴즈","선수퀴즈","퀴즈","초성"]}
+    # 시작 트리거(등록한 발화/버튼)
+    start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
 
     st = get_state(room_id)
 
-    # 시간초과: 다음 입력이 들어오는 순간 처리
+    # 0) 시간초과: "다음 입력이 들어오는 순간" 처리
     if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
         clear_state(room_id)
         return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!")
 
-    # 시작
+    # 1) 시작
     if cmd_n in start_cmds:
         player = pick_player(room_id)
         if not player:
@@ -2713,23 +2762,23 @@ def kakao_playerquiz():
         st = get_state(room_id)
         return pq_text(problem_text(player, remaining(st)))
 
-    # 종료/포기/힌트 (초성퀴즈 엔드포인트에서만 처리)
-    if cmd in ["종료","그만","나가기"]:
+    # 2) 종료/포기/힌트 (초성퀴즈 엔드포인트에서만 처리)
+    if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
             return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.")
-        return pq_text("진행 중인 초성퀴즈가 없어요. '초성퀴즈'로 시작해 주세요!")
+        return pq_text(start_guide_text())
 
-    if cmd in ["포기","패스"]:
+    if cmd in ["초성퀴즈 포기", "포기", "패스"]:
         if not st:
-            return pq_text("진행 중인 초성퀴즈가 없어요. '초성퀴즈'로 시작해 주세요!")
+            return pq_text(start_guide_text())
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n다음 문제는 '초성퀴즈'라고 말해요!")
+        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!")
 
-    if cmd.lower() in ["힌트","hint"]:
+    if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text("먼저 '초성퀴즈'로 시작해 주세요!")
+            return pq_text(start_guide_text())
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
@@ -2738,19 +2787,25 @@ def kakao_playerquiz():
         with PQ_LOCK:
             if room_id in PQ_STATE:
                 PQ_STATE[room_id]["hint_idx"] = idx
-        return pq_text(hint_text(player, idx, remaining(get_state(room_id))))
+        st2 = get_state(room_id)
+        return pq_text(hint_text(player, idx, remaining(st2)))
 
-    # 정답 시도
+    # 3) 정답 시도
     if not st:
-        # (미처리 발화 연결되면) 퀴즈 중이 아닐 때는 시작 안내만
-        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!")
+        # 미처리 발화로 들어온 잡입력일 가능성이 큼 → 여러 게임 시작 안내로 처리
+        return pq_text(start_guide_text())
+
+    # (방어) 자음/모음만 길게 입력한 경우는 오답 처리하지 않고 안내
+    only_jamo = re.fullmatch(r"[ㄱ-ㅎㅏ-ㅣ]+", cmd.replace(" ", ""))
+    if only_jamo and len(cmd.replace(" ", "")) >= 6:
+        return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!")
 
     guess_n = pq_norm(cmd)
     if not guess_n:
         return pq_text("정답을 입력하거나 '힌트'라고 말해요!")
 
     player = st["player"]
-    answers = [player.get("name_ko","")] + (player.get("aliases") or [])
+    answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
     answers_n = {pq_norm(a) for a in answers if a}
 
     if guess_n in answers_n:
@@ -2758,7 +2813,11 @@ def kakao_playerquiz():
         clear_state(room_id)
         return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!")
 
-    return pq_text(f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n힌트가 필요하면 '힌트'라고 말해요!")
+    return pq_text(
+        f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n"
+        "힌트가 필요하면 '힌트'라고 말해요!"
+    )
+
 
 
 # 포트 설정 및 웹에 띄우기
