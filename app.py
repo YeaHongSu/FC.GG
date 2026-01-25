@@ -2197,12 +2197,7 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
 # ---------- 라우트 ----------
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
-     def _p(key):
-        return (
-            (body.get("action", {}).get("params", {}) or {}).get(key)
-            or (body.get("detailParams", {}).get(key, {}) or {}).get("value")
-            or ""
-        )
+    
     body = request.get_json(silent=True) or {}
     room_id = get_room_id(body)
 
@@ -2269,7 +2264,6 @@ def kakao_playerquiz():
     if only_jamo and len(cmd.replace(" ", "")) >= 6:
         return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!")
     
-    cmd = _p('answer')
     guess_n = pq_norm(cmd)
     if not guess_n:
         return pq_text("정답을 입력하거나 '힌트'라고 말해요!")
