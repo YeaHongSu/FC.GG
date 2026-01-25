@@ -2685,7 +2685,7 @@ def remaining(st) -> int:
 def start_guide_text() -> str:
     # 예: "초성퀴즈 / 승부차기 / 공피하기"
     joined = " / ".join(GAME_START_GUIDE)
-    return f"진행 중인 초성퀴즈가 없어요!\n'{joined}' 중 하나로 시작해 주세요."
+    return f"진행 중인 초성퀴즈가 없어요!"
 
 def pick_player(room_id: str):
     players = load_players()
