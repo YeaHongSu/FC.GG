@@ -914,7 +914,10 @@ def kakao_skill():
                 return None
 
         # ---------- 바디/발화 파싱 ----------
-        body = request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        body = body or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
         callback_url = body.get("userRequest", {}).get("callbackUrl")
 
@@ -1390,7 +1393,10 @@ def get_top_players(position_code: str, top_n: int = 5):
 @app.route("/kakao/skill2", methods=["POST"])
 def kakao_skill2_tierlist():
     try:
-        body = request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        body = body or {}
         utter = ((body.get("userRequest") or {}).get("utterance") or "").strip()
 
         def _p(key):
@@ -1810,7 +1816,10 @@ def kakao_skill2_tierlist():
 #             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
 
 #         # ----------------------------------------------
-#         body = request.get_json(silent=True) or {}
+#         body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        body = body or {}
 #         uid = _uid(body)
 #         uname = _uname(body)
 #         # 닉네임 캐싱
@@ -2335,7 +2344,10 @@ def kakao_penalty():
             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
 
         # ----------------------------------------------
-        body = request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        body = body or {}
 
         uid = _uid(body)
         uname = _uname(body)
@@ -2373,9 +2385,20 @@ def kakao_penalty():
                     "mentions": mentions
                 }
             })
-
         # 종료/나가기
         if uter in ['종료', '나가기', '홈으로']:
+            if not st:
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{
+                            "simpleText": {
+                                "text": "진행 중인 승부차기가 없어요. 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                            }
+                        }]
+                    }
+                })
+
             _reset(uid)
             return jsonify({
                 "version": "2.0",
@@ -2448,6 +2471,27 @@ def kakao_penalty():
                     "mentions": {
                         "user1": {"type": "botUserKey", "id": uid}
                     }
+                }
+            })
+
+        # ⚠️ 방향 입력 검증: 엉뚱한 텍스트(예: 다른 게임 정답)가 들어오면 승부차기에 영향 주지 않음
+        ALLOWED_DIRS = {"왼쪽", "가운데", "오른쪽", "왼쪽위", "왼쪽아래", "오른쪽위", "오른쪽아래"}
+        if (dir_text or "").strip() not in ALLOWED_DIRS:
+            board = _board(st["shots"], st["max"])
+            n = cur_idx
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": (
+                                f"승부차기 진행 중이에요! (진행 {n}/{st['max']}회)\n"
+                                f"현재: {board}\n"
+                                "입력은 '왼쪽/가운데/오른쪽(및 위/아래)'만 가능해요.\n"
+                                "끝내려면 '종료'라고 말해요."
+                            )
+                        }
+                    }]
                 }
             })
 
@@ -2626,7 +2670,7 @@ def _pq_load_players():
     return out
 
 
-def _pq_pick_player(room_id: str):
+def _pq_pick_player(room_id: str, callback_url: str | None = None):
     players = _pq_load_players()
     if not players:
         return None
@@ -2647,13 +2691,26 @@ def _pq_pick_player(room_id: str):
     recent.append(chosen.get("id"))
     recent = recent[-PLAYER_QUIZ_RECENT_WINDOW:]
 
+    started_at = time.time()
     with PLAYER_QUIZ_LOCK:
         PLAYER_QUIZ_STATE[room_id] = {
             "player": chosen,
-            "started_at": time.time(),
+            "started_at": started_at,
             "hint_idx": 0,
             "recent_ids": recent,
+            "callback_url": callback_url or (st.get("callback_url") if isinstance(st, dict) else None),
         }
+
+    # ✅ 제한시간 자동 종료(가능한 경우에만)
+    cb = callback_url or (st.get("callback_url") if isinstance(st, dict) else None)
+    if cb:
+        th = threading.Thread(
+            target=_pq_timeout_worker,
+            args=(room_id, started_at, cb),
+            daemon=True
+        )
+        th.start()
+
     return chosen
 
 
@@ -2702,9 +2759,13 @@ def _pq_hint_text(player: dict, hint_idx: int, remain: int) -> str:
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
     try:
-        body = request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            body = {}
+        body = body or {}
         room_id = _room_id(body)
         uter_raw = ((body.get("userRequest") or {}).get("utterance") or "")
+        callback_url = ((body.get("userRequest") or {}).get("callbackUrl") or "").strip() or None
         uter = _pq_strip_mention(uter_raw)
 
         # 명령어 분기용(공백 제거)
@@ -2730,7 +2791,7 @@ def kakao_playerquiz():
 
         # (1) 시작
         if cmd_n in start_cmds_n:
-            player = _pq_pick_player(room_id)
+            player = _pq_pick_player(room_id, callback_url)
             if not player:
                 return _pq_kakao_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!")
             st = _pq_get_state(room_id)
