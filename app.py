@@ -2165,7 +2165,7 @@ def help_text() -> str:
         "version": "2.0",
         "template": {"outputs": [{"textCard": {
                         "title": "아래 버튼을 눌러 확인하세요.\n",
-                        "buttons": [{"label": "도움말",  "action": "block", "blockId": GM_id}]}
+                        "buttons": [{"label": "도움말",  "action": "block", "blockId": 000}]}
                 }]}
     })
 
