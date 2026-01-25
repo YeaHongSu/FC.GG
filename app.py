@@ -2160,13 +2160,14 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
     return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
 
 def help_text() -> str:
-    # ✅ 너가 쓰던 도움말 문구로 바꿔도 됨(여기만 수정)
-    return (
-        "도움이 필요하면 아래 중 하나를 입력해 주세요!\n"
-        "- 초성퀴즈\n"
-        "- 승부차기\n"
-        "- 공피하기\n"
-    )
+    GM_id = ((body.get("userRequest")).get("block")).get("id")
+    return jsonify({
+        "version": "2.0",
+        "template": {"outputs": [{"textCard": {
+                        "title": "아래 버튼을 눌러 확인하세요.\n",
+                        "buttons": [{"label": "도움말",  "action": "block", "blockId": GM_id}]}
+                }]}
+    })
 
 def _playerquiz_handle(body: dict):
     room_id = get_room_id(body)
@@ -2270,7 +2271,7 @@ def kakao_fallback_router():
         return _playerquiz_handle(body)
 
     # ✅ 퀴즈가 아니면: 기존 도움말 출력(기능 유지)
-    return pq_text(help_text())
+    return help_text()
 
 
 # 포트 설정 및 웹에 띄우기
