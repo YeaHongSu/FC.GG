@@ -2028,9 +2028,10 @@ def kakao_penalty():
 #   - 힌트 4개(출생년도/국적/포지션/한줄소개)
 #   - 정답: name_ko 또는 aliases
 #   - ✅ 오픈빌더 컨텍스트(playerquiz_on)로 "정답 입력 블록" 라우팅
+#   - ✅ 디버그 로그 포함 (라우팅/블록ID/utterance 확인)
 # ============================================================================
 
-import time, random, threading, re
+import time, random, threading, re, json
 from flask import request, jsonify
 
 from player_info import all_players as _all_players
@@ -2056,11 +2057,40 @@ PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "re
 # ---------- 정규식/유틸 ----------
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇개발 ' 같은 멘션 제거용
 
-def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False):
+
+# ---------- 디버그 로그 ----------
+def _safe_json(obj) -> str:
+    try:
+        return json.dumps(obj, ensure_ascii=False)[:1200]
+    except Exception:
+        return str(obj)[:1200]
+
+def pq_log(tag: str, body: dict, room_id: str, utter_raw: str, utter: str, cmd: str, cmd_n: str, st):
+    action = body.get("action") or {}
+    ur = body.get("userRequest") or {}
+    block_id = action.get("blockId")
+    intent_id = action.get("intent", {}).get("id") if isinstance(action.get("intent"), dict) else None
+    user_id = ((ur.get("user") or {}).get("id")) or "anon"
+
+    # 남은시간 (state 없으면 -1)
+    rem = remaining(st) if st else -1
+    player = (st or {}).get("player") or {}
+    pid = player.get("id")
+    pname = player.get("name_ko")
+
+    print(
+        f"[PQ][{tag}] room={room_id} user={user_id} blockId={block_id} intentId={intent_id} "
+        f"utter_raw='{utter_raw}' utter='{utter}' cmd='{cmd}' cmd_n='{cmd_n}' "
+        f"has_state={'Y' if st else 'N'} remain={rem} player_id={pid} player='{pname}'"
+    )
+
+def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False,
+            body: dict = None, room_id: str = "", utter_raw: str = "", utter: str = "", cmd: str = "", cmd_n: str = "", st=None, tag: str = "REPLY"):
     """
     카카오 스킬 응답(simpleText) + 컨텍스트 SET/CLEAR
     - set_ctx=True  : playerquiz_on 컨텍스트 부여 (퀴즈 진행 중)
     - clear_ctx=True: playerquiz_on 컨텍스트 제거 (퀴즈 종료/정답/시간초과)
+    + ✅ 응답 시에도 로그 남김
     """
     res = {
         "version": "2.0",
@@ -2084,6 +2114,14 @@ def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False):
                 "params": {}
             }]
         }
+
+    # 로그(응답)
+    if body is not None:
+        ctx_mode = "SET" if set_ctx else ("CLEAR" if clear_ctx else "NONE")
+        print(f"[PQ][{tag}] ctx={ctx_mode} msg='{msg[:220]}' resp_ctx={_safe_json(res.get('context'))}")
+        # 필요하면 아래 주석 풀어서 전체 payload도 확인
+        # print(f"[PQ][{tag}] full_body={_safe_json(body)}")
+
     return jsonify(res)
 
 def pq_strip_mention(s: str) -> str:
@@ -2208,7 +2246,10 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
         return f"🧩 3번째 힌트 - 포지션: {player.get('position')}\n\n(남은 시간: {remain}s)"
     return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
 
+
 # ---------- 라우트 ----------
+# ⚠️ 이 코드는 app.py 내부(Flask app 객체가 이미 있는 파일)에서 사용한다는 전제입니다.
+# 즉, app = Flask(__name__) 가 위쪽에 이미 있어야 합니다.
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
     body = request.get_json(silent=True) or {}
@@ -2223,49 +2264,93 @@ def kakao_playerquiz():
 
     st = get_state(room_id)
 
+    # ✅ 요청 들어왔는지부터 로그로 확인
+    pq_log("HIT", body, room_id, utter_raw, utter, cmd, cmd_n, st)
+
     # 0) 시간초과: 다음 입력이 들어오는 순간 처리
     if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        # ✅ 컨텍스트 제거 (정답 입력 블록에서 빠져나오게)
         return pq_text(
             f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!",
-            clear_ctx=True
+            clear_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="TIMEOUT"
         )
 
     # 1) 시작
     if cmd_n in start_cmds:
         player = pick_player(room_id)
         if not player:
-            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", clear_ctx=True)
+            return pq_text(
+                "선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!",
+                clear_ctx=True,
+                body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+                tag="START_NO_DB"
+            )
 
         st = get_state(room_id)
-        # ✅ 컨텍스트 부여 (이후 유저가 '호나우두' 등 아무 말 해도 정답 블록이 받아서 여기로 들어오게)
-        return pq_text(problem_text(player, remaining(st)), set_ctx=True)
+        pq_log("START", body, room_id, utter_raw, utter, cmd, cmd_n, st)
+
+        return pq_text(
+            problem_text(player, remaining(st)),
+            set_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="START_OK"
+        )
 
     # 2) 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.", clear_ctx=True)
-        return pq_text(start_guide_text(), clear_ctx=True)
+            return pq_text(
+                "📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.",
+                clear_ctx=True,
+                body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+                tag="QUIT_OK"
+            )
+        return pq_text(
+            start_guide_text(),
+            clear_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="QUIT_NO_STATE"
+        )
 
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
         if not st:
-            return pq_text(start_guide_text(), clear_ctx=True)
+            return pq_text(
+                start_guide_text(),
+                clear_ctx=True,
+                body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+                tag="GIVEUP_NO_STATE"
+            )
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
+        return pq_text(
+            f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!",
+            clear_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="GIVEUP_OK"
+        )
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text(start_guide_text(), clear_ctx=True)
+            return pq_text(
+                start_guide_text(),
+                clear_ctx=True,
+                body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+                tag="HINT_NO_STATE"
+            )
 
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            # ✅ 컨텍스트 유지(퀴즈 계속 진행)
-            return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", set_ctx=True)
+            return pq_text(
+                "힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!",
+                set_ctx=True,
+                body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+                tag="HINT_MAX"
+            )
 
         idx += 1
         with PQ_LOCK:
@@ -2273,40 +2358,69 @@ def kakao_playerquiz():
                 PQ_STATE[room_id]["hint_idx"] = idx
         st2 = get_state(room_id)
 
-        # ✅ 컨텍스트 유지
-        return pq_text(hint_text(player, idx, remaining(st2)), set_ctx=True)
+        pq_log(f"HINT_{idx}", body, room_id, utter_raw, utter, cmd, cmd_n, st2)
+
+        return pq_text(
+            hint_text(player, idx, remaining(st2)),
+            set_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st2,
+            tag=f"HINT_OK_{idx}"
+        )
 
     # 3) 정답 시도
     if not st:
-        # ✅ 여기로 오는 건 보통 "시작 블록"에서 호출됐거나, (잘못)연결된 경우.
-        # 퀴즈 중이 아니면 컨텍스트도 꺼서 안전하게 밖으로 보내자.
-        return pq_text(start_guide_text(), clear_ctx=True)
+        # ✅ 퀴즈 중이 아닌데 들어온 경우: (라우팅이 잘못됐거나, fallback이 여기로 들어온 상황)
+        return pq_text(
+            start_guide_text(),
+            clear_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="ANSWER_NO_STATE"
+        )
 
     # (방어) 자음/모음만 길게 입력한 경우
     only_jamo = re.fullmatch(r"[ㄱ-ㅎㅏ-ㅣ]+", cmd.replace(" ", ""))
     if only_jamo and len(cmd.replace(" ", "")) >= 6:
-        return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!", set_ctx=True)
+        return pq_text(
+            "정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!",
+            set_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="ANSWER_ONLY_JAMO"
+        )
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        return pq_text("정답을 입력하거나 '힌트'라고 말해요!", set_ctx=True)
+        return pq_text(
+            "정답을 입력하거나 '힌트'라고 말해요!",
+            set_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="ANSWER_EMPTY"
+        )
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
     answers_n = {pq_norm(a) for a in answers if a}
 
+    pq_log("ANSWER_TRY", body, room_id, utter_raw, utter, cmd, cmd_n, st)
+    # 정답 후보 로그(너무 길면 잘라서)
+    print(f"[PQ][ANS_CAND] answers={answers[:8]} ... total={len(answers)}")
+
     if guess_n in answers_n:
         ans = player.get("name_ko")
         clear_state(room_id)
-        # ✅ 정답 맞히면 컨텍스트 제거
-        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
+        return pq_text(
+            f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!",
+            clear_ctx=True,
+            body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+            tag="ANSWER_OK"
+        )
 
     # ✅ 오답이어도 컨텍스트 유지 (다음 입력도 계속 퀴즈로 받기)
     return pq_text(
         f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n힌트가 필요하면 '힌트'라고 말해요!",
-        set_ctx=True
+        set_ctx=True,
+        body=body, room_id=room_id, utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n, st=st,
+        tag="ANSWER_WRONG"
     )
-
 
 
 # 포트 설정 및 웹에 띄우기
