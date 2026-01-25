@@ -2019,6 +2019,7 @@ def kakao_penalty():
             }
         })
 
+
 # ============================================================================
 # 초성퀴즈(선수 이름 맞추기) - 전용 엔드포인트
 #   URL: /kakao/playerquiz
@@ -2026,14 +2027,8 @@ def kakao_penalty():
 #   - 제한시간 60초(다음 사용자 입력 시 만료 체크)
 #   - 힌트 4개(출생년도/국적/포지션/한줄소개)
 #   - 정답: name_ko 또는 aliases
+#   - ✅ 오픈빌더 컨텍스트(playerquiz_on)로 "정답 입력 블록" 라우팅
 # ============================================================================
-
-# =========================================================
-# /kakao/playerquiz  (초성퀴즈 엔드포인트)
-# - 미처리 발화(Fallback)를 이 URL로 연결하면
-#   선수 이름 같은 자유 입력도 여기로 들어와 정답 판정 가능
-# - 승부차기(/kakao/penalty)는 별도 URL로 유지 가능
-# =========================================================
 
 import time, random, threading, re
 from flask import request, jsonify
@@ -2046,13 +2041,13 @@ PQ_TIME_LIMIT = 60
 PQ_MAX_HINTS = 4
 PQ_RECENT_WINDOW = 20
 
+# ✅ 오픈빌더 컨텍스트 이름 (블록 조건에서 이 이름으로 걸어야 함)
+PQ_CTX_NAME = "playerquiz_on"
+# lifeSpan은 "초/분"이 아니라 "대화 턴 수" 개념이라 넉넉히 크게 잡는 게 안전
+PQ_CTX_LIFESPAN = 200
+
 # “진행 중이 아닐 때” 안내 문구에 넣고 싶은 게임들
-GAME_START_GUIDE = [
-    "초성퀴즈",
-    "승부차기",
-    "공피하기",
-    # 필요하면 더 추가
-]
+GAME_START_GUIDE = ["초성퀴즈", "승부차기", "공피하기"]
 
 # ---------- 상태 ----------
 PQ_LOCK = threading.Lock()
@@ -2061,12 +2056,35 @@ PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "re
 # ---------- 정규식/유틸 ----------
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇개발 ' 같은 멘션 제거용
 
-def pq_text(msg: str):
-    """카카오 스킬 응답(simpleText)"""
-    return jsonify({
+def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False):
+    """
+    카카오 스킬 응답(simpleText) + 컨텍스트 SET/CLEAR
+    - set_ctx=True  : playerquiz_on 컨텍스트 부여 (퀴즈 진행 중)
+    - clear_ctx=True: playerquiz_on 컨텍스트 제거 (퀴즈 종료/정답/시간초과)
+    """
+    res = {
         "version": "2.0",
-        "template": {"outputs": [{"simpleText": {"text": msg}}]}
-    })
+        "template": {"outputs": [{"simpleText": {"text": msg}}]},
+    }
+
+    # ✅ 컨텍스트 제어 (오픈빌더가 다음 입력을 어떤 블록으로 보낼지 결정하는 키)
+    if set_ctx:
+        res["context"] = {
+            "values": [{
+                "name": PQ_CTX_NAME,
+                "lifeSpan": PQ_CTX_LIFESPAN,
+                "params": {}
+            }]
+        }
+    if clear_ctx:
+        res["context"] = {
+            "values": [{
+                "name": PQ_CTX_NAME,
+                "lifeSpan": 0,
+                "params": {}
+            }]
+        }
+    return jsonify(res)
 
 def pq_strip_mention(s: str) -> str:
     """문장 앞의 @채널명 멘션 제거(여러 번 붙은 경우도 제거)"""
@@ -2105,14 +2123,9 @@ def extract_utterance(body: dict) -> str:
     return ""
 
 def get_room_id(body: dict) -> str:
-    """
-    방/사용자 식별자. (오픈빌더 환경에 따라 구조가 다를 수 있어 최대한 방어)
-    - groupChat/room id가 있으면 그걸 사용
-    - 없으면 user id로 대체
-    """
+    """방/사용자 식별자"""
     ur = body.get("userRequest") or {}
     user_id = ((ur.get("user") or {}).get("id")) or "anon"
-
     room_id = (
         ((ur.get("context") or {}).get("groupChat") or {}).get("id")
         or ((ur.get("context") or {}).get("room") or {}).get("id")
@@ -2145,9 +2158,11 @@ def remaining(st) -> int:
     return max(0, PQ_TIME_LIMIT - int(elapsed))
 
 def start_guide_text() -> str:
-    # 예: "초성퀴즈 / 승부차기 / 공피하기"
     joined = " / ".join(GAME_START_GUIDE)
-    return f"진행 중인 초성퀴즈가 없어요!"
+    return (
+        "진행 중인 초성퀴즈가 없어요.\n"
+        f"다른 게임을 시작하려면: {joined}"
+    )
 
 def pick_player(room_id: str):
     players = load_players()
@@ -2162,7 +2177,6 @@ def pick_player(room_id: str):
     candidates = [p for p in players if p.get("id") not in recent_set] or players
     chosen = random.choice(candidates)
 
-    # 최근 출제 기록 갱신
     recent.append(chosen.get("id"))
     recent = recent[-PQ_RECENT_WINDOW:]
 
@@ -2197,7 +2211,6 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
 # ---------- 라우트 ----------
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
-    
     body = request.get_json(silent=True) or {}
     room_id = get_room_id(body)
 
@@ -2205,81 +2218,93 @@ def kakao_playerquiz():
     utter = pq_strip_mention(utter_raw)
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
-    
-    # 시작 트리거(등록한 발화/버튼)
+
     start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
 
     st = get_state(room_id)
-    print(cmd, utter, cmd, room_id, st)
-    # 0) 시간초과: "다음 입력이 들어오는 순간" 처리
+
+    # 0) 시간초과: 다음 입력이 들어오는 순간 처리
     if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!")
+        # ✅ 컨텍스트 제거 (정답 입력 블록에서 빠져나오게)
+        return pq_text(
+            f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!",
+            clear_ctx=True
+        )
 
     # 1) 시작
     if cmd_n in start_cmds:
         player = pick_player(room_id)
         if not player:
-            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!")
-        st = get_state(room_id)
-        return pq_text(problem_text(player, remaining(st)))
+            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", clear_ctx=True)
 
-    # 2) 종료/포기/힌트 (초성퀴즈 엔드포인트에서만 처리)
+        st = get_state(room_id)
+        # ✅ 컨텍스트 부여 (이후 유저가 '호나우두' 등 아무 말 해도 정답 블록이 받아서 여기로 들어오게)
+        return pq_text(problem_text(player, remaining(st)), set_ctx=True)
+
+    # 2) 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.")
-        return pq_text(start_guide_text())
+            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.", clear_ctx=True)
+        return pq_text(start_guide_text(), clear_ctx=True)
 
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
         if not st:
-            return pq_text(start_guide_text())
+            return pq_text(start_guide_text(), clear_ctx=True)
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!")
+        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text(start_guide_text())
+            return pq_text(start_guide_text(), clear_ctx=True)
+
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!")
+            # ✅ 컨텍스트 유지(퀴즈 계속 진행)
+            return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", set_ctx=True)
+
         idx += 1
         with PQ_LOCK:
             if room_id in PQ_STATE:
                 PQ_STATE[room_id]["hint_idx"] = idx
         st2 = get_state(room_id)
-        return pq_text(hint_text(player, idx, remaining(st2)))
 
-    
+        # ✅ 컨텍스트 유지
+        return pq_text(hint_text(player, idx, remaining(st2)), set_ctx=True)
+
     # 3) 정답 시도
     if not st:
-        # 미처리 발화로 들어온 잡입력일 가능성이 큼 → 여러 게임 시작 안내로 처리
-        return pq_text(start_guide_text())
+        # ✅ 여기로 오는 건 보통 "시작 블록"에서 호출됐거나, (잘못)연결된 경우.
+        # 퀴즈 중이 아니면 컨텍스트도 꺼서 안전하게 밖으로 보내자.
+        return pq_text(start_guide_text(), clear_ctx=True)
 
-    # (방어) 자음/모음만 길게 입력한 경우는 오답 처리하지 않고 안내
+    # (방어) 자음/모음만 길게 입력한 경우
     only_jamo = re.fullmatch(r"[ㄱ-ㅎㅏ-ㅣ]+", cmd.replace(" ", ""))
     if only_jamo and len(cmd.replace(" ", "")) >= 6:
-        return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!")
-    
+        return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!", set_ctx=True)
+
     guess_n = pq_norm(cmd)
     if not guess_n:
-        return pq_text("정답을 입력하거나 '힌트'라고 말해요!")
-    
+        return pq_text("정답을 입력하거나 '힌트'라고 말해요!", set_ctx=True)
+
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
     answers_n = {pq_norm(a) for a in answers if a}
-    
+
     if guess_n in answers_n:
         ans = player.get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!")
+        # ✅ 정답 맞히면 컨텍스트 제거
+        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
 
+    # ✅ 오답이어도 컨텍스트 유지 (다음 입력도 계속 퀴즈로 받기)
     return pq_text(
-        f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n"
-        "힌트가 필요하면 '힌트'라고 말해요!"
+        f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n힌트가 필요하면 '힌트'라고 말해요!",
+        set_ctx=True
     )
 
 
