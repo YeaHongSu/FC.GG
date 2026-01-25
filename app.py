@@ -2027,12 +2027,8 @@ def kakao_penalty():
 #   - 제한시간 60초(다음 사용자 입력 시 만료 체크)
 #   - 힌트 4개(출생년도/국적/포지션/한줄소개)
 #   - 정답: name_ko 또는 aliases
-#   - ✅ 오픈빌더 컨텍스트(playerquiz_on)로 "정답 입력(미처리 발화) 블록" 라우팅
-#
-# ⚠️ 오픈빌더 설정 핵심
-#  - 시작 블록(패턴 발화: 초성퀴즈 등) -> 스킬(/kakao/playerquiz)
-#  - 시나리오06의 '미처리 발화 블록'    -> 스킬(/kakao/playerquiz)
-#    그리고 그 미처리 발화 블록의 Input 컨텍스트 = playerquiz_on
+#   - ✅ 오픈빌더 컨텍스트(playerquiz_on)로 "정답 입력 블록" 라우팅
+#   - ✅ 요청/응답 로그 강화
 # ============================================================================
 
 import time, random, threading, re
@@ -2041,6 +2037,7 @@ from flask import request, jsonify
 from player_info import all_players as _all_players
 from player_info import make_chosung as _make_chosung
 
+# ---------- 설정 ----------
 PQ_TIME_LIMIT = 60
 PQ_MAX_HINTS = 4
 PQ_RECENT_WINDOW = 20
@@ -2050,74 +2047,19 @@ PQ_CTX_LIFESPAN = 200
 
 GAME_START_GUIDE = ["초성퀴즈", "승부차기", "공피하기"]
 
+# ---------- 상태 ----------
 PQ_LOCK = threading.Lock()
 PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "recent_ids":[...]}
 
-MENTION_RE = re.compile(r"^\s*@[\S]+\s*")
+MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 멘션 제거용
 
-def _pq_get_meta(body: dict):
-    ur = body.get("userRequest") or {}
-    user_id = ((ur.get("user") or {}).get("id")) or "anon"
-
-    action = body.get("action") or {}
-    block_id = action.get("blockId")
-    intent = action.get("intent") or {}
-    intent_id = intent.get("id")
-    intent_name = intent.get("name")
-
-    req_ctx = body.get("contexts")          # 종종 여기로 들어옴
-    ur_ctx = (ur.get("context") or {})      # 종종 여기로 들어옴
-    return user_id, block_id, intent_id, intent_name, req_ctx, ur_ctx
-
-def _pq_log(tag: str, **kw):
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    parts = [f"{k}={v}" for k, v in kw.items()]
-    print(f"{ts} [PQ][{tag}] " + " ".join(parts))
-
-def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False):
-    res = {
-        "version": "2.0",
-        "template": {"outputs": [{"simpleText": {"text": msg}}]},
-    }
-
-    ctx_payload = None
-    if set_ctx:
-        ctx_payload = {
-            "values": [{
-                "name": PQ_CTX_NAME,
-                "lifeSpan": PQ_CTX_LIFESPAN,
-                "params": {}
-            }]
-        }
-    if clear_ctx:
-        ctx_payload = {
-            "values": [{
-                "name": PQ_CTX_NAME,
-                "lifeSpan": 0,
-                "params": {}
-            }]
-        }
-
-    # 채널/버전 차이로 context vs contexts가 갈리는 케이스가 있어 둘 다 넣음
-    if ctx_payload is not None:
-        res["context"] = ctx_payload
-        res["contexts"] = ctx_payload
-
-    return jsonify(res)
-
-def pq_strip_mention(s: str) -> str:
-    s = (s or "").strip()
-    while True:
-        ns = MENTION_RE.sub("", s).strip()
-        if ns == s:
-            return s
-        s = ns
-
-def pq_norm(s: str) -> str:
-    s = (s or "").strip().lower()
-    s = re.sub(r"^(정답|답)\s*[:：]\s*", "", s)
-    s = re.sub(r"[^0-9a-z가-힣]+", "", s)
-    return s
+def _safe(obj, *path, default=None):
+    cur = obj
+    for k in path:
+        if not isinstance(cur, dict):
+            return default
+        cur = cur.get(k)
+    return cur if cur is not None else default
 
 def extract_utterance(body: dict) -> str:
     ur = body.get("userRequest") or {}
@@ -2138,6 +2080,20 @@ def extract_utterance(body: dict) -> str:
 
     return ""
 
+def pq_strip_mention(s: str) -> str:
+    s = (s or "").strip()
+    while True:
+        ns = MENTION_RE.sub("", s).strip()
+        if ns == s:
+            return s
+        s = ns
+
+def pq_norm(s: str) -> str:
+    s = (s or "").strip().lower()
+    s = re.sub(r"^(정답|답)\s*[:：]\s*", "", s)     # "정답: 메시" 허용
+    s = re.sub(r"[^0-9a-z가-힣]+", "", s)          # 한글/영문/숫자만
+    return s
+
 def get_room_id(body: dict) -> str:
     ur = body.get("userRequest") or {}
     user_id = ((ur.get("user") or {}).get("id")) or "anon"
@@ -2148,6 +2104,49 @@ def get_room_id(body: dict) -> str:
         or user_id
     )
     return str(room_id)
+
+def extract_contexts(body: dict):
+    """
+    오픈빌더/채널 환경에 따라 contexts 위치가 다를 수 있어 방어적으로 수집
+    """
+    ur = body.get("userRequest") or {}
+    # 문서/환경에 따라 userRequest.contexts 또는 userRequest.context 안에 들어오는 경우가 있어 모두 체크
+    c1 = ur.get("contexts")
+    c2 = (ur.get("context") or {}).get("values")
+    c3 = (ur.get("context") or {}).get("contexts")
+    # 가장 흔한 배열 형태를 리스트로 정리
+    candidates = []
+    for c in (c1, c2, c3):
+        if isinstance(c, list):
+            candidates.extend(c)
+    return candidates
+
+def pq_text(msg: str, *, set_ctx: bool = False, clear_ctx: bool = False):
+    res = {
+        "version": "2.0",
+        "template": {"outputs": [{"simpleText": {"text": msg}}]},
+    }
+
+    if set_ctx:
+        res["context"] = {
+            "values": [{
+                "name": PQ_CTX_NAME,
+                "lifeSpan": PQ_CTX_LIFESPAN,
+                "params": {}
+            }]
+        }
+    if clear_ctx:
+        res["context"] = {
+            "values": [{
+                "name": PQ_CTX_NAME,
+                "lifeSpan": 0,
+                "params": {}
+            }]
+        }
+
+    # ✅ 응답 컨텍스트 로그
+    print(f"[PQ][RESP] set_ctx={set_ctx} clear_ctx={clear_ctx} ctx={res.get('context')}")
+    return jsonify(res)
 
 def load_players():
     players = _all_players() or []
@@ -2219,59 +2218,55 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
         return f"🧩 3번째 힌트 - 포지션: {player.get('position')}\n\n(남은 시간: {remain}s)"
     return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
 
+# ---------- 라우트 ----------
 @app.route("/kakao/playerquiz", methods=["POST"])
 def kakao_playerquiz():
     body = request.get_json(silent=True) or {}
 
-    user_id, block_id, intent_id, intent_name, req_ctx, ur_ctx = _pq_get_meta(body)
     room_id = get_room_id(body)
-
     utter_raw = extract_utterance(body)
     utter = pq_strip_mention(utter_raw)
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
 
-    start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
-
     st = get_state(room_id)
-    remain = remaining(st) if st else -1
-    player_id = (st or {}).get("player", {}).get("id") if st else None
-    player_name = (st or {}).get("player", {}).get("name_ko") if st else None
 
-    _pq_log(
-        "REQ",
-        room=room_id, user=user_id, blockId=block_id,
-        intentId=intent_id, intentName=intent_name,
-        utter_raw=utter_raw, utter=utter, cmd=cmd, cmd_n=cmd_n,
-        has_state="Y" if st else "N",
-        remain=remain, player_id=player_id, player=player_name,
-        req_contexts="Y" if req_ctx else "N",
-        ur_context="Y" if ur_ctx else "N",
+    # ✅ 요청 라우팅/컨텍스트 로그 (여기 찍혀야 "요청이 서버로 들어온 것")
+    intent_id = _safe(body, "intent", "id")
+    intent_name = _safe(body, "intent", "name")
+    block_id = _safe(body, "userRequest", "block", "id")
+    block_name = _safe(body, "userRequest", "block", "name")
+    req_contexts = extract_contexts(body)
+    has_ctx = any(isinstance(c, dict) and c.get("name") == PQ_CTX_NAME and int(c.get("lifeSpan", 0)) > 0 for c in req_contexts)
+
+    player_id = (st or {}).get("player", {}).get("id") if st else None
+    print(
+        f"[PQ][REQ] room={room_id} utter_raw='{utter_raw}' utter='{utter}' cmd='{cmd}' cmd_n='{cmd_n}' "
+        f"intent=({intent_id},{intent_name}) block=({block_id},{block_name}) "
+        f"has_state={'Y' if st else 'N'} remain={(remaining(st) if st else -1)} "
+        f"player_id={player_id} req_ctx_count={len(req_contexts)} has_playerquiz_ctx={'Y' if has_ctx else 'N'}"
     )
 
+    start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
+
     # 0) 시간초과
-    if st and remain <= 0:
+    if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        _pq_log("TIMEOUT", room=room_id, ans=ans)
         return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!", clear_ctx=True)
 
     # 1) 시작
     if cmd_n in start_cmds:
         player = pick_player(room_id)
         if not player:
-            _pq_log("NO_DB", room=room_id)
             return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", clear_ctx=True)
-
         st = get_state(room_id)
-        _pq_log("START_OK", room=room_id, player=player.get("name_ko"), cho=player.get("chosung"))
         return pq_text(problem_text(player, remaining(st)), set_ctx=True)
 
     # 2) 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            _pq_log("END", room=room_id)
             return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.", clear_ctx=True)
         return pq_text(start_guide_text(), clear_ctx=True)
 
@@ -2280,59 +2275,48 @@ def kakao_playerquiz():
             return pq_text(start_guide_text(), clear_ctx=True)
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        _pq_log("GIVEUP", room=room_id, ans=ans)
         return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
             return pq_text(start_guide_text(), clear_ctx=True)
-
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            _pq_log("HINT_MAX", room=room_id, idx=idx)
             return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", set_ctx=True)
-
         idx += 1
         with PQ_LOCK:
             if room_id in PQ_STATE:
                 PQ_STATE[room_id]["hint_idx"] = idx
         st2 = get_state(room_id)
-        _pq_log("HINT", room=room_id, idx=idx)
         return pq_text(hint_text(player, idx, remaining(st2)), set_ctx=True)
 
     # 3) 정답 시도
     if not st:
-        _pq_log("NO_STATE", room=room_id)
         return pq_text(start_guide_text(), clear_ctx=True)
 
     only_jamo = re.fullmatch(r"[ㄱ-ㅎㅏ-ㅣ]+", cmd.replace(" ", ""))
     if only_jamo and len(cmd.replace(" ", "")) >= 6:
-        _pq_log("JAMO_ONLY", room=room_id, cmd=cmd)
         return pq_text("정답(선수 이름)을 입력하거나 '힌트'/'포기'를 말해요!", set_ctx=True)
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        _pq_log("EMPTY_GUESS", room=room_id, cmd=cmd)
         return pq_text("정답을 입력하거나 '힌트'라고 말해요!", set_ctx=True)
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
     answers_n = {pq_norm(a) for a in answers if a}
 
-    _pq_log("GUESS", room=room_id, guess=guess_n, answers=list(answers_n)[:8])
-
     if guess_n in answers_n:
         ans = player.get("name_ko")
         clear_state(room_id)
-        _pq_log("CORRECT", room=room_id, ans=ans)
         return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!", clear_ctx=True)
 
-    _pq_log("WRONG", room=room_id, guess=guess_n, remain=remaining(st))
     return pq_text(
         f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n힌트가 필요하면 '힌트'라고 말해요!",
         set_ctx=True
     )
+
 
 
 # 포트 설정 및 웹에 띄우기
