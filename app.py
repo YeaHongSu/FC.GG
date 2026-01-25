@@ -2163,8 +2163,8 @@ def help_text() -> str:
     return jsonify({
         "version": "2.0",
         "template": {"outputs": [{"textCard": {
-                        "title": "아래 버튼을 눌러 확인하세요.\n",
-                        "buttons": [{"label": "도움말",  "action": "block", "blockId": 000}]}
+                        "title": "🤔 잘 이해하지 못했어요. \n 아래 버튼을 눌러 도움말을 확인하세요.\n",
+                        "buttons": [{"label": "도움말",  "action": "message", "messageText": "도움말"}]}
                 }]}
     })
 
