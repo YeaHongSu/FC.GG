@@ -2205,12 +2205,12 @@ def kakao_playerquiz():
     utter = pq_strip_mention(utter_raw)
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
-
+    
     # 시작 트리거(등록한 발화/버튼)
     start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
 
     st = get_state(room_id)
-
+    print(cmd, utter, cmd, room_id, st)
     # 0) 시간초과: "다음 입력이 들어오는 순간" 처리
     if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
@@ -2267,11 +2267,11 @@ def kakao_playerquiz():
     guess_n = pq_norm(cmd)
     if not guess_n:
         return pq_text("정답을 입력하거나 '힌트'라고 말해요!")
-
+    
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
     answers_n = {pq_norm(a) for a in answers if a}
-
+    
     if guess_n in answers_n:
         ans = player.get("name_ko")
         clear_state(room_id)
