@@ -2160,7 +2160,6 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
     return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
 
 def help_text() -> str:
-    GM_id = ((body.get("userRequest")).get("block")).get("id")
     return jsonify({
         "version": "2.0",
         "template": {"outputs": [{"textCard": {
