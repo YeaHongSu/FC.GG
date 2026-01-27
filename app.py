@@ -2043,11 +2043,20 @@ PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "re
 
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
 
-def pq_text(msg: str):
-    return jsonify({
-        "version": "2.0",
-        "template": {"outputs": [{"simpleText": {"text": msg}}]}
-    })
+def pq_text(msg: str, mentions: str):
+    if mentions == None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}]}
+        })
+    else:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}]},
+            "extra": {
+                "mentions": mentions
+            }
+        })
 
 def pq_strip_mention(s: str) -> str:
     s = (s or "").strip()
@@ -2176,6 +2185,9 @@ def _playerquiz_handle(body: dict):
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
 
+    uid = _uid(body)
+    mentions = {"user1": {"type": "botUserKey", "id": uid}}
+
     st = get_state(room_id)
     print(f"[PQ] room={room_id} utter_raw={utter_raw!r} cmd={cmd!r} pq={'Y' if st else 'N'} remain={(remaining(st) if st else None)}")
 
@@ -2185,51 +2197,51 @@ def _playerquiz_handle(body: dict):
     if st and remaining(st) <= 0:
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!")
+        return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!", None)
 
     # 시작
     if cmd_n in start_cmds:
         player = pick_player(room_id)
         if not player:
-            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!")
+            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
         st = get_state(room_id)
-        return pq_text(problem_text(player, remaining(st)))
+        return pq_text(problem_text(player, remaining(st)), None)
 
     # 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.")
-        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!")
+            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.", None)
+        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
 
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
         if not st:
-            return pq_text("'초성퀴즈'로 먼저 시작해 주세요!")
+            return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
         ans = st["player"].get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!")
+        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!", None)
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text("먼저 '초성퀴즈'로 시작해 주세요!")
+            return pq_text("먼저 '초성퀴즈'로 시작해 주세요!", None)
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!")
+            return pq_text("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", None)
         idx += 1
         with PQ_LOCK:
             if room_id in PQ_STATE:
                 PQ_STATE[room_id]["hint_idx"] = idx
         st2 = get_state(room_id)
-        return pq_text(hint_text(player, idx, remaining(st2)))
+        return pq_text(hint_text(player, idx, remaining(st2)), None)
 
     # 정답 시도
     if not st:
-        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!")
+        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        return pq_text("정답을 입력하거나 '힌트'라고 말해요!")
+        return pq_text("정답을 입력하거나 '힌트'라고 말해요!", None)
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
@@ -2238,11 +2250,11 @@ def _playerquiz_handle(body: dict):
     if guess_n in answers_n:
         ans = player.get("name_ko")
         clear_state(room_id)
-        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!")
+        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!", mentions)
 
     return pq_text(
         f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n"
-        "힌트가 필요하면 '힌트'라고 말해요!"
+        "힌트가 필요하면 '힌트'라고 말해요!", mentions
     )
 
 # ----------------------------
