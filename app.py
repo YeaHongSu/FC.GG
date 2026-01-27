@@ -2043,7 +2043,7 @@ PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "re
 
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
 
-def pq_text(msg: str, mentions: str):
+def pq_text(msg: str, mentions):
     if mentions == None:
         return jsonify({
             "version": "2.0",
@@ -2176,6 +2176,15 @@ def help_text() -> str:
                         "buttons": [{"label": "피파봇 사용법",  "action": "webLink", "webLinkUrl": "https://pf.kakao.com/_xoxlZen/111143579"}]}
                 }]}
     })
+    
+def _uid(body: dict) -> str:
+    """
+    Kakao 스펙 기준: user.id (type=botUserKey).
+    환경에 따라 accountId 등도 들어올 수 있어 안전 처리.
+    """
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    uid = (user.get("id") or "").strip()
+    return uid or "unknown"
 
 def _playerquiz_handle(body: dict):
     room_id = get_room_id(body)
