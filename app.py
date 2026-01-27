@@ -457,6 +457,10 @@ def ball_new():
 def ball_redirect():
     return redirect(url_for('ball_new'), code=301)
 
+@app.route("/privacy", methods=["GET"])
+def privacy():
+    return render_template("privacy.html")
+
 
 
 # 승률 개선 솔루션 결과 페이지
