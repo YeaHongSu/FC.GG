@@ -2369,26 +2369,34 @@ def kakao_playerquiz():
     body = request.get_json(silent=True) or {}
     return handle_playerquiz(body, entry="playerquiz")
 
-
-
-# ----------------------------
-# (2) 풀백(미처리발화/도움말) 블록이 호출할 라우터
-# ----------------------------
 @app.route("/kakao/fallback_router", methods=["POST"])
 def kakao_fallback_router():
+    """
+    ✅ 오픈빌더의 '미처리발화/도움말(풀백)' 블록이 여기로 오게 연결할 것!
+    - 퀴즈 진행 중이면: 여기서 정답 판정/힌트/포기까지 전부 처리됨
+    - 퀴즈가 아니면: 서버가 도움말 문구를 반환(기존 기능 유지)
+    """
     body = request.get_json(silent=True) or {}
-    room_id = get_room_id(body)
-    utter_raw = extract_utterance(body)
+    return handle_playerquiz(body, entry="fallback")
 
-    st = get_state(room_id)
-    print(f"[FB] room={room_id} utter_raw={utter_raw!r} pq_active={'Y' if st else 'N'} remain={(remaining(st) if st else None)}")
+# # ----------------------------
+# # (2) 풀백(미처리발화/도움말) 블록이 호출할 라우터
+# # ----------------------------
+# @app.route("/kakao/fallback_router", methods=["POST"])
+# def kakao_fallback_router():
+#     body = request.get_json(silent=True) or {}
+#     room_id = get_room_id(body)
+#     utter_raw = extract_utterance(body)
 
-    # ✅ 퀴즈 진행 중이면: 어떤 말이든 정답판정 로직으로 보냄
-    if st and remaining(st) > 0:
-        return _playerquiz_handle(body)
+#     st = get_state(room_id)
+#     print(f"[FB] room={room_id} utter_raw={utter_raw!r} pq_active={'Y' if st else 'N'} remain={(remaining(st) if st else None)}")
 
-    # ✅ 퀴즈가 아니면: 기존 도움말 출력(기능 유지)
-    return help_text()
+#     # ✅ 퀴즈 진행 중이면: 어떤 말이든 정답판정 로직으로 보냄
+#     if st and remaining(st) > 0:
+#         return _playerquiz_handle(body)
+
+#     # ✅ 퀴즈가 아니면: 기존 도움말 출력(기능 유지)
+#     return help_text()
 
 
 # 포트 설정 및 웹에 띄우기
