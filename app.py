@@ -2163,8 +2163,8 @@ def help_text() -> str:
     return jsonify({
         "version": "2.0",
         "template": {"outputs": [{"textCard": {
-                        "title": "🤔 잘 이해하지 못했어요. \n 아래 버튼을 눌러 도움말을 확인하세요.\n",
-                        "buttons": [{"label": "도움말",  "action": "message", "messageText": "도움말"}]}
+                        "title": "🤔 잘 이해하지 못했어요. \n 아래 버튼을 눌러 사용법을 확인하세요.\n",
+                        "buttons": [{"label": "피파봇 사용법",  "action": "webLink", "webLinkUrl": "https://pf.kakao.com/_xoxlZen/111143579"}]}
                 }]}
     })
 
