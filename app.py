@@ -2075,16 +2075,12 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
                 "altText": alt_text or "player"
             }
         })
-
-    resp = {
-        "version": "2.0",
-        "template": {
-            "outputs": outputs,
-            "quickReplies": [
-                {"action": "message", "label": "다음 문제", "messageText": "초성퀴즈"}
-            ]
-        }
-    }
+    outputs.append({"textCard": {
+                            "title": "다시 도전할까요? 😀",
+                            "buttons": [
+                                {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
+                            ]
+                        }})
 
     if mentions is not None:
         resp["extra"] = {"mentions": mentions}
@@ -2248,7 +2244,7 @@ def _playerquiz_handle(body: dict):
             f"⏰ 시간 초과! 정답은 '{ans}' 입니다.",
             img_url,
             ans,
-            None
+            mentions
         )
 
     # 시작
@@ -2280,7 +2276,7 @@ def _playerquiz_handle(body: dict):
             f"🏳️ 포기! 정답은 '{ans}' 입니다.",
             img_url,
             ans,
-            None
+            mentions
         )
 
     if cmd.lower() in ["힌트", "hint"]:
