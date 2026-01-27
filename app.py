@@ -2081,7 +2081,12 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
                                 {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
                             ]
                         }})
-
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": outputs,
+        }
+    }
     if mentions is not None:
         resp["extra"] = {"mentions": mentions}
 
