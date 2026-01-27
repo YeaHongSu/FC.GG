@@ -2043,6 +2043,9 @@ PQ_STATE = {}  # room_id -> {"player":..., "started_at":..., "hint_idx":..., "re
 
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
 
+# ----------------------------
+# ✅ 공용 응답 (기존 유지)
+# ----------------------------
 def pq_text(msg: str, mentions):
     if mentions == None:
         return jsonify({
@@ -2057,6 +2060,36 @@ def pq_text(msg: str, mentions):
                 "mentions": mentions
             }
         })
+
+# ----------------------------
+# ✅ 추가: 정답/결과에서 "텍스트 + 이미지 + 다음문제 버튼" 응답
+#   - 네 틀을 유지하면서 이 함수만 추가함
+# ----------------------------
+def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
+    outputs = [{"simpleText": {"text": msg}}]
+
+    if img_url:
+        outputs.append({
+            "simpleImage": {
+                "imageUrl": img_url,
+                "altText": alt_text or "player"
+            }
+        })
+
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": outputs,
+            "quickReplies": [
+                {"action": "message", "label": "다음 문제", "messageText": "초성퀴즈"}
+            ]
+        }
+    }
+
+    if mentions is not None:
+        resp["extra"] = {"mentions": mentions}
+
+    return jsonify(resp)
 
 def pq_strip_mention(s: str) -> str:
     s = (s or "").strip()
@@ -2159,6 +2192,7 @@ def problem_text(player: dict, remain: int) -> str:
         "힌트가 필요하면 '힌트'라고 말해요! (최대 4개)"
     )
 
+# ✅ 네가 지적한 힌트 로직 그대로 유지
 def hint_text(player: dict, idx: int, remain: int) -> str:
     if idx == 1:
         return f"🧩 1번째 힌트 - 출생년도: {player.get('birth_year')}\n\n(남은 시간: {remain}s)"
@@ -2204,9 +2238,18 @@ def _playerquiz_handle(body: dict):
 
     # 시간 초과
     if st and remaining(st) <= 0:
-        ans = st["player"].get("name_ko")
+        player = st["player"]
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
         clear_state(room_id)
-        return pq_text(f"⏰ 시간 초과! 정답은 '{ans}' 입니다.\n\n다시 하려면 '초성퀴즈'라고 말해요!", None)
+
+        # ✅ 문구 삭제 + 다음 문제 버튼 + (선택) 이미지
+        return pq_text_with_image_next(
+            f"⏰ 시간 초과! 정답은 '{ans}' 입니다.",
+            img_url,
+            ans,
+            None
+        )
 
     # 시작
     if cmd_n in start_cmds:
@@ -2226,9 +2269,19 @@ def _playerquiz_handle(body: dict):
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
         if not st:
             return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
-        ans = st["player"].get("name_ko")
+
+        player = st["player"]
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
         clear_state(room_id)
-        return pq_text(f"🏳️ 포기! 정답은 '{ans}' 입니다.\n\n다음 문제는 '초성퀴즈'라고 말해요!", None)
+
+        # ✅ 문구 삭제 + 다음 문제 버튼 + (선택) 이미지
+        return pq_text_with_image_next(
+            f"🏳️ 포기! 정답은 '{ans}' 입니다.",
+            img_url,
+            ans,
+            None
+        )
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
@@ -2258,8 +2311,19 @@ def _playerquiz_handle(body: dict):
 
     if guess_n in answers_n:
         ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
         clear_state(room_id)
-        return pq_text(f"🎉 정답! '{ans}' 입니다!\n\n다음 문제는 '초성퀴즈'라고 말해요!", mentions)
+
+        # ✅ 요구사항 핵심:
+        # 1) "정답!" 문구 바로 아래 이미지 출력
+        # 2) "다음 문제는 '초성퀴즈'..." 삭제
+        # 3) "다음 문제" 버튼 제공 (누르면 '초성퀴즈' 메시지 전송)
+        return pq_text_with_image_next(
+            f"🎉 정답! '{ans}' 입니다!",
+            img_url,
+            ans,
+            mentions
+        )
 
     return pq_text(
         f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n"
@@ -2273,6 +2337,7 @@ def _playerquiz_handle(body: dict):
 def kakao_playerquiz():
     body = request.get_json(silent=True) or {}
     return _playerquiz_handle(body)
+
 
 # ----------------------------
 # (2) 풀백(미처리발화/도움말) 블록이 호출할 라우터
