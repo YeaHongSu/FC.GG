@@ -2050,15 +2050,13 @@ def kakao_penalty():
 #     -> 퀴즈 진행 중이면 playerquiz 로직으로 위임(정답판정)
 #     -> 아니면 (순위보기/시작어 등은 playerquiz로 위임) / 그 외는 도움말
 #
-# ✅ 추가된 핵심:
-# - callbackUrl(1회/1분 유효)을 "60초 시간초과 자동 알림"에 사용
-# - 초성퀴즈 스킬 응답은 기존대로 template로 응답(useCallback 사용 안함)
-#   => "초성퀴즈 치자마자 시간초과" 같은 이상한 기본응답 선출력 문제 방지
+# ✅ 콜백 기반 기능:
+#  - 초성퀴즈 시작 시: useCallback:true + data.text 로 "문제 텍스트" 즉시 표시
+#  - 60초 후: callbackUrl 로 자동 "시간초과 + 정답(이미지+버튼)" 발송
 # ============================================================================
 
 import time, random, threading, re
-import requests  # ✅ 추가: callbackUrl로 POST 전송
-
+import requests
 from flask import request, jsonify
 
 from player_info import all_players as _all_players
@@ -2070,7 +2068,7 @@ PQ_MAX_HINTS = 4
 PQ_LOCK = threading.Lock()
 
 # ✅ "현재 진행중인 문제" 상태 (진행중 여부 판단은 이 dict 존재 여부로)
-# room_id -> {"player":..., "started_at":..., "hint_idx":...}
+# room_id -> {"player":..., "started_at":..., "hint_idx":..., "qid":..., "starter_uid":..., "callback_url":...}
 PQ_STATE = {}
 
 # ✅ 방 단위 98명 사이클 중복 방지용(진행 상태와 분리!)
@@ -2081,11 +2079,6 @@ PQ_CYCLE = {}
 # room_id -> {uid: score}
 PQ_RANK_LOCK = threading.Lock()
 PQ_RANK = {}
-
-# ✅ "자동 시간초과를 이미 안내한 방" 캐시 (자동 시간초과 후 입력해도 안내 뜨게)
-# room_id -> {"ans":..., "img_url":..., "ts":...}
-PQ_LAST_EXPIRED_LOCK = threading.Lock()
-PQ_LAST_EXPIRED = {}
 
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
 
@@ -2156,35 +2149,19 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
         resp["extra"] = {"mentions": mentions}
     return jsonify(resp)
 
-# ✅ callbackUrl로 보낼 payload는 "dict" 형태가 필요함(jsonify 아님)
-def pq_payload_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
-    outputs = [{"simpleText": {"text": msg}}]
-
-    if img_url:
-        outputs.append({
-            "simpleImage": {
-                "imageUrl": img_url,
-                "altText": alt_text or "player"
-            }
-        })
-
-    outputs.append({
-        "textCard": {
-            "title": "다음 문제로 갈까요?",
-            "buttons": [
-                {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
-                {"label": "순위보기", "action": "message", "messageText": "순위보기"},
-            ]
+# ----------------------------
+# ✅ 콜백 모드: "useCallback=true + data.text"
+#  - 블록 응답을 {{#webhook.data.text}} 로 설정해둔 상태에서
+#    data.text가 즉시 말풍선로 보이게 됨
+# ----------------------------
+def pq_use_callback_data_text(text: str):
+    return jsonify({
+        "version": "2.0",
+        "useCallback": True,
+        "data": {
+            "text": text
         }
     })
-
-    payload = {
-        "version": "2.0",
-        "template": {"outputs": outputs}
-    }
-    if mentions is not None:
-        payload["extra"] = {"mentions": mentions}
-    return payload
 
 def pq_strip_mention(s: str) -> str:
     s = (s or "").strip()
@@ -2233,13 +2210,13 @@ def get_room_id(body: dict) -> str:
     """
     ur = body.get("userRequest") or {}
     candidates = [
-        ("context.groupChat.id", deep_get(ur, ["context", "groupChat", "id"])),
-        ("context.room.id",      deep_get(ur, ["context", "room", "id"])),
-        ("context.chat.id",      deep_get(ur, ["chat", "id"])),
-        ("context.conversationId", deep_get(ur, ["context", "conversationId"])),
-        ("room.id",              deep_get(ur, ["room", "id"])),
+        deep_get(ur, ["context", "groupChat", "id"]),
+        deep_get(ur, ["context", "room", "id"]),
+        deep_get(ur, ["chat", "id"]),
+        deep_get(ur, ["context", "conversationId"]),
+        deep_get(ur, ["room", "id"]),
     ]
-    for _, v in candidates:
+    for v in candidates:
         if v:
             return str(v)
 
@@ -2247,9 +2224,7 @@ def get_room_id(body: dict) -> str:
     return str(user_id)
 
 def get_callback_url(body: dict) -> str:
-    ur = body.get("userRequest") or {}
-    cb = ur.get("callbackUrl")
-    return str(cb) if cb else ""
+    return str(deep_get(body, ["userRequest", "callbackUrl"]) or "")
 
 def load_players():
     players = _all_players() or []
@@ -2273,7 +2248,7 @@ def remaining(st) -> int:
     elapsed = time.time() - float(st.get("started_at") or 0)
     return max(0, PQ_TIME_LIMIT - int(elapsed))
 
-def pick_player(room_id: str):
+def pick_player(room_id: str, starter_uid: str = "unknown", callback_url: str = ""):
     """
     ✅ 방 단위 98명(전체) 사이클 중복 방지:
     - PQ_CYCLE[room_id]에 누적
@@ -2300,10 +2275,15 @@ def pick_player(room_id: str):
         seen_ids.append(chosen.get("id"))
         PQ_CYCLE[room_id] = seen_ids  # ✅ 사이클 기록은 유지
 
+        qid = f"{int(time.time()*1000)}_{random.randint(1000,9999)}"
+
         PQ_STATE[room_id] = {
             "player": chosen,
             "started_at": time.time(),
             "hint_idx": 0,
+            "qid": qid,
+            "starter_uid": starter_uid or "unknown",
+            "callback_url": callback_url or "",
         }
 
     return chosen
@@ -2379,83 +2359,86 @@ def pq_build_leaderboard(room_id: str, topn: int = 10):
     for i, (uid, score) in enumerate(items, start=1):
         key = f"u{i}"
         mentions[key] = {"type": "botUserKey", "id": uid}
-        token = f"{{{{#mentions.{key}}}}}"  # ✅ 반드시 이 형태!
+        token = f"{{{{#mentions.{key}}}}}"
         lines.append(f"{i}. {token} - {score}점")
 
     return ("\n".join(lines), mentions)
 
 # ----------------------------
-# ✅ 자동 시간초과 callback 전송
+# ✅ 콜백으로 "60초 자동 시간초과" 보내기
 # ----------------------------
-def _remember_last_expired(room_id: str, ans: str, img_url: str):
-    with PQ_LAST_EXPIRED_LOCK:
-        PQ_LAST_EXPIRED[room_id] = {"ans": ans, "img_url": img_url, "ts": time.time()}
+def _build_timeout_callback_payload(ans: str, img_url: str):
+    # 콜백 요청 포맷도 "일반 스킬 응답 template"와 동일하게 보내면 됨
+    # (여기서는 멘션 없이 깔끔하게 송출)
+    return {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {"simpleText": {"text": f"⏰ 시간 초과! 정답은 '{ans}' 입니다!"}},
+                *([{
+                    "simpleImage": {
+                        "imageUrl": img_url,
+                        "altText": ans or "player"
+                    }
+                }] if img_url else []),
+                {"textCard": {
+                    "title": "다음 문제로 갈까요?",
+                    "buttons": [
+                        {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
+                        {"label": "순위보기", "action": "message", "messageText": "순위보기"},
+                    ]
+                }}
+            ]
+        }
+    }
 
-def _get_last_expired(room_id: str, ttl_sec: int = 120):
-    with PQ_LAST_EXPIRED_LOCK:
-        item = PQ_LAST_EXPIRED.get(room_id)
-    if not item:
-        return None
-    if time.time() - float(item.get("ts", 0)) > ttl_sec:
-        return None
-    return item
-
-def _timeout_worker(room_id: str, started_at: float, callback_url: str):
+def _schedule_timeout_callback(room_id: str, qid: str, callback_url: str):
     """
-    ✅ 시작 시 받은 callbackUrl(1분/1회)을 60초 뒤에 사용해서
-       "시간 초과 + 정답"을 봇이 먼저 말하게 한다.
+    ✅ 시작 시점에만 1회 예약.
+    - 60초 후에도 같은 qid가 살아있으면(=아직 정답/포기/종료 안 됨) callbackUrl로 시간초과 발송
     """
     if not callback_url:
         return
 
-    # callbackUrl 만료(1분) 고려해서 아주 살짝(0.3s) 당겨 전송
-    deadline = float(started_at) + float(PQ_TIME_LIMIT)
-    sleep_sec = max(0.0, (deadline - time.time()) - 0.3)
-    time.sleep(sleep_sec)
+    def worker():
+        try:
+            time.sleep(PQ_TIME_LIMIT)
 
-    # 전송 시점에 상태 재확인
-    with PQ_LOCK:
-        st = PQ_STATE.get(room_id)
-        if not st:
-            return
-        if float(st.get("started_at") or 0) != float(started_at):
-            return  # 새 문제로 갱신됨
-        # 아직도 남은시간이 있으면(타이밍 오차) 전송하지 않음
-        if remaining(st) > 0:
-            return
-        player = st["player"]
-        ans = player.get("name_ko")
-        img_url = player.get("img_url", "")
+            with PQ_LOCK:
+                st = PQ_STATE.get(room_id)
+                if not st:
+                    return
+                if st.get("qid") != qid:
+                    return
 
-        # ✅ 상태는 callback 전송 후 정리
-        PQ_STATE.pop(room_id, None)
+                # 혹시 시간이 덜 지났으면 조금 더 대기(오차 방어)
+                rem = remaining(st)
+            if rem > 0:
+                time.sleep(rem)
 
-    _remember_last_expired(room_id, ans, img_url)
+            with PQ_LOCK:
+                st2 = PQ_STATE.get(room_id)
+                if not st2 or st2.get("qid") != qid:
+                    return
 
-    payload = pq_payload_with_image_next(
-        f"⏰ 시간이 초과되었습니다! 정답은 '{ans}' 입니다!",
-        img_url,
-        ans,
-        None  # 자동 전송이라 멘션 없음
-    )
+                player = st2.get("player") or {}
+                ans = player.get("name_ko") or ""
+                img_url = player.get("img_url") or ""
+                # ✅ 여기서 상태 제거(중복 발송 방지)
+                PQ_STATE.pop(room_id, None)
 
-    try:
-        requests.post(callback_url, json=payload, timeout=3)
-    except Exception as e:
-        print(f"[PQ][CB] timeout send failed: {e}")
+            payload = _build_timeout_callback_payload(ans, img_url)
 
-def _arm_timeout_callback(room_id: str, started_at: float, callback_url: str):
-    """
-    같은 문제에 대해 타이머 스레드를 하나만 붙이기 위해:
-    started_at 기준으로만 새로 arm 한다.
-    """
-    # 스레드 중복 자체는 started_at 체크로 무력화되니, 그냥 daemon thread 생성 OK
-    th = threading.Thread(
-        target=_timeout_worker,
-        args=(room_id, float(started_at), str(callback_url)),
-        daemon=True
-    )
-    th.start()
+            try:
+                requests.post(callback_url, json=payload, timeout=3)
+            except Exception as e:
+                print(f"[PQ][CB] callback post error: {e}")
+
+        except Exception as e:
+            print(f"[PQ][CB] worker error: {e}")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
 
 def _expired_response(room_id: str, mentions):
     st = get_state(room_id)
@@ -2465,10 +2448,7 @@ def _expired_response(room_id: str, mentions):
     ans = player.get("name_ko")
     img_url = player.get("img_url", "")
     clear_state(room_id)
-
-    _remember_last_expired(room_id, ans, img_url)
-
-    msg = _with_mention_prefix(f"⏰ 시간이 초과되었습니다! 정답은 '{ans}' 입니다!", mentions)
+    msg = _with_mention_prefix(f"⏰ 시간 초과! 정답은 '{ans}' 입니다!", mentions)
     return pq_text_with_image_next(msg, img_url, ans, mentions)
 
 def _playerquiz_handle(body: dict):
@@ -2481,29 +2461,21 @@ def _playerquiz_handle(body: dict):
 
     mentions = _build_mentions(body)
     uid = _uid(body)
+    callback_url = get_callback_url(body)
 
     st = get_state(room_id)
     rem = remaining(st) if st else None
-    print(f"[PQ] room={room_id} utter_raw={utter_raw!r} cmd={cmd!r} pq={'Y' if st else 'N'} remain={rem}")
+    print(f"[PQ] room={room_id} utter_raw={utter_raw!r} cmd={cmd!r} pq={'Y' if st else 'N'} remain={rem} cb={'Y' if callback_url else 'N'}")
 
     start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
     rank_cmds  = {pq_norm(x) for x in ["순위보기", "랭킹보기", "랭킹", "순위", "순위 보기"]}
 
-    # ✅ (A) 순위보기: 진행중 아니어도 항상 가능
+    # ✅ 순위보기: 진행중 아니어도 항상 가능
     if cmd_n in rank_cmds:
         text, m = pq_build_leaderboard(room_id, topn=10)
         return pq_text(text, m)
 
-    # ✅ (B) 진행 중 상태가 없는데, "방금 자동 시간초과가 있었던 방"이면 안내 (TTL 120s)
-    if not st:
-        last = _get_last_expired(room_id, ttl_sec=120)
-        if last and cmd_n not in start_cmds:
-            ans = last.get("ans", "")
-            img_url = last.get("img_url", "")
-            msg = _with_mention_prefix(f"⏰ 이미 시간이 초과되었습니다! 정답은 '{ans}' 입니다!", mentions)
-            return pq_text_with_image_next(msg, img_url, ans, mentions)
-
-    # ✅ (C) (원래 코드 유지) 진행중 + 시간 초과면: 어떤 입력이든 즉시 시간초과 처리
+    # ✅ (시간 초과) 진행중인데 시간이 0 이하이면: 어떤 입력이든 즉시 시간초과 처리
     if st and remaining(st) <= 0:
         return _expired_response(room_id, mentions)
 
@@ -2516,25 +2488,35 @@ def _playerquiz_handle(body: dict):
                 {"label": "포기", "action": "message", "messageText": "포기"},
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
             ]
+            # 기존대로 즉시 문제 공유
             return pq_text_with_quickreplies(problem_text(player, remaining(st)), None, quick)
 
-        player = pick_player(room_id)
+        # ✅ 새 문제 시작
+        player = pick_player(room_id, starter_uid=uid, callback_url=callback_url)
         if not player:
             return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
 
-        st = get_state(room_id)
+        st2 = get_state(room_id)
+        qid = (st2 or {}).get("qid") or ""
 
-        # ✅ 여기서 callbackUrl을 "자동 시간초과 알림"에만 사용
-        callback_url = get_callback_url(body)
-        if callback_url:
-            _arm_timeout_callback(room_id, float(st.get("started_at") or time.time()), callback_url)
+        # ✅ 60초 자동 시간초과(콜백URL 있을 때만)
+        if callback_url and qid:
+            # (1) 즉시 보여줄 "문제 텍스트"는 data.text로 반환 (네가 이미 {{#webhook.data.text}}로 연결해둔 상태)
+            # (2) 60초 뒤 callbackUrl로 시간초과 말풍선 발송
+            _schedule_timeout_callback(room_id, qid, callback_url)
 
+            # ✅ 즉시 말풍선(문제) = data.text
+            # quickReplies는 "블록 기본응답" 구조에서 처리하기 어렵기 때문에,
+            # 필요하면 블록 기본응답을 textCard로 바꾸는 쪽(관리자센터)에서 추가하는 걸 추천.
+            return pq_use_callback_data_text(problem_text(player, remaining(st2)))
+
+        # ✅ 콜백이 없으면 기존 방식(유저가 다음 입력할 때 시간초과 처리)
         quick = [
             {"label": "힌트", "action": "message", "messageText": "힌트"},
             {"label": "포기", "action": "message", "messageText": "포기"},
             {"label": "순위보기", "action": "message", "messageText": "순위보기"},
         ]
-        return pq_text_with_quickreplies(problem_text(player, remaining(st)), None, quick)
+        return pq_text_with_quickreplies(problem_text(player, remaining(st2)), None, quick)
 
     # 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
@@ -2589,6 +2571,7 @@ def _playerquiz_handle(body: dict):
         img_url = player.get("img_url", "")
         clear_state(room_id)
 
+        # ✅ 정답자 +1점 (방 단위 랭킹)
         pq_add_point(room_id, uid, 1)
 
         msg = _with_mention_prefix(f"🎉 정답! '{ans}' 입니다! (+1점)", mentions)
