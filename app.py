@@ -2115,14 +2115,20 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
                 "altText": alt_text or "player"
             }
         })
+        outputs.append({
+            "textCard": {
+                "title": "다음 문제로 갈까요?",
+                "buttons": [
+                    {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"}
+                ]
+            }
+        })
 
     resp = {
         "version": "2.0",
         "template": {
             "outputs": outputs,
-            "quickReplies": [
-                {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
-            ]
+            
         }
     }
     if mentions is not None:
