@@ -2050,8 +2050,7 @@ def kakao_penalty():
 #     -> 퀴즈 진행 중이면 playerquiz 로직으로 위임(정답판정)
 #     -> 아니면 (순위보기/시작어 등은 playerquiz로 위임) / 그 외는 도움말
 # ============================================================================
-
-import time, random, threading, re
+import time, random, threading, re, requests
 from flask import request, jsonify
 
 from player_info import all_players as _all_players
@@ -2060,10 +2059,13 @@ from player_info import make_chosung as _make_chosung
 PQ_TIME_LIMIT = 60
 PQ_MAX_HINTS = 4
 
+# ✅ callbackUrl 만료(1분) 여유 버퍼(안전하게 2초)
+PQ_CALLBACK_BUFFER_SEC = 2
+
 PQ_LOCK = threading.Lock()
 
 # ✅ "현재 진행중인 문제" 상태 (진행중 여부 판단은 이 dict 존재 여부로)
-# room_id -> {"player":..., "started_at":..., "hint_idx":...}
+# room_id -> {"player":..., "started_at":..., "hint_idx":..., "round_id":..., "callback_url":...}
 PQ_STATE = {}
 
 # ✅ 방 단위 98명 사이클 중복 방지용(진행 상태와 분리!)
@@ -2144,6 +2146,69 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     if mentions is not None:
         resp["extra"] = {"mentions": mentions}
     return jsonify(resp)
+
+# ----------------------------
+# ✅ 콜백용: 최초 응답은 useCallback=true로(템플릿 없음)
+# - Builder 기본응답메시지에 {{#webhook.data.text}} 해둔 상태라 했으니 그대로 사용
+# ----------------------------
+def pq_use_callback_wait(text: str):
+    return jsonify({
+        "version": "2.0",
+        "useCallback": True,
+        "data": {"text": text}
+    })
+
+def pq_get_callback_url(body: dict) -> str:
+    ur = body.get("userRequest") or {}
+    return (ur.get("callbackUrl") or "").strip()
+
+def pq_build_callback_payload_timeout(ans: str, img_url: str):
+    # callbackUrl로 보낼 최종 말풍선(JSON)은 일반 스킬 응답과 동일 포맷(template 포함)
+    outputs = [{"simpleText": {"text": f"⏰ 시간이 초과되었습니다! 정답은 '{ans}' 입니다!"}}]
+    if img_url:
+        outputs.append({"simpleImage": {"imageUrl": img_url, "altText": ans or "player"}})
+    outputs.append({
+        "textCard": {
+            "title": "다음 문제로 갈까요?",
+            "buttons": [
+                {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
+                {"label": "순위보기", "action": "message", "messageText": "순위보기"},
+            ]
+        }
+    })
+    return {"version": "2.0", "template": {"outputs": outputs}}
+
+def pq_post_callback(callback_url: str, payload: dict):
+    try:
+        requests.post(callback_url, json=payload, timeout=3)
+    except Exception as e:
+        print(f"[PQ][CB] post failed: {e}")
+
+def pq_timeout_worker(room_id: str, round_id: str, callback_url: str):
+    # callbackUrl 유효 1분 이슈 때문에 60초 꽉 채우기보다 58초에 보내는 게 안전
+    sleep_sec = max(0, PQ_TIME_LIMIT - PQ_CALLBACK_BUFFER_SEC)
+    time.sleep(sleep_sec)
+
+    with PQ_LOCK:
+        st = PQ_STATE.get(room_id)
+        if not st:
+            return
+        # ✅ 같은 문제(round_id)일 때만 콜백 발송
+        if str(st.get("round_id")) != str(round_id):
+            return
+        # ✅ 실제 시간도 체크(혹시 서버 지연 등)
+        if remaining(st) > 0:
+            return
+
+        player = st["player"]
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
+
+        # ✅ 중복 전송 방지: 먼저 상태 제거
+        PQ_STATE.pop(room_id, None)
+
+    payload = pq_build_callback_payload_timeout(ans, img_url)
+    pq_post_callback(callback_url, payload)
 
 def pq_strip_mention(s: str) -> str:
     s = (s or "").strip()
@@ -2258,6 +2323,9 @@ def pick_player(room_id: str):
             "player": chosen,
             "started_at": time.time(),
             "hint_idx": 0,
+            # ✅ 콜백 관련 필드는 필요할 때만 채움
+            "round_id": None,
+            "callback_url": None,
         }
 
     return chosen
@@ -2392,6 +2460,27 @@ def _playerquiz_handle(body: dict):
             return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
 
         st = get_state(room_id)
+
+        # ✅ 콜백: callbackUrl이 있으면 useCallback=true로 "문제 텍스트"를 즉시 보여주고
+        #        동시에 60초(안전하게 58초) 후 자동 시간초과 말풍선을 callbackUrl로 전송
+        cb_url = pq_get_callback_url(body)
+        if cb_url:
+            round_id = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+            with PQ_LOCK:
+                if room_id in PQ_STATE:
+                    PQ_STATE[room_id]["round_id"] = round_id
+                    PQ_STATE[room_id]["callback_url"] = cb_url
+
+            threading.Thread(
+                target=pq_timeout_worker,
+                args=(room_id, round_id, cb_url),
+                daemon=True
+            ).start()
+
+            # ✅ 기본응답메시지(Builder)에서 {{#webhook.data.text}}로 바로 출력됨
+            return pq_use_callback_wait(problem_text(player, remaining(st)))
+
+        # ✅ 콜백이 없는 경우(기존 유지)
         quick = [
             {"label": "힌트", "action": "message", "messageText": "힌트"},
             {"label": "포기", "action": "message", "messageText": "포기"},
