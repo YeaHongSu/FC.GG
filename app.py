@@ -2145,6 +2145,56 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
         resp["extra"] = {"mentions": mentions}
     return jsonify(resp)
 
+# ----------------------------
+# ✅ 콜백: 시작 시 useCallback=true로 "문제 텍스트"를 기본응답메시지에 표시
+#   - Builder 기본응답메시지: {{#webhook.data.text}}
+# ----------------------------
+def pq_use_callback_wait(text: str):
+    return jsonify({
+        "version": "2.0",
+        "useCallback": True,
+        "data": {"text": text}
+    })
+
+def pq_callback_url(body: dict) -> str:
+    ur = body.get("userRequest") or {}
+    return (ur.get("callbackUrl") or "").strip()
+
+def pq_post_callback(callback_url: str, payload: dict):
+    try:
+        requests.post(callback_url, json=payload, timeout=3)
+    except Exception as e:
+        print(f"[PQ][CB] post failed: {e}")
+
+def pq_timeout_worker(room_id: str, round_id: str, callback_url: str):
+    # 60초 뒤, 아직 같은 라운드가 진행중이면 callbackUrl로 '시간초과' 먼저 전송
+    time.sleep(PQ_TIME_LIMIT)
+
+    with PQ_LOCK:
+        st = PQ_STATE.get(room_id)
+        if not st:
+            return
+        if str(st.get("round_id")) != str(round_id):
+            return  # 이미 다른 문제로 교체됨/종료됨
+
+        player = st.get("player") or {}
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
+
+        # 중복 전송 방지 위해 먼저 상태 제거
+        PQ_STATE.pop(room_id, None)
+
+    payload = pq_payload_with_image_next(
+        f"⏰ 시간이 초과되었습니다! 정답은 '{ans}' 입니다.",
+        img_url,
+        ans,
+        None  # 자동 전송은 멘션 없이(원하면 starter_uid 저장해서 멘션도 가능)
+    )
+    pq_post_callback(callback_url, payload)
+
+# ----------------------------
+# 유틸
+# ----------------------------
 def pq_strip_mention(s: str) -> str:
     s = (s or "").strip()
     while True:
@@ -2372,9 +2422,6 @@ def _playerquiz_handle(body: dict):
         text, m = pq_build_leaderboard(room_id, topn=10)
         return pq_text(text, m)
 
-    # ✅ (4) 시간 초과면: 어떤 입력이든 즉시 시간초과 처리
-    if st and remaining(st) <= 0:
-        return _expired_response(room_id, mentions)
 
     # ✅ 시작: 진행 중이면 새 문제 뽑지 말고 현재 문제 공유(=공동 진행)
     if cmd_n in start_cmds:
@@ -2392,6 +2439,26 @@ def _playerquiz_handle(body: dict):
             return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
 
         st = get_state(room_id)
+        
+        # ✅ 콜백이 켜져 있으면: '기본응답메시지'로 문제를 즉시 보여주고,
+        # 60초 뒤에도 아무 발화가 없으면 callbackUrl로 '시간초과'를 먼저 전송
+        cb_url = pq_callback_url(body)
+        if cb_url:
+            round_id = f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}"
+            with PQ_LOCK:
+                if room_id in PQ_STATE:
+                    PQ_STATE[room_id]["round_id"] = round_id
+                    PQ_STATE[room_id]["callback_url"] = cb_url
+
+            threading.Thread(
+                target=pq_timeout_worker,
+                args=(room_id, round_id, cb_url),
+                daemon=True
+            ).start()
+
+            return pq_use_callback_wait(problem_text(player, remaining(st)))
+
+        # ✅ 콜백이 없으면: 기존처럼 일반 응답 + 퀵리플라이
         quick = [
             {"label": "힌트", "action": "message", "messageText": "힌트"},
             {"label": "포기", "action": "message", "messageText": "포기"},
