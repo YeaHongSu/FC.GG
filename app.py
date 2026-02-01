@@ -2177,7 +2177,7 @@ def get_room_id(body: dict) -> str:
     - groupChat / room / chat / conversationId 등 환경별 차이를 최대한 커버
     """
     ur = body.get("userRequest") or {}
-
+    print(ur)
     candidates = [
         ("context.groupChat.id", deep_get(ur, ["context", "groupChat", "id"])),
         ("context.room.id",      deep_get(ur, ["context", "room", "id"])),
@@ -2188,7 +2188,7 @@ def get_room_id(body: dict) -> str:
     for k, v in candidates:
         if v:
             return str(v)
-
+    
     # 그래도 없으면 최후 fallback: 유저 id (이 경우 개인별로 따로 상태 잡힘)
     user_id = deep_get(ur, ["user", "id"]) or "anon"
     return str(user_id)
