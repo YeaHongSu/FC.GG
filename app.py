@@ -2183,7 +2183,7 @@ def get_room_id(body: dict) -> str:
     - groupChat / room / chat / conversationId 등 환경별 차이를 최대한 커버
     """
     ur = body.get("userRequest") or {}
-    print(ur)
+    #print(ur)
     candidates = [
         ("context.groupChat.id", deep_get(ur, ["context", "groupChat", "id"])),
         ("context.room.id",      deep_get(ur, ["context", "room", "id"])),
