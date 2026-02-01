@@ -2052,7 +2052,6 @@ def kakao_penalty():
 # ============================================================================
 
 import time, random, threading, re
-import requests
 from flask import request, jsonify
 
 from player_info import all_players as _all_players
@@ -2064,19 +2063,18 @@ PQ_MAX_HINTS = 4
 PQ_LOCK = threading.Lock()
 # room_id -> {
 #   "player":..., "started_at":..., "hint_idx":...,
-#   "used_ids":[...],           # ✅ 사이클(중복방지)용
-#   "starter_uid":"...",        # ✅ 타임아웃 멘션용(시작한 사람)
-#   "callback_url":"...",       # ✅ 60초 자동 푸시용
-#   "timer": threading.Timer,   # ✅ 타이머 핸들
+#   "seen_ids":[...],   # ✅ 98명 사이클 중복 방지
 # }
 PQ_STATE = {}
 
 MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
 
-# ----------------------------
-# ✅ 공용 응답 (기존 유지)
-# ----------------------------
+# ✅ 멘션 토큰(절대 format() 하지 말 것!)
+MENTION_KEY = "sender"
+MENTION_TOKEN = "{{#mentions.sender}}"
+
 def pq_text(msg: str, mentions):
+    """기존 공용 응답 유지"""
     if mentions is None:
         return jsonify({
             "version": "2.0",
@@ -2089,12 +2087,11 @@ def pq_text(msg: str, mentions):
             "extra": {"mentions": mentions}
         })
 
-# ----------------------------
-# ✅ 추가: "텍스트 + 이미지 + 다음문제 버튼" 응답
-#    - 버튼 라벨은 "다음 문제"
-#    - 누르면 채팅에 "초성퀴즈"가 입력되어 다음 문제가 출제됨
-# ----------------------------
 def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
+    """
+    ✅ 정답/포기/시간초과 시:
+    - 텍스트(정답) -> 이미지 -> '다음 문제' 버튼(quickReplies)
+    """
     outputs = [{"simpleText": {"text": msg}}]
 
     if img_url:
@@ -2105,16 +2102,16 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
             }
         })
 
-    outputs.append({
-        "textCard": {
-            "title": "다음 문제로 갈까요?",
-            "buttons": [
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": outputs,
+            # ✅ 버튼을 "다음 문제"로 (누르면 채팅에 '초성퀴즈' 전송)
+            "quickReplies": [
                 {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
             ]
         }
-    })
-
-    resp = {"version": "2.0", "template": {"outputs": outputs}}
+    }
     if mentions is not None:
         resp["extra"] = {"mentions": mentions}
     return jsonify(resp)
@@ -2163,16 +2160,6 @@ def get_room_id(body: dict) -> str:
     )
     return str(room_id)
 
-def _uid(body: dict) -> str:
-    user = ((body.get("userRequest") or {}).get("user") or {})
-    uid = (user.get("id") or "").strip()
-    return uid or "unknown"
-
-def _callback_url(body: dict) -> str:
-    # Kakao i 스킬 요청에 callbackUrl이 들어오는 경우가 있음
-    ur = body.get("userRequest") or {}
-    return (ur.get("callbackUrl") or "").strip()
-
 def load_players():
     players = _all_players() or []
     out = []
@@ -2187,25 +2174,51 @@ def get_state(room_id: str):
     with PQ_LOCK:
         return PQ_STATE.get(room_id)
 
-def _cancel_timer(st: dict):
-    t = st.get("timer")
-    if t:
-        try:
-            t.cancel()
-        except Exception:
-            pass
-    st["timer"] = None
-
 def clear_state(room_id: str):
     with PQ_LOCK:
-        st = PQ_STATE.get(room_id)
-        if st:
-            _cancel_timer(st)
         PQ_STATE.pop(room_id, None)
 
 def remaining(st) -> int:
     elapsed = time.time() - float(st.get("started_at") or 0)
     return max(0, PQ_TIME_LIMIT - int(elapsed))
+
+def pick_player(room_id: str):
+    """
+    ✅ 같은 room_id에서 98명(전체) 다 돌기 전엔 절대 중복 안 나오게.
+    - seen_ids가 전체 선수 수와 같아지면 그때부터 사이클 리셋
+    """
+    players = load_players()
+    if not players:
+        return None
+
+    total = len(players)
+
+    with PQ_LOCK:
+        st = PQ_STATE.get(room_id) or {}
+        seen_ids = list(st.get("seen_ids") or [])
+
+        # 사이클 완료 시 리셋
+        if len(seen_ids) >= total:
+            seen_ids = []
+
+        seen_set = set(seen_ids)
+        candidates = [p for p in players if p.get("id") not in seen_set]
+        if not candidates:
+            # 방어코드 (이론상 거의 안 탐)
+            seen_ids = []
+            candidates = players
+
+        chosen = random.choice(candidates)
+        seen_ids.append(chosen.get("id"))
+
+        PQ_STATE[room_id] = {
+            "player": chosen,
+            "started_at": time.time(),
+            "hint_idx": 0,
+            "seen_ids": seen_ids,
+        }
+
+    return chosen
 
 def problem_text(player: dict, remain: int) -> str:
     return (
@@ -2217,7 +2230,6 @@ def problem_text(player: dict, remain: int) -> str:
         "힌트가 필요하면 '힌트'라고 말해요! (최대 4개)"
     )
 
-# ✅ 네 힌트 로직 그대로 유지
 def hint_text(player: dict, idx: int, remain: int) -> str:
     if idx == 1:
         return f"🧩 1번째 힌트 - 출생년도: {player.get('birth_year')}\n\n(남은 시간: {remain}s)"
@@ -2236,116 +2248,25 @@ def help_text() -> str:
         }}]}
     })
 
-# ----------------------------
-# ✅ 60초 자동 타임아웃 푸시 (callbackUrl 이용)
-# ----------------------------
-def _push_timeout(room_id: str, started_at: float):
-    # 타이머가 울릴 때 호출됨
-    with PQ_LOCK:
-        st = PQ_STATE.get(room_id)
-        if not st:
-            return
-        # 같은 문제인지 확인(다른 문제로 갱신되었으면 무시)
-        if float(st.get("started_at") or 0) != float(started_at):
-            return
+def _uid(body: dict) -> str:
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    uid = (user.get("id") or "").strip()
+    return uid or "unknown"
 
-        cb = (st.get("callback_url") or "").strip()
-        player = st.get("player") or {}
-        starter_uid = st.get("starter_uid") or "unknown"
-
-        ans = player.get("name_ko")
-        img_url = player.get("img_url", "")
-
-        # ✅ 타임아웃 메시지: 시작한 사람 멘션으로 표시
-        mentions = {"user1": {"type": "botUserKey", "id": starter_uid}}
-        msg = "{{#mentions.user1}} ⏰ 시간 초과 땡! 정답은 '{}' 입니다.".format(ans)
-
-        payload = {
-            "version": "2.0",
-            "template": {
-                "outputs": [
-                    {"simpleText": {"text": msg}},
-                    *([{"simpleImage": {"imageUrl": img_url, "altText": ans or "player"}}] if img_url else []),
-                    {"textCard": {
-                        "title": "다음 문제로 갈까요?",
-                        "buttons": [{"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}]
-                    }}
-                ]
-            },
-            "extra": {"mentions": mentions}
-        }
-
-        # 상태 정리(타이머 포함)
-        _cancel_timer(st)
-        PQ_STATE.pop(room_id, None)
-
-    # 락 밖에서 네트워크 호출
-    if not cb:
-        return
-    try:
-        requests.post(cb, json=payload, timeout=3)
-    except Exception:
-        pass
-
-def _arm_timer(room_id: str, st: dict):
-    # 기존 타이머 취소 후 새로 등록
-    _cancel_timer(st)
-    started_at = float(st.get("started_at") or time.time())
-    t = threading.Timer(PQ_TIME_LIMIT, _push_timeout, args=(room_id, started_at))
-    t.daemon = True
-    st["timer"] = t
-    t.start()
-
-# ----------------------------
-# ✅ 중복 출제 방지: 같은 room_id에서 DB 전체(=len(players)) 소진 전 재출제 금지
-#    - user가 말한 "98명"은 DB 길이가 98이면 자동으로 98 사이클이 됨
-# ----------------------------
-def pick_player(room_id: str, starter_uid: str, callback_url: str):
-    players = load_players()
-    if not players:
+def _build_mentions(body: dict):
+    uid = _uid(body)
+    if not uid or uid == "unknown":
         return None
+    return {MENTION_KEY: {"type": "botUserKey", "id": uid}}
 
-    all_ids = [p.get("id") for p in players if p.get("id")]
-    total = len(all_ids) if all_ids else len(players)
-
-    with PQ_LOCK:
-        st = PQ_STATE.get(room_id) or {}
-        used = list(st.get("used_ids") or [])
-
-        # ✅ DB 전체 다 돌았으면(=사이클 완료) 리셋
-        if total > 0 and len(set(used)) >= total:
-            used = []
-
-        used_set = set(used)
-
-        # ✅ 아직 안 나온 선수만 후보로
-        candidates = []
-        for p in players:
-            pid = p.get("id")
-            if pid and pid not in used_set:
-                candidates.append(p)
-        if not candidates:
-            # 혹시 id 누락 등 예외 -> 전체에서 랜덤(최후의 안전장치)
-            candidates = players
-
-        chosen = random.choice(candidates)
-        cid = chosen.get("id")
-        if cid:
-            used.append(cid)
-
-        # ✅ 상태 저장 + 타이머 재장착
-        PQ_STATE[room_id] = {
-            "player": chosen,
-            "started_at": time.time(),
-            "hint_idx": 0,
-            "used_ids": used,
-            "starter_uid": starter_uid,
-            "callback_url": callback_url or st.get("callback_url") or "",
-            "timer": st.get("timer"),  # 아래에서 cancel 후 재설정
-        }
-        _arm_timer(room_id, PQ_STATE[room_id])
-
-    return chosen
+def _with_mention_prefix(text: str, mentions):
+    """
+    ✅ 멘션 토큰이 깨지는 원인: format() 때문.
+    - 여기서는 토큰 문자열을 그대로 붙임(절대 format 사용 X)
+    """
+    if mentions is None:
+        return text
+    return f"{MENTION_TOKEN} {text}"
 
 def _playerquiz_handle(body: dict):
     room_id = get_room_id(body)
@@ -2355,26 +2276,31 @@ def _playerquiz_handle(body: dict):
     cmd = (utter or "").strip()
     cmd_n = pq_norm(cmd)
 
-    uid = _uid(body)
-    cb = _callback_url(body)
-
-    # ✅ "요청한 사람" 멘션 (승부차기처럼 토큰까지 넣어야 실제로 표시됨)
-    mentions = {"user1": {"type": "botUserKey", "id": uid}}
+    mentions = _build_mentions(body)
 
     st = get_state(room_id)
-    if st and cb:
-        # ✅ 다른 유저가 참여해도 callbackUrl 최신값으로 갱신(있으면)
-        with PQ_LOCK:
-            if room_id in PQ_STATE:
-                PQ_STATE[room_id]["callback_url"] = cb
-
     print(f"[PQ] room={room_id} utter_raw={utter_raw!r} cmd={cmd!r} pq={'Y' if st else 'N'} remain={(remaining(st) if st else None)}")
 
     start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
 
-    # 시작
+    # ✅ (4) 시간 초과 상태면: 어떤 입력이든 '시간초과+정답+이미지+다음문제버튼'
+    if st and remaining(st) <= 0:
+        player = st["player"]
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
+        clear_state(room_id)
+        msg = _with_mention_prefix(f"⏰ 시간 초과! 정답은 '{ans}' 입니다!", mentions)
+        return pq_text_with_image_next(msg, img_url, ans, mentions)
+
+    # ✅ 시작(공동 진행)
     if cmd_n in start_cmds:
-        player = pick_player(room_id, starter_uid=uid, callback_url=cb)
+        # (1) 이미 진행 중이면 새 문제 뽑지 말고 "현재 문제" 재안내
+        if st and remaining(st) > 0:
+            player = st["player"]
+            return pq_text(problem_text(player, remaining(st)), None)
+
+        # 새 문제 시작
+        player = pick_player(room_id)
         if not player:
             return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
         st = get_state(room_id)
@@ -2396,18 +2322,17 @@ def _playerquiz_handle(body: dict):
         img_url = player.get("img_url", "")
         clear_state(room_id)
 
-        # ✅ 누가 포기했는지 멘션 표시
-        msg = "{{#mentions.user1}} 🏳️ 포기! 정답은 '{}' 입니다.".format(ans)
+        msg = _with_mention_prefix(f"🏳️ 포기! 정답은 '{ans}' 입니다!", mentions)
         return pq_text_with_image_next(msg, img_url, ans, mentions)
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
             return pq_text("먼저 '초성퀴즈'로 시작해 주세요!", None)
+
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            msg = "{{#mentions.user1}} 힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!"
-            return pq_text(msg, mentions)
+            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", mentions), mentions)
 
         idx += 1
         with PQ_LOCK:
@@ -2415,9 +2340,7 @@ def _playerquiz_handle(body: dict):
                 PQ_STATE[room_id]["hint_idx"] = idx
 
         st2 = get_state(room_id)
-        # ✅ 누가 힌트를 요청했는지 멘션 표시
-        msg = "{{#mentions.user1}} " + hint_text(player, idx, remaining(st2))
-        return pq_text(msg, mentions)
+        return pq_text(_with_mention_prefix(hint_text(player, idx, remaining(st2)), mentions), mentions)
 
     # 정답 시도
     if not st:
@@ -2425,8 +2348,7 @@ def _playerquiz_handle(body: dict):
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        msg = "{{#mentions.user1}} 정답을 입력하거나 '힌트'라고 말해요!"
-        return pq_text(msg, mentions)
+        return pq_text(_with_mention_prefix("정답을 입력하거나 '힌트'라고 말해요!", mentions), mentions)
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
@@ -2437,16 +2359,16 @@ def _playerquiz_handle(body: dict):
         img_url = player.get("img_url", "")
         clear_state(room_id)
 
-        # ✅ 요구사항: 정답 메시지 아래 이미지 + "다음 문제" 버튼
-        msg = "{{#mentions.user1}} 🎉 정답! '{}' 입니다!".format(ans)
+        msg = _with_mention_prefix(f"🎉 정답! '{ans}' 입니다!", mentions)
         return pq_text_with_image_next(msg, img_url, ans, mentions)
 
     # 오답
-    msg = (
-        "{{#mentions.user1}} ❌ 땡! 다시 시도해보세요. (남은 시간: {}s)\n"
-        "힌트가 필요하면 '힌트'라고 말해요!"
-    ).format(remaining(st))
+    msg = _with_mention_prefix(
+        f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n힌트가 필요하면 '힌트'라고 말해요!",
+        mentions
+    )
     return pq_text(msg, mentions)
+
 
 # ----------------------------
 # (1) 초성퀴즈 전용 스킬
@@ -2458,7 +2380,7 @@ def kakao_playerquiz():
 
 
 # ----------------------------
-# (2) 풀백(미처리발화/도움말) 블록이 호출할 라우터
+# (2) 폴백 라우터
 # ----------------------------
 @app.route("/kakao/fallback_router", methods=["POST"])
 def kakao_fallback_router():
@@ -2469,11 +2391,11 @@ def kakao_fallback_router():
     st = get_state(room_id)
     print(f"[FB] room={room_id} utter_raw={utter_raw!r} pq_active={'Y' if st else 'N'} remain={(remaining(st) if st else None)}")
 
-    # ✅ 퀴즈 진행 중이면: 어떤 말이든 정답판정 로직으로 보냄
-    if st and remaining(st) > 0:
+    # ✅ 퀴즈 상태가 있으면(남은 시간 0 포함) 무조건 playerquiz로 위임
+    # -> (4) 시간초과 후에도 누가 말하면 시간초과 처리 메시지가 뜸
+    if st:
         return _playerquiz_handle(body)
 
-    # ✅ 퀴즈가 아니면: 기존 도움말 출력(기능 유지)
     return help_text()
 
 
