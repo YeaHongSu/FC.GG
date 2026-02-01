@@ -2104,7 +2104,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
         "textCard": {
             "title": "다음 문제로 갈까요? 😀",
             "buttons": [
-                {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
+                {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"}
             ]
         }
     })
