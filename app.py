@@ -2108,7 +2108,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
             "outputs": outputs,
             # ✅ 버튼을 "다음 문제"로 (누르면 채팅에 '초성퀴즈' 전송)
             "quickReplies": [
-                {"label": "다음 문제", "action": "message", "messageText": "초성퀴즈"}
+                {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"}
             ]
         }
     }
