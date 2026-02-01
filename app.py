@@ -2181,7 +2181,7 @@ def get_room_id(body: dict) -> str:
     candidates = [
         ("context.groupChat.id", deep_get(ur, ["context", "groupChat", "id"])),
         ("context.room.id",      deep_get(ur, ["context", "room", "id"])),
-        ("context.chat.id",      deep_get(ur, ["context", "chat", "id"])),
+        ("context.chat.id",      deep_get(ur, ["chat", "id"])),
         ("context.conversationId", deep_get(ur, ["context", "conversationId"])),
         ("room.id",              deep_get(ur, ["room", "id"])),
     ]
