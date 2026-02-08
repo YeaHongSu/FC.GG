@@ -2103,7 +2103,14 @@ def pq_text(msg: str, mentions):
     if mentions is None:
         return jsonify({
             "version": "2.0",
-            "template": {"outputs": [{"simpleText": {"text": msg}}]}
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "다시 도전할까요? 😀",
+                            "buttons": [
+                                {"label": "초성퀴즈", "action": "message", "blockId": "초성퀴즈"}
+                            ]
+                        }
+                    ]}
         })
     else:
         return jsonify({
