@@ -1782,13 +1782,23 @@ def kakao_penalty():
             return random.choice(arr) if arr else ""
 
         # ✅ (추가) 결과 이미지 6개 URL (dev 서브도메인에서 루트로 서빙되는 전제)
-        BASE_IMG = "."
-        RIGHT_GOAL_URL  = f"{BASE_IMG}/right_goal.png"
-        CENTER_GOAL_URL = f"{BASE_IMG}/center_goal.png"
-        LEFT_GOAL_URL   = f"{BASE_IMG}/left_goal.png"
-        RIGHT_MISS_URL  = f"{BASE_IMG}/right_miss.png"
-        CENTER_MISS_URL = f"{BASE_IMG}/center_miss.png"
-        LEFT_MISS_URL   = f"{BASE_IMG}/left_miss.png"
+        # BASE_IMG = "."
+        # RIGHT_GOAL_URL  = f"{BASE_IMG}/right_goal.png"
+        # CENTER_GOAL_URL = f"{BASE_IMG}/center_goal.png"
+        # LEFT_GOAL_URL   = f"{BASE_IMG}/left_goal.png"
+        # RIGHT_MISS_URL  = f"{BASE_IMG}/right_miss.png"
+        # CENTER_MISS_URL = f"{BASE_IMG}/center_miss.png"
+        # LEFT_MISS_URL   = f"{BASE_IMG}/left_miss.png"
+
+        # ✅ GitHub Raw URL 버전
+        RIGHT_GOAL_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/right_goal.png"
+        CENTER_GOAL_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/center_goal.png"
+        LEFT_GOAL_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/left_goal.png"
+        
+        RIGHT_MISS_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/right_miss.png"
+        CENTER_MISS_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/center_miss.png"
+        LEFT_MISS_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/left_miss.png"
+
 
         def _pick_result_img(direction_text: str, is_goal: bool) -> str:
             d = (direction_text or "").strip().lower()
