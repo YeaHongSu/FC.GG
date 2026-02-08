@@ -2110,7 +2110,7 @@ def pq_text(msg: str, mentions):
                                 {"label": "초성퀴즈", "action": "message", "blockId": "초성퀴즈"}
                             ]
                         }
-                    ]}
+            }]}
         })
     else:
         return jsonify({
