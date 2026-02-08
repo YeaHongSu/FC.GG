@@ -1888,6 +1888,7 @@ def kakao_penalty():
                             )
                         }
                     },{ "textCard": {
+                        "title": "방향을 선택하세요.",
                         "buttons": [
                             {"label": "왼쪽", "action": "message", "messageText": "왼쪽"},
                             {"label": "가운데", "action": "message", "messageText": "가운데"},
