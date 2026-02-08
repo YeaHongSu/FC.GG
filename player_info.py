@@ -46,7 +46,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "cristiano_ronaldo",
         "name_ko": "크리스티아누 호날두",
-        "aliases": ["호날두", "CR7", "Ronaldo", "크호"],
+        "aliases": ["호날두", "CR7", "Ronaldo", "크리스티아노 호날두"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p855020801.png?rd=202601271040",
         "chosung": "",
         "birth_year": 1985,
@@ -68,7 +68,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "diego_maradona",
         "name_ko": "디에고 마라도나",
-        "aliases": ["마라도나", "Maradona", "신의손"],
+        "aliases": ["마라도나", "Maradona", "디에구 마라도나"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p852190042.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1960,
@@ -101,7 +101,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "franz_beckenbauer",
         "name_ko": "프란츠 베켄바워",
-        "aliases": ["베켄바워", "Beckenbauer", "카이저"],
+        "aliases": ["베켄바워", "Beckenbauer", "프란츠 배켄바워"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p836168473.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1945,
@@ -158,7 +158,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "erling_haaland",
         "name_ko": "엘링 홀란",
-        "aliases": ["홀란", "홀란드", "Haaland"],
+        "aliases": ["홀란", "홀란드", "Haaland", "엘린 홀란"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p844239085_25.png?rd=202601271050",
         "chosung": "",
         "birth_year": 2000,
@@ -169,7 +169,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "neymar",
         "name_ko": "네이마르",
-        "aliases": ["네이마르 주니오르", "네이마르 Jr", "Neymar", "Ney"],
+        "aliases": ["네이마르 주니오르", "네이마르 Jr", "Neymar", "네이마루"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/players/p190871.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1992,
@@ -180,7 +180,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "mohamed_salah",
         "name_ko": "모하메드 살라",
-        "aliases": ["살라", "Salah", "이집트왕", "EgyptianKing"],
+        "aliases": ["살라", "Salah", "이집트왕", "모하메두 살라"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p831209331_25.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1992,
@@ -191,7 +191,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "harry_kane",
         "name_ko": "해리 케인",
-        "aliases": ["케인", "Kane"],
+        "aliases": ["케인", "Kane", "헤리 케인", "해리 캐인"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p202126_25.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1993,
@@ -213,7 +213,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "robert_lewandowski",
         "name_ko": "로베르트 레반도프스키",
-        "aliases": ["레반도프스키", "레반", "Lewandowski", "Lewy"],
+        "aliases": ["레반도프스키", "레반", "Lewandowski", "로베르토 레반도프스키"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p852188545.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1988,
@@ -235,7 +235,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "antoine_griezmann",
         "name_ko": "앙투안 그리즈만",
-        "aliases": ["그리즈만", "Griezmann"],
+        "aliases": ["그리즈만", "Griezmann", "앙투앙 그리즈만"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p851194765.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1991,
@@ -292,7 +292,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "kevin_de_bruyne",
         "name_ko": "케빈 더브라위너",
-        "aliases": ["더브라위너", "KDB", "De Bruyne", "DeBruyne", "더브라이너"],
+        "aliases": ["더브라위너", "KDB", "De Bruyne", "DeBruyne", "케빈 데브라위너"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p852192985.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1991,
@@ -391,7 +391,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "bruno_fernandes",
         "name_ko": "브루노 페르난데스",
-        "aliases": ["브루노", "Bruno", "Fernandes"],
+        "aliases": ["브루노", "Bruno", "Fernandes", "브루누 페르난데스"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p852212198.png?rd=202601271050",
         "chosung": "",
         "birth_year": 1994,
@@ -457,7 +457,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "declan_rice",
         "name_ko": "데클란 라이스",
-        "aliases": ["라이스", "Rice"],
+        "aliases": ["라이스", "Rice", "데클런 라이스"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p234378_25.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1999,
@@ -591,7 +591,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "vincent_kompany",
         "name_ko": "뱅상 콩파니",
-        "aliases": ["콩파니", "Kompany"],
+        "aliases": ["콩파니", "Kompany", "벵상 콤파니", "뱅상 콤파니", "콤파니"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p802139720.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1986,
@@ -602,7 +602,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "rio_ferdinand",
         "name_ko": "리오 퍼디난드",
-        "aliases": ["퍼디난드", "Ferdinand", "리오"],
+        "aliases": ["퍼디난드", "Ferdinand", "리오", "리우 퍼디난드"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p825007289.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1978,
@@ -657,7 +657,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "trent_alexander_arnold",
         "name_ko": "트렌트 알렉산더아놀드",
-        "aliases": ["트렌트", "TAA", "Alexander-Arnold", "Arnold"],
+        "aliases": ["트렌트", "TAA", "Alexander-Arnold", "Arnold", "알렉산더아놀드"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p231281_25.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1998,
@@ -668,7 +668,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "andy_robertson",
         "name_ko": "앤드루 로버트슨",
-        "aliases": ["로버트슨", "Robertson", "롭보"],
+        "aliases": ["로버트슨", "Robertson", "엔드루 로버트슨"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p216267_25.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1994,
@@ -690,7 +690,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "alphonso_davies",
         "name_ko": "알폰소 데이비스",
-        "aliases": ["데이비스", "Davies"],
+        "aliases": ["데이비스", "Davies", "알퐁소 데이비스"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p848234396_25.png?rd=202601271100",
         "chosung": "",
         "birth_year": 2000,
@@ -701,7 +701,7 @@ PLAYER_DB: List[Dict] = [
     {
         "id": "ruben_dias",
         "name_ko": "후벵 디아스",
-        "aliases": ["디아스", "Ruben Dias", "Dias"],
+        "aliases": ["디아스", "Ruben Dias", "후뱅 디아스"],
         "img_url": "https://fo4.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p239818_25.png?rd=202601271100",
         "chosung": "",
         "birth_year": 1997,
