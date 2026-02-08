@@ -1791,13 +1791,13 @@ def kakao_penalty():
         # LEFT_MISS_URL   = f"{BASE_IMG}/left_miss.png"
 
         # ✅ GitHub Raw URL 버전
-        RIGHT_GOAL_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/right_goal.png"
-        CENTER_GOAL_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/center_goal.png"
-        LEFT_GOAL_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/left_goal.png"
+        RIGHT_GOAL_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_goal.png"
+        CENTER_GOAL_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_goal.png"
+        LEFT_GOAL_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_goal.png"
         
-        RIGHT_MISS_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/right_miss.png"
-        CENTER_MISS_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/center_miss.png"
-        LEFT_MISS_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/dev/left_miss.png"
+        RIGHT_MISS_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_miss.png"
+        CENTER_MISS_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_miss.png"
+        LEFT_MISS_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_miss.png"
 
 
         def _pick_result_img(direction_text: str, is_goal: bool) -> str:
