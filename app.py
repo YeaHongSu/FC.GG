@@ -1783,12 +1783,18 @@ def kakao_penalty():
 
         # ✅ (추가) 결과 이미지 URL 6개 (도메인 루트에서 서빙)
         BASE_IMG = "https://fcgg.kr"
-        IMG_RIGHT_GOAL  = f"{BASE_IMG}/right_goal.png"
-        IMG_CENTER_GOAL = f"{BASE_IMG}/center_goal.png"
-        IMG_LEFT_GOAL   = f"{BASE_IMG}/left_goal.png"
-        IMG_RIGHT_MISS  = f"{BASE_IMG}/right_miss.png"
-        IMG_CENTER_MISS = f"{BASE_IMG}/center_miss.png"
-        IMG_LEFT_MISS   = f"{BASE_IMG}/left_miss.png"
+        # IMG_RIGHT_GOAL  = f"{BASE_IMG}/right_goal.png"
+        # IMG_CENTER_GOAL = f"{BASE_IMG}/center_goal.png"
+        # IMG_LEFT_GOAL   = f"{BASE_IMG}/left_goal.png"
+        # IMG_RIGHT_MISS  = f"{BASE_IMG}/right_miss.png"
+        # IMG_CENTER_MISS = f"{BASE_IMG}/center_miss.png"
+        # IMG_LEFT_MISS   = f"{BASE_IMG}/left_miss.png"
+        IMG_RIGHT_GOAL  = f"./right_goal.png"
+        IMG_CENTER_GOAL = f"./center_goal.png"
+        IMG_LEFT_GOAL   = f"./left_goal.png"
+        IMG_RIGHT_MISS  = f"./right_miss.png"
+        IMG_CENTER_MISS = f"./center_miss.png"
+        IMG_LEFT_MISS   = f"./left_miss.png"
 
         def _pick_result_img(direction_text: str, is_goal: bool) -> str:
             """
