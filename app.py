@@ -1883,8 +1883,7 @@ def kakao_penalty():
                     "outputs": [{
                         "simpleText": {
                             "text": (
-                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "🧍‍ vs 🧤"
+                                "📣 승부차기가 시작됩니다! 기회는 5번!🧍‍ vs 🧤"
                             )
                         }
                     },{ "textCard": {
@@ -2278,24 +2277,54 @@ def pick_player(room_id: str):
 
     return chosen
 
+# def problem_text(player: dict, remain: int) -> str:
+#     return (
+#         "⚽ 축구 선수 초성 퀴즈!\n"
+#         "초성을 보고 선수 이름을 맞춰보세요!\n\n"
+#         f"초성은 [{player.get('chosung','')}] 입니다.\n"
+#         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
+#         "정답을 채팅에 입력하세요! (예: @피파봇 손흥민)\n"
+#         "힌트가 필요하면 '@피파봇 힌트'라고 말해요!"
+#     )
+
 def problem_text(player: dict, remain: int) -> str:
     return (
         "⚽ 축구 선수 초성 퀴즈!\n"
-        "초성을 보고 선수 이름을 맞춰보세요!\n\n"
+        "초성을 보고 선수 이름을 맞춰보세요.\n\n"
         f"초성은 [{player.get('chosung','')}] 입니다.\n"
-        f"⏱ 제한시간: {PQ_TIME_LIMIT}s (남은 시간: {remain}s)\n\n"
-        "정답을 채팅에 입력하세요! (예: 메시 / 호날두 / CR7)\n"
-        "힌트가 필요하면 '힌트'라고 말해요! (최대 4개)"
+        f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
+        "✍️ 정답: 예) @피파봇 손흥민\n"
+        "🧠 힌트: @피파봇 힌트\n"
+        "🏳️ 포기: @피파봇 포기"
+        # "🏆 순위: '순위보기'\n"
+        # "※ 60초가 지나면 다음 입력에서 시간초과 처리돼요."
     )
 
 def hint_text(player: dict, idx: int, remain: int) -> str:
     if idx == 1:
-        return f"🧩 1번째 힌트 - 출생년도: {player.get('birth_year')}\n\n(남은 시간: {remain}s)"
+        return (
+            "🧩 1번째 힌트\n"
+            f"- 출생년도: {player.get('birth_year')}\n\n"
+            f"(남은 시간: {remain}초)"
+        )
     if idx == 2:
-        return f"🧩 2번째 힌트 - 국적: {player.get('nationality')}\n\n(남은 시간: {remain}s)"
+        return (
+            "🧩 2번째 힌트\n"
+            f"- 국적: {player.get('nationality')}\n\n"
+            f"(남은 시간: {remain}초)"
+        )
     if idx == 3:
-        return f"🧩 3번째 힌트 - 포지션: {player.get('position')}\n\n(남은 시간: {remain}s)"
-    return f"🧩 4번째 힌트 - 소개: {player.get('one_liner')}\n\n(남은 시간: {remain}s)"
+        return (
+            "🧩 3번째 힌트\n"
+            f"- 포지션: {player.get('position')}\n\n"
+            f"(남은 시간: {remain}초)"
+        )
+    return (
+        "🧩 4번째 힌트\n"
+        f"- 소개: {player.get('one_liner')}\n\n"
+        f"(남은 시간: {remain}초)"
+    )
+
 
 def help_text() -> str:
     return jsonify({
@@ -2419,7 +2448,7 @@ def _playerquiz_handle(body: dict):
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '초성퀴즈'라고 말해요.", None)
+            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '@피파봇 초성퀴즈'라고 말해요.", None)
         return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
 
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
@@ -2436,12 +2465,12 @@ def _playerquiz_handle(body: dict):
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text("먼저 '초성퀴즈'로 시작해 주세요!", None)
+            return pq_text("먼저 '@피파봇 초성퀴즈'로 시작해 주세요!", None)
 
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '포기'라고 말해요!", mentions), mentions)
+            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '@피파봇 포기'라고 말해요!", mentions), mentions)
 
         idx += 1
         with PQ_LOCK:
@@ -2453,11 +2482,11 @@ def _playerquiz_handle(body: dict):
 
     # 정답 시도
     if not st:
-        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
+        return pq_text("'@피파봇 초성퀴즈'로 먼저 시작해 주세요!", None)
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        return pq_text(_with_mention_prefix("정답을 입력하거나 '힌트'라고 말해요!", mentions), mentions)
+        return pq_text(_with_mention_prefix("정답을 입력하거나 '@피파봇 힌트'라고 말해요!", mentions), mentions)
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
