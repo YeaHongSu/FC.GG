@@ -1928,11 +1928,16 @@ def kakao_penalty():
                         "simpleText": {
                             "text": (
                                 f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
-                                f"현재: {board}\n"
-                                f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
+                                f"현재: {board}"
                             )
                         }
-                    }]
+                    }, { "textCard": {
+                        "title": "방향을 선택하세요.",
+                        "buttons": [
+                            {"label": "왼쪽", "action": "message", "messageText": "왼쪽"},
+                            {"label": "가운데", "action": "message", "messageText": "가운데"},
+                            {"label": "오른쪽", "action": "message", "messageText": "오른쪽"}]
+                    }}]
                 },
                 "extra": {
                     "mentions": {
@@ -2027,7 +2032,14 @@ def kakao_penalty():
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{"simpleText": {"text": prefix + reaction}}],
+                "outputs": [{"simpleText": {"text": prefix + reaction}},
+                            { "textCard": {
+                        "title": "방향을 선택하세요.",
+                        "buttons": [
+                            {"label": "왼쪽", "action": "message", "messageText": "왼쪽"},
+                            {"label": "가운데", "action": "message", "messageText": "가운데"},
+                            {"label": "오른쪽", "action": "message", "messageText": "오른쪽"}]
+                    }}],
                 "quickReplies": _quick_replies()
             },
             "extra": {
