@@ -1781,6 +1781,30 @@ def kakao_penalty():
         def _pick(arr):
             return random.choice(arr) if arr else ""
 
+        # ✅ (추가) 결과 이미지 URL 6개 (도메인 루트에서 서빙)
+        BASE_IMG = "https://fcgg.kr"
+        IMG_RIGHT_GOAL  = f"{BASE_IMG}/right_goal.png"
+        IMG_CENTER_GOAL = f"{BASE_IMG}/center_goal.png"
+        IMG_LEFT_GOAL   = f"{BASE_IMG}/left_goal.png"
+        IMG_RIGHT_MISS  = f"{BASE_IMG}/right_miss.png"
+        IMG_CENTER_MISS = f"{BASE_IMG}/center_miss.png"
+        IMG_LEFT_MISS   = f"{BASE_IMG}/left_miss.png"
+
+        def _pick_result_img(direction_text: str, is_goal: bool) -> str:
+            """
+            direction_text: '왼쪽/가운데/오른쪽' 또는 '왼/가/오' 등
+            is_goal: True(골) / False(노골)
+            """
+            d = (direction_text or "").strip().lower()
+
+            # 방향 판별 (우선순위: 왼 -> 오 -> 그 외 가운데)
+            if ("왼" in d) or ("left" in d):
+                return IMG_LEFT_GOAL if is_goal else IMG_LEFT_MISS
+            if ("오" in d) or ("right" in d):
+                return IMG_RIGHT_GOAL if is_goal else IMG_RIGHT_MISS
+            # 가운데/중앙/center 등은 기본으로 처리
+            return IMG_CENTER_GOAL if is_goal else IMG_CENTER_MISS
+
         # 골/노골 기본 멘트 풀
         GOAL_BASE = [
             "🔥 절정의 컨디션!",
@@ -1954,6 +1978,9 @@ def kakao_penalty():
         n = len(shots)
         total = sum(1 for s in shots if s)
 
+        # ✅ (추가) 방향+결과에 맞는 이미지 URL 선택 (dir_text 기반)
+        result_img_url = _pick_result_img(dir_text, success)
+
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
             c = 0
@@ -1986,7 +2013,6 @@ def kakao_penalty():
             ])
 
         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2골"
         prefix = (
             "{{#mentions.user1}}"
             + f" {head} {board} ({n}/5회)\n"
@@ -2017,6 +2043,8 @@ def kakao_penalty():
                 "version": "2.0",
                 "template": {
                     "outputs": [
+                        # ✅ (추가) 종료 시에도 이미지 먼저 출력
+                        {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                         {"simpleText": {"text": prefix + reaction + summary}},
                         card
                     ]
@@ -2031,14 +2059,18 @@ def kakao_penalty():
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{"simpleText": {"text": prefix + reaction}},
-                            { "textCard": {
+                "outputs": [
+                    # ✅ (추가) 진행 중에도 이미지 먼저 출력
+                    {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
+                    {"simpleText": {"text": prefix + reaction}},
+                    { "textCard": {
                         "title": "방향을 선택하세요.",
                         "buttons": [
                             {"label": "왼쪽", "action": "message", "messageText": "왼쪽"},
                             {"label": "가운데", "action": "message", "messageText": "가운데"},
                             {"label": "오른쪽", "action": "message", "messageText": "오른쪽"}]
-                    }}],
+                    }}
+                ],
                 "quickReplies": _quick_replies()
             },
             "extra": {
@@ -2057,6 +2089,7 @@ def kakao_penalty():
                 }]
             }
         })
+
 
 # ============================================================================
 # 초성퀴즈(선수 이름 맞추기) + 폴백 라우터
