@@ -2108,7 +2108,14 @@ def pq_text(msg: str, mentions):
     else:
         return jsonify({
             "version": "2.0",
-            "template": {"outputs": [{"simpleText": {"text": msg}}]},
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "다시 도전할까요? 😀",
+                            "buttons": [
+                                {"label": "초성퀴즈", "action": "message", "blockId": "초성퀴즈"}
+                            ]
+                        }
+                    }]},
             "extra": {"mentions": mentions}
         })
 
@@ -2381,6 +2388,8 @@ def pq_build_leaderboard(room_id: str, topn: int = 10):
         token = f"{{{{#mentions.{key}}}}}"  # ✅ 반드시 이 형태!
         lines.append(f"{i}. {token} - {score}점")
 
+    lines.append("\n랭킹은 주기적으로 갱신됩니다.")  
+    
     return ("\n".join(lines), mentions)
 
 def _expired_response(room_id: str, mentions):
