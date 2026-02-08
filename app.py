@@ -1781,34 +1781,34 @@ def kakao_penalty():
         def _pick(arr):
             return random.choice(arr) if arr else ""
 
-        # ✅ (추가) 결과 이미지 6개 URL (dev 서브도메인에서 루트로 서빙되는 전제)
-        # BASE_IMG = "."
-        # RIGHT_GOAL_URL  = f"{BASE_IMG}/right_goal.png"
-        # CENTER_GOAL_URL = f"{BASE_IMG}/center_goal.png"
-        # LEFT_GOAL_URL   = f"{BASE_IMG}/left_goal.png"
-        # RIGHT_MISS_URL  = f"{BASE_IMG}/right_miss.png"
-        # CENTER_MISS_URL = f"{BASE_IMG}/center_miss.png"
-        # LEFT_MISS_URL   = f"{BASE_IMG}/left_miss.png"
-
-        # ✅ GitHub Raw URL 버전
+        # ✅ GitHub Raw URL 버전 (유지)
         RIGHT_GOAL_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_goal.png"
         CENTER_GOAL_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_goal.png"
         LEFT_GOAL_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_goal.png"
-        
+
         RIGHT_MISS_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_miss.png"
         CENTER_MISS_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_miss.png"
         LEFT_MISS_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_miss.png"
 
+        # ✅ (추가) 방향×결과 매핑 (골/노골에 따라 다른 PNG 선택)
+        RESULT_IMG = {
+            "left":   {True: LEFT_GOAL_URL,   False: LEFT_MISS_URL},
+            "center": {True: CENTER_GOAL_URL, False: CENTER_MISS_URL},
+            "right":  {True: RIGHT_GOAL_URL,  False: RIGHT_MISS_URL},
+        }
+
+        def _normalize_dir(direction_text: str) -> str:
+            d = (direction_text or "").strip().lower()
+            if ("왼" in d) or ("left" in d):
+                return "left"
+            if ("오" in d) or ("right" in d):
+                return "right"
+            # 가운데/중앙/center 또는 애매하면 center
+            return "center"
 
         def _pick_result_img(direction_text: str, is_goal: bool) -> str:
-            d = (direction_text or "").strip().lower()
-            # 왼/오/가운데 판별 (한글 우선, 그 외 가운데로)
-            if ("왼" in d) or ("left" in d):
-                return LEFT_GOAL_URL if is_goal else LEFT_MISS_URL
-            if ("오" in d) or ("right" in d):
-                return RIGHT_GOAL_URL if is_goal else RIGHT_MISS_URL
-            # 가운데/중앙/center 등은 기본 가운데 처리
-            return CENTER_GOAL_URL if is_goal else CENTER_MISS_URL
+            key = _normalize_dir(direction_text)
+            return RESULT_IMG[key][is_goal]
 
         # 골/노골 기본 멘트 풀
         GOAL_BASE = [
@@ -1985,7 +1985,7 @@ def kakao_penalty():
         n = len(shots)
         total = sum(1 for s in shots if s)
 
-        # ✅ (추가) 결과 이미지 선택
+        # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
         result_img_url = _pick_result_img(dir_text, success)
 
         # 연속 카운트 계산
@@ -2097,6 +2097,7 @@ def kakao_penalty():
                 }]
             }
         })
+
 
 
 
