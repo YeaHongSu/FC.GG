@@ -1888,13 +1888,12 @@ def kakao_penalty():
                                 # "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
                             )
                         }
-                    }, "textCard": {
+                    },{ "textCard": {
                         "buttons": [
                             {"label": "왼쪽", "action": "message", "messageText": "왼쪽"},
                             {"label": "가운데", "action": "message", "messageText": "가운데"},
                             {"label": "오른쪽", "action": "message", "messageText": "오른쪽"}]
-                    }
-                               ],
+                    }}],
                 }
             })
 
