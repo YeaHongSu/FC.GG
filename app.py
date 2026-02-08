@@ -1781,6 +1781,25 @@ def kakao_penalty():
         def _pick(arr):
             return random.choice(arr) if arr else ""
 
+        # ✅ (추가) 결과 이미지 6개 URL (dev 서브도메인에서 루트로 서빙되는 전제)
+        BASE_IMG = "."
+        RIGHT_GOAL_URL  = f"{BASE_IMG}/right_goal.png"
+        CENTER_GOAL_URL = f"{BASE_IMG}/center_goal.png"
+        LEFT_GOAL_URL   = f"{BASE_IMG}/left_goal.png"
+        RIGHT_MISS_URL  = f"{BASE_IMG}/right_miss.png"
+        CENTER_MISS_URL = f"{BASE_IMG}/center_miss.png"
+        LEFT_MISS_URL   = f"{BASE_IMG}/left_miss.png"
+
+        def _pick_result_img(direction_text: str, is_goal: bool) -> str:
+            d = (direction_text or "").strip().lower()
+            # 왼/오/가운데 판별 (한글 우선, 그 외 가운데로)
+            if ("왼" in d) or ("left" in d):
+                return LEFT_GOAL_URL if is_goal else LEFT_MISS_URL
+            if ("오" in d) or ("right" in d):
+                return RIGHT_GOAL_URL if is_goal else RIGHT_MISS_URL
+            # 가운데/중앙/center 등은 기본 가운데 처리
+            return CENTER_GOAL_URL if is_goal else CENTER_MISS_URL
+
         # 골/노골 기본 멘트 풀
         GOAL_BASE = [
             "🔥 절정의 컨디션!",
@@ -1889,7 +1908,7 @@ def kakao_penalty():
                     },{ "textCard": {
                         "title": "방향을 선택하세요.",
                         "buttons": [
-                            # ✅ 여기만 수정: message -> block (같은 블록으로 강제 라우팅)
+                            # ✅ (수정) message -> block 로 같은 블록으로 강제 라우팅
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
                             {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
                             {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
@@ -1934,7 +1953,7 @@ def kakao_penalty():
                     }, { "textCard": {
                         "title": "방향을 선택하세요.",
                         "buttons": [
-                            # ✅ 여기만 수정: message -> block (같은 블록으로 강제 라우팅)
+                            # ✅ (수정) message -> block
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
                             {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
                             {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
@@ -1955,6 +1974,9 @@ def kakao_penalty():
         board = _board(shots, 5)
         n = len(shots)
         total = sum(1 for s in shots if s)
+
+        # ✅ (추가) 결과 이미지 선택
+        result_img_url = _pick_result_img(dir_text, success)
 
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
@@ -2018,11 +2040,14 @@ def kakao_penalty():
                 "version": "2.0",
                 "template": {
                     "outputs": [
+                        # ✅ (추가) 이미지 먼저
+                        {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                         {"simpleText": {"text": prefix + reaction + summary}},
                         card
                     ]
                 },
                 "extra": {
+                    # 종료 메시지는 요청자 멘션만 유지(짧게)
                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
                 }
             })
@@ -2031,15 +2056,19 @@ def kakao_penalty():
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{"simpleText": {"text": prefix + reaction}},
-                            { "textCard": {
+                "outputs": [
+                    # ✅ (추가) 이미지 먼저
+                    {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
+                    {"simpleText": {"text": prefix + reaction}},
+                    { "textCard": {
                         "title": "방향을 선택하세요.",
                         "buttons": [
-                            # ✅ 여기만 수정: message -> block (같은 블록으로 강제 라우팅)
+                            # ✅ (수정) message -> block
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
                             {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
                             {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
-                    }}],
+                    }}
+                ],
                 "quickReplies": _quick_replies()
             },
             "extra": {
