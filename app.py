@@ -2230,7 +2230,7 @@ def pq_text_with_mention(msg: str, mentions):
                         "textCard": {
                             "title": "정답을 입력해보세요! 😄",
                             "buttons": [
-                                {"label": "@피파봇", "action": "message", "blockId": "@피파봇"}
+                                {"label": "@피파봇", "action": "message", "messageText": ""}
                             ]
                         }
             }]}
