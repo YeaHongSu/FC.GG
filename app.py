@@ -2568,7 +2568,7 @@ def _playerquiz_handle(body: dict):
             {"label": "포기", "action": "message", "messageText": "포기"},
             {"label": "순위보기", "action": "message", "messageText": "순위보기"},
         ]
-        return pq_text_with_quickreplies(problem_text(player, remaining(st)), None, quick)
+        return pq_text_with_mention(problem_text(player, remaining(st)), None)
 
     # 종료/포기/힌트
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
