@@ -1691,7 +1691,7 @@ def _room_id(body: dict) -> str:
 
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
-    # print(body)
+    print(body)
     # action = body.get("action") or {}
     # params = action.get("params") or {}
     # if key in params and params[key] is not None:
