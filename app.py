@@ -1692,8 +1692,8 @@ def _room_id(body: dict) -> str:
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
     print(body)
-    # action = body.get("action") or {}
-    # params = action.get("params") or {}
+    action = body.get("action") or {}
+    params = action.get("params") or {}
     # if key in params and params[key] is not None:
     #     return str(params[key])
     # dparams = action.get("detailParams") or {}
@@ -1701,9 +1701,12 @@ def _param_from_action(body: dict, key: str) -> str:
     #     val = (dparams[key] or {}).get("value")
     #     if val is not None:
     #         return str(val)
-    dir = body.get("utterance") or {}
-    if dir is not None:
-        return dir
+    if key in params and params[key] is not None:
+        userRequest = body.get("userRequest") or {}
+        dir = userRequest.get("utterance") or {}
+        print(dir)
+        if dir is not None:
+            return dir
     return ""
 
 
