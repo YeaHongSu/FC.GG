@@ -1691,16 +1691,19 @@ def _room_id(body: dict) -> str:
 
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
-    print(body)
-    action = body.get("action") or {}
-    params = action.get("params") or {}
-    if key in params and params[key] is not None:
-        return str(params[key])
-    dparams = action.get("detailParams") or {}
-    if key in dparams and dparams[key] is not None:
-        val = (dparams[key] or {}).get("value")
-        if val is not None:
-            return str(val)
+    # print(body)
+    # action = body.get("action") or {}
+    # params = action.get("params") or {}
+    # if key in params and params[key] is not None:
+    #     return str(params[key])
+    # dparams = action.get("detailParams") or {}
+    # if key in dparams and dparams[key] is not None:
+    #     val = (dparams[key] or {}).get("value")
+    #     if val is not None:
+    #         return str(val)
+    dir = body.get("utterance") or {}
+    if dir is not None:
+        return dir
     return ""
 
 
@@ -1712,7 +1715,7 @@ def _get_kick_input(body: dict, cur_idx: int) -> str:
     """
     key = f"dir{cur_idx}"
     v = _param_from_action(body, key)
-    print(v)
+    
     if v:
         return v
     return _param_from_action(body, "dir")
