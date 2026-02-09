@@ -1691,7 +1691,7 @@ def _room_id(body: dict) -> str:
 
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
-    print(body)
+    
     action = body.get("action") or {}
     params = action.get("params") or {}
     # if key in params and params[key] is not None:
@@ -1704,7 +1704,7 @@ def _param_from_action(body: dict, key: str) -> str:
     if key in params and params[key] is not None:
         userRequest = body.get("userRequest") or {}
         dir = userRequest.get("utterance") or {}
-        print(dir)
+        
         if dir is not None:
             return dir
     return ""
@@ -1718,7 +1718,6 @@ def _get_kick_input(body: dict, cur_idx: int) -> str:
     """
     key = f"dir{cur_idx}"
     v = _param_from_action(body, key)
-    
     if v:
         return v
     return _param_from_action(body, "dir")
@@ -1905,11 +1904,19 @@ def kakao_penalty():
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                            "text": "📣 승부차기 종료!"
                         }
-                    }]
+                    }, {
+                "textCard": {
+                    "title": "다시 도전할까요? 😀",
+                    "buttons": [
+                        {"label": "승부차기",  "action": "block", "blockId": GM_id},
+                        {"label": "결과보기", "action": "message", "messageText": "결과보기"}
+                    ]
                 }
-            })
+            }]
+        }
+    })
 
         # 시작 트리거
         if not st and uter in ['승부차기', '승차']:
@@ -1995,7 +2002,7 @@ def kakao_penalty():
 
         # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
         result_img_url = _pick_result_img(dir_text, success)
-        print(result_img_url, dir_text, success, )
+        
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
             c = 0
