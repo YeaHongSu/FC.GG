@@ -2158,6 +2158,17 @@ MENTION_TOKEN = "{{#mentions.sender}}"
 # ✅ 공용 응답 (기존 유지)
 # ----------------------------
 def pq_text(msg: str, mentions):
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": [{"simpleText": {"text": msg}}],
+        }
+    }
+    if mentions is not None:
+        resp["extra"] = {"mentions": mentions}
+    return jsonify(resp)
+    
+def pq_text_with_buttons(msg: str, mentions):
     if mentions is None:
         return jsonify({
             "version": "2.0",
@@ -2184,6 +2195,33 @@ def pq_text(msg: str, mentions):
             "extra": {"mentions": mentions}
         })
 
+def pq_text_with_hint(msg: str, mentions):
+    if mentions is None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "힌트가 필요하신가요? 😀",
+                            "buttons": [
+                                {"label": "힌트", "action": "message", "blockId": "힌트"}
+                            ]
+                        }
+            }]}
+        })
+    else:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "힌트가 필요하신가요? 😀",
+                            "buttons": [
+                                {"label": "힌트", "action": "message", "blockId": "힌트"}
+                            ]
+                        }
+                    }]},
+            "extra": {"mentions": mentions}
+        })
+        
 def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
     resp = {
         "version": "2.0",
@@ -2377,24 +2415,24 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
         return (
             "🧩 1번째 힌트\n"
             f"- 출생년도: {player.get('birth_year')}\n\n"
-            f"(남은 시간: {remain}초)"
+            f"(⏱ 남은 시간: {remain}초)"
         )
     if idx == 2:
         return (
             "🧩 2번째 힌트\n"
             f"- 국적: {player.get('nationality')}\n\n"
-            f"(남은 시간: {remain}초)"
+            f"(⏱ 남은 시간: {remain}초)"
         )
     if idx == 3:
         return (
             "🧩 3번째 힌트\n"
             f"- 포지션: {player.get('position')}\n\n"
-            f"(남은 시간: {remain}초)"
+            f"(⏱ 남은 시간: {remain}초)"
         )
     return (
         "🧩 4번째 힌트\n"
         f"- 소개: {player.get('one_liner')}\n\n"
-        f"(남은 시간: {remain}초)"
+        f"(⏱ 남은 시간: {remain}초)"
     )
 
 
@@ -2489,7 +2527,7 @@ def _playerquiz_handle(body: dict):
     # ✅ 순위보기: 진행중 아니어도 항상 가능
     if cmd_n in rank_cmds:
         text, m = pq_build_leaderboard(room_id, topn=10)
-        return pq_text(text, m)
+        return pq_text_with_buttons(text, m)
 
     # ✅ (4) 시간 초과면: 어떤 입력이든 즉시 시간초과 처리
     if st and remaining(st) <= 0:
@@ -2539,7 +2577,7 @@ def _playerquiz_handle(body: dict):
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text("먼저 '@피파봇 초성퀴즈'로 시작해 주세요!", None)
+            return pq_text_with_buttons("먼저 '@피파봇 초성퀴즈'로 시작해 주세요!", None)
 
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
@@ -2578,11 +2616,10 @@ def _playerquiz_handle(body: dict):
         return pq_text_with_image_next(msg, img_url, ans, mentions)
 
     msg = _with_mention_prefix(
-        f"❌ 땡! 다시 시도해보세요. (남은 시간: {remaining(st)}s)\n"
-        "힌트가 필요하면 '힌트'라고 말해요!",
+        f"❌ 땡! 다시 시도해보세요.\n(⏱ 남은 시간: {remaining(st)}초)\n"
         mentions
     )
-    return pq_text(msg, mentions)
+    return pq_text_with_hint(msg, mentions)
 
 # ----------------------------
 # (1) 초성퀴즈 전용 스킬
