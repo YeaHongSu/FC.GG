@@ -2616,7 +2616,7 @@ def _playerquiz_handle(body: dict):
         return pq_text_with_image_next(msg, img_url, ans, mentions)
 
     msg = _with_mention_prefix(
-        f"❌ 땡! 다시 시도해보세요.\n(⏱ 남은 시간: {remaining(st)}초)\n"
+        f"❌ 땡! 다시 시도해보세요.\n(⏱ 남은 시간: {remaining(st)}초)\n",
         mentions
     )
     return pq_text_with_hint(msg, mentions)
