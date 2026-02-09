@@ -2221,6 +2221,20 @@ def pq_text_with_hint(msg: str, mentions):
                     }]},
             "extra": {"mentions": mentions}
         })
+
+def pq_text_with_hint(msg: str, mentions):
+    if mentions is None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "정답을 입력해보세요! 😄",
+                            "buttons": [
+                                {"label": "@피파봇", "action": "message", "blockId": "@피파봇"}
+                            ]
+                        }
+            }]}
+        })
         
 def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
     resp = {
@@ -2542,7 +2556,7 @@ def _playerquiz_handle(body: dict):
                 {"label": "포기", "action": "message", "messageText": "포기"},
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
             ]
-            return pq_text_with_quickreplies(problem_text(player, remaining(st)), None, quick)
+            return pq_text_with_mention(problem_text(player, remaining(st)), None)
 
         player = pick_player(room_id)
         if not player:
