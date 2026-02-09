@@ -2489,7 +2489,7 @@ def pq_build_leaderboard(room_id: str, topn: int = 10):
         key = f"u{i}"
         mentions[key] = {"type": "botUserKey", "id": uid}
         token = f"{{{{#mentions.{key}}}}}"  # ✅ 반드시 이 형태!
-        lines.append(f"{i}. {token} - {score}점")
+        lines.append(f"{i}. {token} {score}점")
 
     lines.append("\n랭킹은 주기적으로 갱신됩니다.")  
     
