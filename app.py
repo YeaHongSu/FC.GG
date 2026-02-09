@@ -1691,6 +1691,7 @@ def _room_id(body: dict) -> str:
 
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
+    print(body)
     action = body.get("action") or {}
     params = action.get("params") or {}
     if key in params and params[key] is not None:
@@ -1711,6 +1712,7 @@ def _get_kick_input(body: dict, cur_idx: int) -> str:
     """
     key = f"dir{cur_idx}"
     v = _param_from_action(body, key)
+    print(v)
     if v:
         return v
     return _param_from_action(body, "dir")
@@ -1987,7 +1989,7 @@ def kakao_penalty():
 
         # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
         result_img_url = _pick_result_img(dir_text, success)
-
+        print(result_img_url, dir_text, success, )
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
             c = 0
