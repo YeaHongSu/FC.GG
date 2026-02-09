@@ -2222,7 +2222,7 @@ def pq_text_with_hint(msg: str, mentions):
             "extra": {"mentions": mentions}
         })
 
-def pq_text_with_hint(msg: str, mentions):
+def pq_text_with_mention(msg: str, mentions):
     if mentions is None:
         return jsonify({
             "version": "2.0",
