@@ -1912,7 +1912,7 @@ def kakao_penalty():
                     "buttons": [
                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
-                    ]
+                    ], "buttonLayout": "horizontal"
                 }
             }]
         }
@@ -2058,7 +2058,7 @@ def kakao_penalty():
                     "buttons": [
                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
-                    ]
+                    ], "buttonLayout": "horizontal"
                 }
             }
             return jsonify({
@@ -2256,7 +2256,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
             "buttons": [
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
-            ]
+            ], "buttonLayout": "horizontal"
         }
     })
 
