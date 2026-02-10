@@ -2256,19 +2256,22 @@ def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
 def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     outputs = [{"simpleText": {"text": msg}}]
 
-    # if img_url:
-    #     outputs.append({
-    #         "simpleImage": {
-    #             "imageUrl": img_url,
-    #             "altText": alt_text or "player"
-    #         }
-    #     })
+    # ✅ (중요) img_url은 일반 이미지 URL일 수도 있고, /tierbadge 같은 "가공 엔드포인트"일 수도 있음.
+    # - 일반 이미지 URL에 '&size=...'를 무작정 붙이면 깨질 수 있으므로,
+    #   "이미 쿼리가 있는 경우에만" &를 붙이고, 없으면 ?를 붙여서 안전하게 구성한다.
+    thumb_url = img_url or ""
+    if thumb_url:
+        extra_qs = "size=480&bgw=1000&bgh=1000"
+        if "?" in thumb_url:
+            thumb_url = thumb_url + ("&" if not thumb_url.endswith("&") else "") + extra_qs
+        else:
+            thumb_url = thumb_url + "?" + extra_qs
 
     # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
     outputs.append({
         "basicCard": {
             "title": "다음 문제로 갈까요?",
-            "thumbnail": {"imageUrl": img_url+"&size=480&bgw=1000&bgh=1000"},
+            "thumbnail": {"imageUrl": thumb_url},
             "buttons": [
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
@@ -2403,16 +2406,6 @@ def pick_player(room_id: str):
 
     return chosen
 
-# def problem_text(player: dict, remain: int) -> str:
-#     return (
-#         "⚽ 축구 선수 초성 퀴즈!\n"
-#         "초성을 보고 선수 이름을 맞춰보세요!\n\n"
-#         f"초성은 [{player.get('chosung','')}] 입니다.\n"
-#         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
-#         "정답을 채팅에 입력하세요! (예: @피파봇 손흥민)\n"
-#         "힌트가 필요하면 '@피파봇 힌트'라고 말해요!"
-#     )
-
 def problem_text(player: dict, remain: int) -> str:
     return (
         "⚽ 축구 선수 초성 퀴즈!\n"
@@ -2422,8 +2415,6 @@ def problem_text(player: dict, remain: int) -> str:
         "✍️ 정답: 예) @피파봇 손흥민\n"
         "🧠 힌트: @피파봇 힌트\n"
         "🏳️ 포기: @피파봇 포기"
-        # "🏆 순위: '순위보기'\n"
-        # "※ 60초가 지나면 다음 입력에서 시간초과 처리돼요."
     )
 
 def hint_text(player: dict, idx: int, remain: int) -> str:
