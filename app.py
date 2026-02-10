@@ -2254,24 +2254,23 @@ def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
 def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     outputs = [{"simpleText": {"text": msg}}]
 
-    # ✅ (변경) 이미지 "그대로" 보여주기: basicCard.thumbnail(크롭) 대신 simpleImage 사용
-    if img_url:
-        outputs.append({
-            "simpleImage": {
-                "imageUrl": img_url,              # ✅ player_info.py의 1:1 URL 그대로 사용
-                "altText": alt_text or "player"
-            }
-        })
+    # if img_url:
+    #     outputs.append({
+    #         "simpleImage": {
+    #             "imageUrl": img_url,
+    #             "altText": alt_text or "player"
+    #         }
+    #     })
 
-    # ✅ (변경) 버튼은 textCard로 유지 (이미지 크롭 없음)
+    # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
     outputs.append({
-        "textCard": {
+        "basicCard": {
             "title": "다음 문제로 갈까요?",
+            "thumbnail": {"imageUrl": img_url+"&size=480&bgw=1000&bgh=1000"},
             "buttons": [
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
-            ],
-            "buttonLayout": "horizontal"
+            ], "buttonLayout": "horizontal"
         }
     })
 
@@ -2402,6 +2401,16 @@ def pick_player(room_id: str):
 
     return chosen
 
+# def problem_text(player: dict, remain: int) -> str:
+#     return (
+#         "⚽ 축구 선수 초성 퀴즈!\n"
+#         "초성을 보고 선수 이름을 맞춰보세요!\n\n"
+#         f"초성은 [{player.get('chosung','')}] 입니다.\n"
+#         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
+#         "정답을 채팅에 입력하세요! (예: @피파봇 손흥민)\n"
+#         "힌트가 필요하면 '@피파봇 힌트'라고 말해요!"
+#     )
+
 def problem_text(player: dict, remain: int) -> str:
     return (
         "⚽ 축구 선수 초성 퀴즈!\n"
@@ -2411,6 +2420,8 @@ def problem_text(player: dict, remain: int) -> str:
         "✍️ 정답: 예) @피파봇 손흥민\n"
         "🧠 힌트: @피파봇 힌트\n"
         "🏳️ 포기: @피파봇 포기"
+        # "🏆 순위: '순위보기'\n"
+        # "※ 60초가 지나면 다음 입력에서 시간초과 처리돼요."
     )
 
 def hint_text(player: dict, idx: int, remain: int) -> str:
@@ -2437,6 +2448,7 @@ def hint_text(player: dict, idx: int, remain: int) -> str:
         f"- 소개: {player.get('one_liner')}\n\n"
         f"(⏱ 남은 시간: {remain}초)"
     )
+
 
 def help_text() -> str:
     return jsonify({
@@ -2659,8 +2671,6 @@ def kakao_fallback_router():
         return _playerquiz_handle(body)
 
     return help_text()
-
-
 
 
 
