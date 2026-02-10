@@ -1976,9 +1976,8 @@ def kakao_penalty():
                                 f"현재: {board}"
                             )
                         }
-                    }, { "basicCard": {
+                    }, {"textCard": {
                         "title": "방향을 선택하세요.",
-                        "thumbnail": {"imageUrl": result_img_url},
                         "buttons": [
                             # ✅ (수정) message -> block
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
@@ -2055,8 +2054,9 @@ def kakao_penalty():
                 f"{badge}\n"
             )
             card = {
-                "textCard": {
+                "basicCard": {
                     "title": "다시 도전할까요? 😀",
+                    "thumbnail": {"imageUrl": result_img_url},
                     "buttons": [
                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
@@ -2068,7 +2068,7 @@ def kakao_penalty():
                 "template": {
                     "outputs": [
                         # ✅ (추가) 이미지 먼저
-                        {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
+                        # {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                         {"simpleText": {"text": prefix + reaction + summary}},
                         card
                     ]
@@ -2270,7 +2270,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     outputs.append({
         "basicCard": {
             "title": "다음 문제로 갈까요?",
-            "thumbnail": {"imageUrl": img_url},
+            "thumbnail": {"imageUrl": img_url+"&size=480&bgw=1000&bgh=1000"},
             "buttons": [
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
