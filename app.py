@@ -2255,18 +2255,19 @@ def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
 def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     outputs = [{"simpleText": {"text": msg}}]
 
-    if img_url:
-        outputs.append({
-            "simpleImage": {
-                "imageUrl": img_url,
-                "altText": alt_text or "player"
-            }
-        })
+    # if img_url:
+    #     outputs.append({
+    #         "simpleImage": {
+    #             "imageUrl": img_url,
+    #             "altText": alt_text or "player"
+    #         }
+    #     })
 
     # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
     outputs.append({
-        "textCard": {
+        "basicCard": {
             "title": "다음 문제로 갈까요?",
+            "thumbnail": {"imageUrl": img_url},
             "buttons": [
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
