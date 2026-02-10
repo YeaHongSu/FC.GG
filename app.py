@@ -1930,8 +1930,9 @@ def kakao_penalty():
                                 "📣 승부차기가 시작됩니다! 기회는 5번!🧍‍ vs 🧤"
                             )
                         }
-                    },{ "textCard": {
+                    },{ "basicCard": {
                         "title": "방향을 선택하세요.",
+                        "thumbnail": {"imageUrl": result_img_url},
                         "buttons": [
                             # ✅ (수정) message -> block 로 같은 블록으로 강제 라우팅
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
@@ -1975,8 +1976,9 @@ def kakao_penalty():
                                 f"현재: {board}"
                             )
                         }
-                    }, { "textCard": {
+                    }, { "basicCard": {
                         "title": "방향을 선택하세요.",
+                        "thumbnail": {"imageUrl": result_img_url},
                         "buttons": [
                             # ✅ (수정) message -> block
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
@@ -2083,10 +2085,11 @@ def kakao_penalty():
             "template": {
                 "outputs": [
                     # ✅ (추가) 이미지 먼저
-                    {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
+                    # {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                     {"simpleText": {"text": prefix + reaction}},
-                    { "textCard": {
+                    { "basicCard": {
                         "title": "방향을 선택하세요.",
+                        "thumbnail": {"imageUrl": result_img_url},
                         "buttons": [
                             # ✅ (수정) message -> block
                             {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
