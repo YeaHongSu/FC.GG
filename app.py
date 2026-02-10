@@ -1495,544 +1495,6 @@ def kakao_skill2_tierlist():
             "template": {"outputs": [{"simpleText": {"text": "티어리스트 분석 중 오류가 발생했습니다. 다시 시도해 주세요."}}]}
         })
 
-# # 승부차기 미니게임
-# import random, threading
-# from flask import request, jsonify
-
-# PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
-# PG_LOCK = threading.Lock()
-
-# # ---- 누적(커리어) 성공률 집계용 전역 저장소 -----------------------------------
-# CAREER = {}  # { uid: {"goals": int, "shots": int} }
-# C_LOCK = threading.Lock()
-
-# def _career_add(uid: str, goals: int, shots: int):
-#     """이번 게임 성적을 커리어에 누적."""
-#     if shots <= 0:
-#         return
-#     with C_LOCK:
-#         st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
-#         st["goals"] += goals
-#         st["shots"] += shots
-
-# def _career_rate(uid: str):
-#     """uid의 누적 성공률(0~1). 없으면 None."""
-#     with C_LOCK:
-#         st = CAREER.get(uid)
-#         if not st or st["shots"] <= 0:
-#             return None
-#         return st["goals"] / st["shots"]
-
-# def _leaders():
-#     """성공률 기준 내림차순 정렬 리스트 [(uid, rate, goals, shots), ...]"""
-#     with C_LOCK:
-#         items = []
-#         for k, v in CAREER.items():
-#             shots = v.get("shots", 0)
-#             goals = v.get("goals", 0)
-#             rate = (goals / shots) if shots > 0 else None
-#             if rate is not None:
-#                 items.append((k, rate, goals, shots))
-#         items.sort(key=lambda x: x[1], reverse=True)
-#         return items
-
-# def _rank_of(uid: str):
-#     """(등수, 총원). 기록 없으면 (None, 총원)"""
-#     items = _leaders()
-#     total = len(items)
-#     for i, (k, _, _, _) in enumerate(items, start=1):
-#         if k == uid:
-#             return i, total
-#     return None, total
-
-# def _short(u: str, n: int = 6) -> str:
-#     """닉네임 대체용 uid 축약 표시"""
-#     return u[:n] if u else "unknown"
-
-# def _format_leaderboard(uid: str, limit: int = 10) -> str:
-#     """결과보기 출력용 포맷"""
-#     items = _leaders()
-#     if not items:
-#         return "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
-
-#     # 1등 헤더
-#     top_uid, top_rate, top_goals, top_shots = items[0]
-#     header = "승부차기 평균 성공률 결과\n\n" \
-#              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
-
-#     lines = []
-#     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
-#         # 현재 유저인 경우 멘션 표기를 넣어 강조
-#         if k == uid:
-#             # ✅ f-string 안에서 {{ }}가 한 겹 사라지므로 4겹 또는 문자열 연결 방식 사용
-#             line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
-#             # 또는 같은 효과:
-#             # line = f"{i}. {{{{#mentions.user1}}}} {round(rate*100)}%"
-#         else:
-#             # 다른 유저는 @축약 uid 표기
-#             line = f"{i}. @{_short(k, 6)} {round(rate*100)}%"
-#         lines.append(line)
-
-#     return header + "\n".join(lines)
-
-# # ------------------------------------------------------------
-# # 승부차기 미니게임 - 결과보기(리더보드)에서 다수 멘션 토큰 지원 완성본
-# # ------------------------------------------------------------
-# import random, threading
-# from flask import request, jsonify
-
-# # 전역 게임 상태
-# PENALTY_GAMES = {}  # { uid: {"shots": [True/False...], "max": 5} }
-# PG_LOCK = threading.Lock()
-
-# # 전역 누적(커리어) 성공률 저장
-# CAREER = {}  # { uid: {"goals": int, "shots": int} }
-# C_LOCK = threading.Lock()
-
-# # (선택) 닉네임 캐싱 - 멘션이 불가한 경우 fallback로 쓸 수 있음
-# NAMEBOOK = {}  # { uid: "nickname" }
-# N_LOCK = threading.Lock()
-
-
-# # ========================= 누적/리더보드 유틸 =========================
-# def _career_add(uid: str, goals: int, shots: int):
-#     """이번 게임 성적을 커리어에 누적."""
-#     if shots <= 0:
-#         return
-#     with C_LOCK:
-#         st = CAREER.setdefault(uid, {"goals": 0, "shots": 0})
-#         st["goals"] += goals
-#         st["shots"] += shots
-
-# def _career_rate(uid: str):
-#     """uid의 누적 성공률(0~1). 없으면 None."""
-#     with C_LOCK:
-#         st = CAREER.get(uid)
-#         if not st or st["shots"] <= 0:
-#             return None
-#         return st["goals"] / st["shots"]
-
-# def _leaders():
-#     """
-#     성공률 기준 내림차순 정렬 리스트 반환
-#     [(uid, rate, goals, shots), ...]
-#     """
-#     with C_LOCK:
-#         items = []
-#         for k, v in CAREER.items():
-#             shots = v.get("shots", 0)
-#             goals = v.get("goals", 0)
-#             if shots > 0:
-#                 rate = goals / shots
-#                 items.append((k, rate, goals, shots))
-#     # 동률 안정화를 위해: 성공률↓, 시도수↓, uid↑
-#     items.sort(key=lambda x: (-x[1], -x[3], x[0]))
-#     return items
-
-# def _rank_of(uid: str):
-#     """(등수, 총원). 기록 없으면 (None, 총원)"""
-#     items = _leaders()
-#     total = len(items)
-#     for i, (k, *_rest) in enumerate(items, start=1):
-#         if k == uid:
-#             return i, total
-#     return None, total
-
-# def _short(u: str, n: int = 6) -> str:
-#     return u[:n] if u else "unknown"
-
-# def _save_name(uid: str, name: str):
-#     with N_LOCK:
-#         if name:
-#             NAMEBOOK[uid] = name
-
-# def _get_name(uid: str, fallback_short: bool = True) -> str:
-#     with N_LOCK:
-#         nm = NAMEBOOK.get(uid)
-#     if nm:
-#         return nm
-#     return _short(uid, 6) if fallback_short else uid
-
-# def _format_leaderboard_and_mentions(uid: str, limit: int = 10):
-#     """
-#     리더보드 텍스트와 extra.mentions 딕셔너리를 함께 생성하여 반환.
-#     - user1은 항상 요청자(uid)
-#     - 상위 limit명까지 user2, user3 ... 로 멘션 키 자동 할당
-#     - 본문에는 "{{#mentions.userX}}" 토큰을 정확히 매칭 (f-string 이스케이프 이슈 회피)
-#     """
-#     items = _leaders()
-#     if not items:
-#         text = "아직 기록이 없습니다.\n승부차기를 먼저 플레이해 주세요!"
-#         mentions = {"user1": {"type": "botUserKey", "id": uid}}
-#         return text, mentions
-
-#     top_uid, top_rate, _, _ = items[0]
-#     header = "승부차기 평균 성공률 결과\n\n" \
-#              f"🥇현재 전체 1등 : {round(top_rate*100)}%\n\n"
-
-#     # mentions: user1은 항상 요청자
-#     mentions = {"user1": {"type": "botUserKey", "id": uid}}
-
-#     lines = []
-#     dyn_idx = 2  # user2부터 시작
-#     for i, (k, rate, goals, shots) in enumerate(items[:limit], start=1):
-#         if k == uid:
-#             # 요청자 줄: user1 멘션 사용
-#             line = f"{i}. " + "{{#mentions.user1}}" + f" {round(rate*100)}%"
-#         else:
-#             # 다른 유저도 멘션으로 표시하려면 user2, user3 ... 동적 할당
-#             key = f"user{dyn_idx}"
-#             mentions[key] = {"type": "botUserKey", "id": k}
-#             line = f"{i}. " + "{{#mentions." + key + "}}" + f" {round(rate*100)}%"
-#             dyn_idx += 1
-#         lines.append(line)
-
-#     # # 내 현재 등수
-#     # my_rank, total = _rank_of(uid)
-#     # if my_rank:
-#     #     lines.append(f"\n내 현재 등수: {my_rank}/{total}")
-#     lines.append("\n\n랭킹은 주기적으로 갱신됩니다.")
-
-#     text = header + "\n".join(lines)
-#     return text, mentions
-# # ====================================================================
-
-
-# # ---- Payload helpers ---------------------------------------------------------
-# def _uid(body: dict) -> str:
-#     """Kakao 스펙 기준: user.id (type=botUserKey). 환경에 따라 accountId 등도 들어올 수 있어 안전 처리."""
-#     user = ((body.get("userRequest") or {}).get("user") or {})
-#     uid = (user.get("id") or "").strip()
-#     return uid or "unknown"
-
-# def _uname(body: dict) -> str:
-#     """카카오 문서에는 nickname 필드가 보장되지 않음 → 표시명은 uid로 대체.
-#     가능하면 properties.nickname 사용하여 저장 (fallback은 uid)
-#     """
-#     user = ((body.get("userRequest") or {}).get("user") or {})
-#     props = user.get("properties") or {}
-#     nickname = (props.get("nickname") or "").strip()
-#     uid = (user.get("id") or "").strip() or "unknown"
-#     return nickname or uid
-
-# def _param_from_action(body: dict, key: str) -> str:
-#     """action.params 우선, 없으면 action.detailParams[key].value"""
-#     action = body.get("action") or {}
-#     params = action.get("params") or {}
-#     if key in params and params[key] is not None:
-#         return str(params[key])
-#     dparams = action.get("detailParams") or {}
-#     if key in dparams and dparams[key] is not None:
-#         val = (dparams[key] or {}).get("value")
-#         if val is not None:
-#             return str(val)
-#     return ""
-
-# def _get_kick_input(body: dict, cur_idx: int) -> str:
-#     """
-#     1) 다중 슬롯: dir{cur_idx} (예: dir0, dir1 ...)
-#     2) 단일 슬롯: dir
-#     둘 다 없으면 빈 문자열
-#     """
-#     key = f"dir{cur_idx}"
-#     v = _param_from_action(body, key)
-#     if v:
-#         return v
-#     return _param_from_action(body, "dir")
-
-# # ---- Game helpers ------------------------------------------------------------
-# def _board(shots, total=5):
-#     marks = "".join("⭕️" if s else "❌️" for s in shots)
-#     return marks + "⬜️" * (total - len(shots))
-
-# def _kick_prob(direction_text: str) -> float:
-#     s = (direction_text or "").strip().lower()
-#     # 가운데(센터)만 33%, 그 외(왼/오/사분면 포함) 66%
-#     return 0.33 if s in {"가운데", "center", "c"} else 0.66
-
-# def _start(uid: str):
-#     with PG_LOCK:
-#         PENALTY_GAMES[uid] = {"shots": [], "max": 5}
-
-# def _state(uid: str):
-#     with PG_LOCK:
-#         return PENALTY_GAMES.get(uid)
-
-# def _reset(uid: str):
-#     """현재 사용자 게임 상태 완전 초기화"""
-#     with PG_LOCK:
-#         if uid in PENALTY_GAMES:
-#             del PENALTY_GAMES[uid]
-
-# def _record(uid: str, success: bool):
-#     with PG_LOCK:
-#         st = PENALTY_GAMES.setdefault(uid, {"shots": [], "max": 5})
-#         st["shots"].append(success)
-#         done = len(st["shots"]) >= st["max"]
-#         if done:
-#             final = st["shots"][:]
-#             del PENALTY_GAMES[uid]
-#             return final, True
-#         return st["shots"][:], False
-
-# def _quick_replies():
-#     opts = ["왼쪽","가운데","오른쪽","왼쪽위","왼쪽아래","오른쪽위","오른쪽아래"]
-#     # Kakao QuickReply(message) 포맷
-#     return [{"action": "message", "label": o, "messageText": o} for o in opts]
-
-
-# # ---- Endpoint ----------------------------------------------------------------
-# @app.route("/kakao/penalty", methods=["POST"])
-# def kakao_penalty():
-#     try:
-#         # ---------------- 멘트/연출 유틸 ----------------
-#         def _streak_tail(shots, val):
-#             """shots의 끝에서부터 val(True/False)와 같은 값이 몇 번 연속인지 카운트"""
-#             c = 0
-#             for s in reversed(shots):
-#                 if s is val: c += 1
-#                 else: break
-#             return c
-
-#         def _pick(arr):
-#             return random.choice(arr) if arr else ""
-
-#         # 골/노골 기본 멘트 풀
-#         GOAL_BASE = [
-#             "🔥 절정의 컨디션!",
-#             "💥 강슛이네요!",
-#             "🥳 완벽한 코스!",
-#             "😎 침착했다!",
-#             "🎯 정확도 미쳤다!",
-#             "🚀 골망이 찢어지겠어!"
-#         ]
-#         MISS_BASE = [
-#             "😰 긴장했나 봐요!",
-#             "🧤 골키퍼 선방!",
-#             "🙈 아깝다, 포스트!",
-#             "😵 살짝 빗나갔어요.",
-#             "😬 다음엔 더 과감하게!",
-#             "🌪️ 페인트에 걸렸나?"
-#         ]
-
-#         # 연속 상황 멘트 (상황별로 우선 적용)
-#         def goal_streak_msg(st):
-#             if st >= 5: return "🔥🔥🔥 5연속 골! 오늘은 당신의 날!"
-#             if st == 4: return "🔥🔥 4연속 골! 멈출 수 없다!"
-#             if st == 3: return "🔥 3연속 골! 흐름 제대로 탔다!"
-#             if st == 2: return "⚡ 2연속 골! 페이스 좋아요!"
-#             return ""
-
-#         def miss_streak_msg(st):
-#             if st >= 3: return "🧊 연속 실축… 호흡 가다듬고 다시!"
-#             if st == 2: return "🧊 2연속 실축… 코스 바꿔볼까요?"
-#             return ""
-
-#         # 엔딩 보상/칭호
-#         def end_badge(total):
-#             if total == 5: return "🏆 5골 입니다. 퍼펙트 키커!"
-#             if total == 4: return "🥇 4골 입니다. 엘리트 스트라이커!"
-#             if total == 3: return "🥈 3골 입니다. 안정적인 피니셔!"
-#             if total == 2: return "🥉 2골 입니다. 아직 워밍업이네요!"
-#             return "🪙 1골 입니다. 다음엔 더 잘할 수 있어요!"
-
-#         # ----------------------------------------------
-#         body = request.get_json(silent=True) or {}
-#         uid = _uid(body)
-#         uname = _uname(body)
-#         # 닉네임 캐싱
-#         _save_name(uid, uname)
-
-#         uter = (body.get("userRequest") or {}).get("utterance") or ""
-#         st = _state(uid)
-        
-#         GM_id = ((body.get("userRequest")).get("block")).get("id")  # "블록ID 예: 68c7f4b6..."
-
-#         # ---- (A) '결과보기' 요청 처리 -----------------------------------------
-#         if uter in ['결과보기', '결과 보기', '랭킹', '랭킹보기', '결과']:
-#             lb_text, mentions = _format_leaderboard_and_mentions(uid, limit=10)
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {
-#                     "outputs": [{
-#                         "simpleText": {"text": lb_text}
-#                     }, {
-#                         "textCard": {
-#                             "title": "다시 도전할까요? 😀",
-#                             "buttons": [
-#                                 {"label": "승부차기", "action": "block", "blockId": GM_id}
-#                             ]
-#                         }
-#                     }],
-#                 },
-#                 "extra": {
-#                     # 여러 명 멘션 동적 삽입 (예: user1~userN)
-#                     "mentions": mentions
-#                 }
-#             })
-
-#         # 종료/나가기
-#         if uter in ['종료', '나가기', '홈으로']:
-#             _reset(uid)
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {
-#                     "outputs": [{
-#                         "simpleText": {
-#                             "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
-#                         }
-#                     }]
-#                 }
-#             })
-
-#         # 시작 트리거
-#         if not st and uter in ['승부차기', '승차']:
-#             _start(uid)
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {
-#                     "outputs": [{
-#                         "simpleText": {
-#                             "text": (
-#                                 "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-#                                 "🧍‍ vs 🧤\n"
-#                                 "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
-#                             )
-#                         }
-#                     }],
-#                     "quickReplies": _quick_replies()
-#                 }
-#             })
-
-#         # 현재 상태/회차
-#         st = _state(uid)
-#         if not st:
-#             # 잘못된 진입 보호
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {"outputs": [{"simpleText": {"text": "먼저 '@피파봇 승부차기'로 시작해 주세요!"}}]}
-#             })
-
-#         cur_idx = len(st["shots"])
-
-#         # 입력 파싱
-#         dir_text = _get_kick_input(body, cur_idx)
-#         # 입력 없으면 현재 보드만 안내
-#         if not dir_text or uter in ['승부차기', '승차']:
-#             board = _board(st["shots"], st["max"])
-#             n = cur_idx
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {
-#                     "outputs": [{
-#                         "simpleText": {
-#                             "text": (
-#                                 f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
-#                                 f"현재: {board}\n"
-#                                 f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
-#                             )
-#                         }
-#                     }]
-#                 },
-#                 "extra": {
-#                     "mentions": {
-#                         "user1": {"type": "botUserKey", "id": uid}
-#                     }
-#                 }
-#             })
-
-#         # 판정
-#         success = (random.random() < _kick_prob(dir_text))
-#         shots, done = _record(uid, success)
-
-#         # 보드/스코어/연출
-#         board = _board(shots, 5)
-#         n = len(shots)
-#         total = sum(1 for s in shots if s)
-
-#         # 연속 카운트 계산
-#         def _streak_tail_local(shots_local, val):
-#             c = 0
-#             for s in reversed(shots_local):
-#                 if s is val: c += 1
-#                 else: break
-#             return c
-#         g_streak = _streak_tail_local(shots, True)   # 연속 골
-#         m_streak = _streak_tail_local(shots, False)  # 연속 노골
-
-#         # 멘트 조립
-#         if success:
-#             head = "골! "
-#             vibe = goal_streak_msg(g_streak) or _pick(GOAL_BASE)
-#             gk_line = _pick([
-#                 "🧤 골키퍼가 움직이기도 전에 훅!",
-#                 "🧤 골키퍼가 반대편으로 뛰었네요!",
-#                 "🧤 완벽하게 속였습니다!"
-#             ])
-#         else:
-#             head = "노골! "
-#             vibe = miss_streak_msg(m_streak) or _pick(MISS_BASE)
-#             gk_line = _pick([
-#                 "🧤 골키퍼가 읽었어요!",
-#                 "🧤 손끝에 살짝 걸렸습니다!",
-#                 "🧤 코스가 들켰나 봐요!"
-#             ])
-
-#         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-#         # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2"
-#         prefix = "{{#mentions.user1}}" + f" {head} {board} ({n}/5회)\n🧍‍ vs 🧤  |  현재 스코어 {total}골"
-#         reaction = f"\n{vibe}\n{gk_line}"
-
-#         if done:
-#             # ---- 게임 종료: 커리어 누적 & 요약 + 버튼(승부차기/결과보기) ----------
-#             _career_add(uid, total, len(shots))  # 누적 저장
-
-#             badge = end_badge(total)
-#             summary = (
-#                 f"\n\n📣 게임 종료! {total}/5 성공! (성공률 {round(total/5*100)}%)\n"
-#                 f"{badge}\n"
-#             )
-#             card = {
-#                 "textCard": {
-#                     "title": "다시 도전할까요? 😀",
-#                     "buttons": [
-#                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
-#                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
-#                     ]
-#                 }
-#             }
-#             return jsonify({
-#                 "version": "2.0",
-#                 "template": {"outputs": [{"simpleText": {"text": prefix + reaction + summary}}, card]},
-#                 "extra": {
-#                     # 종료 메시지는 요청자 멘션만 유지(짧게)
-#                     "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-#                 }
-#             })
-
-#         # 진행 중이면 다음 입력 유도
-#         return jsonify({
-#             "version": "2.0",
-#             "template": {
-#                 "outputs": [{"simpleText": {"text": prefix + reaction}}],
-#                 "quickReplies": _quick_replies()
-#             },
-#             "extra": {
-#                 "mentions": {"user1": {"type": "botUserKey", "id": uid}}
-#             }
-#         })
-
-#     except Exception:
-#         return jsonify({
-#             "version": "2.0",
-#             "template": {
-#                 "outputs": [{
-#                     "simpleText": {
-#                         "text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."
-#                     }
-#                 }]
-#             }
-#         })
 
 # ------------------------------------------------------------
 # 승부차기 미니게임 - 채팅방별 랭킹 지원 완성본
@@ -2232,15 +1694,22 @@ def _room_id(body: dict) -> str:
 
 def _param_from_action(body: dict, key: str) -> str:
     """action.params 우선, 없으면 action.detailParams[key].value"""
+    
     action = body.get("action") or {}
     params = action.get("params") or {}
+    # if key in params and params[key] is not None:
+    #     return str(params[key])
+    # dparams = action.get("detailParams") or {}
+    # if key in dparams and dparams[key] is not None:
+    #     val = (dparams[key] or {}).get("value")
+    #     if val is not None:
+    #         return str(val)
     if key in params and params[key] is not None:
-        return str(params[key])
-    dparams = action.get("detailParams") or {}
-    if key in dparams and dparams[key] is not None:
-        val = (dparams[key] or {}).get("value")
-        if val is not None:
-            return str(val)
+        userRequest = body.get("userRequest") or {}
+        dir = userRequest.get("utterance") or {}
+        
+        if dir is not None:
+            return dir
     return ""
 
 
@@ -2321,6 +1790,35 @@ def kakao_penalty():
 
         def _pick(arr):
             return random.choice(arr) if arr else ""
+
+        # ✅ GitHub Raw URL 버전 (유지)
+        RIGHT_GOAL_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_goal.png"
+        CENTER_GOAL_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_goal.png"
+        LEFT_GOAL_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_goal.png"
+
+        RIGHT_MISS_URL  = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/right_miss.png"
+        CENTER_MISS_URL = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/center_miss.png"
+        LEFT_MISS_URL   = "https://raw.githubusercontent.com/YeaHongSu/FC.GG/refs/heads/main/left_miss.png"
+
+        # ✅ (추가) 방향×결과 매핑 (골/노골에 따라 다른 PNG 선택)
+        RESULT_IMG = {
+            "left":   {True: LEFT_GOAL_URL,   False: LEFT_MISS_URL},
+            "center": {True: CENTER_GOAL_URL, False: CENTER_MISS_URL},
+            "right":  {True: RIGHT_GOAL_URL,  False: RIGHT_MISS_URL},
+        }
+
+        def _normalize_dir(direction_text: str) -> str:
+            d = (direction_text or "").strip().lower()
+            if ("왼" in d) or ("left" in d):
+                return "left"
+            if ("오" in d) or ("right" in d):
+                return "right"
+            # 가운데/중앙/center 또는 애매하면 center
+            return "center"
+
+        def _pick_result_img(direction_text: str, is_goal: bool) -> str:
+            key = _normalize_dir(direction_text)
+            return RESULT_IMG[key][is_goal]
 
         # 골/노골 기본 멘트 풀
         GOAL_BASE = [
@@ -2409,11 +1907,19 @@ def kakao_penalty():
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": "📣 승부차기 종료!\n다시 시작하려면 '@피파봇 승부차기'라고 말해주세요!"
+                            "text": "📣 승부차기 종료!"
                         }
-                    }]
+                    }, {
+                "textCard": {
+                    "title": "다시 도전할까요? 😀",
+                    "buttons": [
+                        {"label": "승부차기",  "action": "block", "blockId": GM_id},
+                        {"label": "결과보기", "action": "message", "messageText": "결과보기"}
+                    ], "buttonLayout": "horizontal"
                 }
-            })
+            }]
+        }
+    })
 
         # 시작 트리거
         if not st and uter in ['승부차기', '승차']:
@@ -2424,13 +1930,17 @@ def kakao_penalty():
                     "outputs": [{
                         "simpleText": {
                             "text": (
-                                "📣 승부차기가 시작됩니다! 기회는 5번!\n"
-                                "🧍‍ vs 🧤\n"
-                                "“왼쪽, 가운데, 오른쪽” 중에 하나를 입력해주세요."
+                                "📣 승부차기가 시작됩니다! 기회는 5번!🧍‍ vs 🧤"
                             )
                         }
-                    }],
-                    "quickReplies": _quick_replies()
+                    },{ "textCard": {
+                        "title": "방향을 선택하세요.",
+                        "buttons": [
+                            # ✅ (수정) message -> block 로 같은 블록으로 강제 라우팅
+                            {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
+                            {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
+                            {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
+                    }}],
                 }
             })
 
@@ -2465,11 +1975,17 @@ def kakao_penalty():
                         "simpleText": {
                             "text": (
                                 f"🧍‍ 키커 준비 완료! (진행 {n}/{st['max']}회)\n"
-                                f"현재: {board}\n"
-                                f"“왼쪽/가운데/오른쪽” 중 하나를 선택해 주세요."
+                                f"현재: {board}"
                             )
                         }
-                    }]
+                    }, { "textCard": {
+                        "title": "방향을 선택하세요.",
+                        "buttons": [
+                            # ✅ (수정) message -> block
+                            {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
+                            {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
+                            {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
+                    }}]
                 },
                 "extra": {
                     "mentions": {
@@ -2487,6 +2003,9 @@ def kakao_penalty():
         n = len(shots)
         total = sum(1 for s in shots if s)
 
+        # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
+        result_img_url = _pick_result_img(dir_text, success)
+        
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
             c = 0
@@ -2519,7 +2038,6 @@ def kakao_penalty():
             ])
 
         # 키커/골키퍼 이모지 연출 + 현재 스코어 표시
-        # 예: "{{#mentions.user1}} 골! ⭕️⭕️⬜️⬜️⬜️ (2/5회)  🧍‍ vs 🧤  |  현재 스코어 2골"
         prefix = (
             "{{#mentions.user1}}"
             + f" {head} {board} ({n}/5회)\n"
@@ -2543,13 +2061,15 @@ def kakao_penalty():
                     "buttons": [
                         {"label": "승부차기",  "action": "block", "blockId": GM_id},
                         {"label": "결과보기", "action": "message", "messageText": "결과보기"}
-                    ]
+                    ], "buttonLayout": "horizontal"
                 }
             }
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
+                        # ✅ (추가) 이미지 먼저
+                        {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                         {"simpleText": {"text": prefix + reaction + summary}},
                         card
                     ]
@@ -2564,7 +2084,19 @@ def kakao_penalty():
         return jsonify({
             "version": "2.0",
             "template": {
-                "outputs": [{"simpleText": {"text": prefix + reaction}}],
+                "outputs": [
+                    # ✅ (추가) 이미지 먼저
+                    {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
+                    {"simpleText": {"text": prefix + reaction}},
+                    { "textCard": {
+                        "title": "방향을 선택하세요.",
+                        "buttons": [
+                            # ✅ (수정) message -> block
+                            {"label": "왼쪽", "action": "block", "blockId": GM_id, "messageText": "왼쪽"},
+                            {"label": "가운데", "action": "block", "blockId": GM_id, "messageText": "가운데"},
+                            {"label": "오른쪽", "action": "block", "blockId": GM_id, "messageText": "오른쪽"}]
+                    }}
+                ],
                 "quickReplies": _quick_replies()
             },
             "extra": {
@@ -2584,6 +2116,564 @@ def kakao_penalty():
             }
         })
 
+
+
+
+# ============================================================================
+# 초성퀴즈(선수 이름 맞추기) + 폴백 라우터
+# - /kakao/playerquiz        : 초성퀴즈 전용 스킬
+# - /kakao/fallback_router   : "미처리발화/도움말(풀백) 블록"이 호출할 스킬
+#     -> 퀴즈 진행 중이면 playerquiz 로직으로 위임(정답판정)
+#     -> 아니면 (순위보기/시작어 등은 playerquiz로 위임) / 그 외는 도움말
+# ============================================================================
+
+import time, random, threading, re
+from flask import request, jsonify
+
+from player_info import all_players as _all_players
+from player_info import make_chosung as _make_chosung
+
+PQ_TIME_LIMIT = 60
+PQ_MAX_HINTS = 4
+
+PQ_LOCK = threading.Lock()
+
+# ✅ "현재 진행중인 문제" 상태 (진행중 여부 판단은 이 dict 존재 여부로)
+# room_id -> {"player":..., "started_at":..., "hint_idx":...}
+PQ_STATE = {}
+
+# ✅ 방 단위 98명 사이클 중복 방지용(진행 상태와 분리!)
+# room_id -> [seen_player_id, ...]
+PQ_CYCLE = {}
+
+# ✅ 랭킹(방 단위)
+# room_id -> {uid: score}
+PQ_RANK_LOCK = threading.Lock()
+PQ_RANK = {}
+
+MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
+
+# ✅ 멘션 토큰은 절대 format() 쓰면 깨질 수 있음. 그대로 출력만 한다.
+MENTION_KEY = "sender"
+MENTION_TOKEN = "{{#mentions.sender}}"
+
+# ----------------------------
+# ✅ 공용 응답 (기존 유지)
+# ----------------------------
+def pq_text(msg: str, mentions):
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": [{"simpleText": {"text": msg}}],
+        }
+    }
+    if mentions is not None:
+        resp["extra"] = {"mentions": mentions}
+    return jsonify(resp)
+    
+def pq_text_with_buttons(msg: str, mentions):
+    if mentions is None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "다시 도전할까요? 😀",
+                            "buttons": [
+                                {"label": "초성퀴즈", "action": "message", "blockId": "초성퀴즈"}
+                            ]
+                        }
+            }]}
+        })
+    else:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "다시 도전할까요? 😀",
+                            "buttons": [
+                                {"label": "초성퀴즈", "action": "message", "blockId": "초성퀴즈"}
+                            ]
+                        }
+                    }]},
+            "extra": {"mentions": mentions}
+        })
+
+def pq_text_with_hint(msg: str, mentions):
+    if mentions is None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "힌트가 필요하신가요? 😀",
+                            "buttons": [
+                                {"label": "힌트", "action": "message", "blockId": "힌트"}
+                            ]
+                        }
+            }]}
+        })
+    else:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "힌트가 필요하신가요? 😀",
+                            "buttons": [
+                                {"label": "힌트", "action": "message", "blockId": "힌트"}
+                            ]
+                        }
+                    }]},
+            "extra": {"mentions": mentions}
+        })
+
+def pq_text_with_mention(msg: str, mentions):
+    if mentions is None:
+        return jsonify({
+            "version": "2.0",
+            "template": {"outputs": [{"simpleText": {"text": msg}}, {
+                        "textCard": {
+                            "title": "정답을 입력해보세요! 😄",
+                            "buttons": [
+                                {"label": "@피파봇", "action": "mention"}
+                            ]
+                        }
+            }]}
+        })
+        
+def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": [{"simpleText": {"text": msg}}],
+        }
+    }
+    if quick_replies:
+        resp["template"]["quickReplies"] = quick_replies
+    if mentions is not None:
+        resp["extra"] = {"mentions": mentions}
+    return jsonify(resp)
+
+# ----------------------------
+# ✅ 정답/시간초과/포기: 텍스트 + 이미지 + '다음 문제/순위보기' 버튼
+# ----------------------------
+def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
+    outputs = [{"simpleText": {"text": msg}}]
+
+    if img_url:
+        outputs.append({
+            "simpleImage": {
+                "imageUrl": img_url,
+                "altText": alt_text or "player"
+            }
+        })
+
+    # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
+    outputs.append({
+        "textCard": {
+            "title": "다음 문제로 갈까요?",
+            "buttons": [
+                {"label": "순위보기", "action": "message", "messageText": "순위보기"},
+                {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
+            ], "buttonLayout": "horizontal"
+        }
+    })
+
+    resp = {
+        "version": "2.0",
+        "template": {
+            "outputs": outputs,
+        }
+    }
+    if mentions is not None:
+        resp["extra"] = {"mentions": mentions}
+    return jsonify(resp)
+
+def pq_strip_mention(s: str) -> str:
+    s = (s or "").strip()
+    while True:
+        ns = MENTION_RE.sub("", s).strip()
+        if ns == s:
+            return s
+        s = ns
+
+def pq_norm(s: str) -> str:
+    s = (s or "").strip().lower()
+    s = re.sub(r"^(정답|답)\s*[:：]\s*", "", s)     # "정답: 메시"
+    s = re.sub(r"[^0-9a-z가-힣]+", "", s)          # 한글/영문/숫자만 남김
+    return s
+
+def extract_utterance(body: dict) -> str:
+    ur = body.get("userRequest") or {}
+    utter = ur.get("utterance")
+    if utter:
+        return utter
+
+    action = body.get("action") or {}
+    params = action.get("params") or {}
+    if isinstance(params, dict) and params.get("utterance"):
+        return str(params.get("utterance"))
+
+    detail = action.get("detailParams") or {}
+    if isinstance(detail, dict):
+        for v in detail.values():
+            if isinstance(v, dict) and v.get("value"):
+                return str(v.get("value"))
+
+    return ""
+
+def deep_get(d, path, default=None):
+    cur = d
+    for k in path:
+        if not isinstance(cur, dict) or k not in cur:
+            return default
+        cur = cur[k]
+    return cur
+
+def get_room_id(body: dict) -> str:
+    """
+    ✅ 같은 단톡방이면 무조건 같은 room_id가 나오게 후보 키를 최대한 넓게 탐색
+    """
+    ur = body.get("userRequest") or {}
+    candidates = [
+        ("context.groupChat.id", deep_get(ur, ["context", "groupChat", "id"])),
+        ("context.room.id",      deep_get(ur, ["context", "room", "id"])),
+        ("context.chat.id",      deep_get(ur, ["chat", "id"])),
+        ("context.conversationId", deep_get(ur, ["context", "conversationId"])),
+        ("room.id",              deep_get(ur, ["room", "id"])),
+    ]
+    for _, v in candidates:
+        if v:
+            return str(v)
+
+    user_id = deep_get(ur, ["user", "id"]) or "anon"
+    return str(user_id)
+
+def load_players():
+    players = _all_players() or []
+    out = []
+    for p in players:
+        p = dict(p)
+        if not p.get("chosung"):
+            p["chosung"] = _make_chosung(p.get("name_ko", ""))
+        out.append(p)
+    return out
+
+def get_state(room_id: str):
+    with PQ_LOCK:
+        return PQ_STATE.get(room_id)
+
+def clear_state(room_id: str):
+    with PQ_LOCK:
+        PQ_STATE.pop(room_id, None)
+
+def remaining(st) -> int:
+    elapsed = time.time() - float(st.get("started_at") or 0)
+    return max(0, PQ_TIME_LIMIT - int(elapsed))
+
+def pick_player(room_id: str):
+    """
+    ✅ 방 단위 98명(전체) 사이클 중복 방지:
+    - PQ_CYCLE[room_id]에 누적
+    - 전체 선수 수에 도달하면 그때 리셋
+    """
+    players = load_players()
+    if not players:
+        return None
+
+    total = len(players)
+
+    with PQ_LOCK:
+        seen_ids = list(PQ_CYCLE.get(room_id) or [])
+        if len(seen_ids) >= total:
+            seen_ids = []
+
+        seen_set = set(seen_ids)
+        candidates = [p for p in players if p.get("id") not in seen_set]
+        if not candidates:
+            seen_ids = []
+            candidates = players
+
+        chosen = random.choice(candidates)
+        seen_ids.append(chosen.get("id"))
+        PQ_CYCLE[room_id] = seen_ids  # ✅ 사이클 기록은 유지
+
+        PQ_STATE[room_id] = {
+            "player": chosen,
+            "started_at": time.time(),
+            "hint_idx": 0,
+        }
+
+    return chosen
+
+# def problem_text(player: dict, remain: int) -> str:
+#     return (
+#         "⚽ 축구 선수 초성 퀴즈!\n"
+#         "초성을 보고 선수 이름을 맞춰보세요!\n\n"
+#         f"초성은 [{player.get('chosung','')}] 입니다.\n"
+#         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
+#         "정답을 채팅에 입력하세요! (예: @피파봇 손흥민)\n"
+#         "힌트가 필요하면 '@피파봇 힌트'라고 말해요!"
+#     )
+
+def problem_text(player: dict, remain: int) -> str:
+    return (
+        "⚽ 축구 선수 초성 퀴즈!\n"
+        "초성을 보고 선수 이름을 맞춰보세요.\n\n"
+        f"초성은 [{player.get('chosung','')}] 입니다.\n"
+        f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
+        "✍️ 정답: 예) @피파봇 손흥민\n"
+        "🧠 힌트: @피파봇 힌트\n"
+        "🏳️ 포기: @피파봇 포기"
+        # "🏆 순위: '순위보기'\n"
+        # "※ 60초가 지나면 다음 입력에서 시간초과 처리돼요."
+    )
+
+def hint_text(player: dict, idx: int, remain: int) -> str:
+    if idx == 1:
+        return (
+            "🧩 1번째 힌트\n"
+            f"- 출생년도: {player.get('birth_year')}\n\n"
+            f"(⏱ 남은 시간: {remain}초)"
+        )
+    if idx == 2:
+        return (
+            "🧩 2번째 힌트\n"
+            f"- 국적: {player.get('nationality')}\n\n"
+            f"(⏱ 남은 시간: {remain}초)"
+        )
+    if idx == 3:
+        return (
+            "🧩 3번째 힌트\n"
+            f"- 포지션: {player.get('position')}\n\n"
+            f"(⏱ 남은 시간: {remain}초)"
+        )
+    return (
+        "🧩 4번째 힌트\n"
+        f"- 소개: {player.get('one_liner')}\n\n"
+        f"(⏱ 남은 시간: {remain}초)"
+    )
+
+
+def help_text() -> str:
+    return jsonify({
+        "version": "2.0",
+        "template": {"outputs": [{"textCard": {
+            "title": "🤔 잘 이해하지 못했어요. \n 아래 버튼을 눌러 사용법을 확인하세요.\n",
+            "buttons": [{"label": "피파봇 사용법", "action": "webLink", "webLinkUrl": "https://pf.kakao.com/_xoxlZen/111143579"}]
+        }}]}
+    })
+
+def _uid(body: dict) -> str:
+    user = ((body.get("userRequest") or {}).get("user") or {})
+    uid = (user.get("id") or "").strip()
+    return uid or "unknown"
+
+def _build_mentions(body: dict):
+    uid = _uid(body)
+    if not uid or uid == "unknown":
+        return None
+    return {MENTION_KEY: {"type": "botUserKey", "id": uid}}
+
+def _with_mention_prefix(text: str, mentions):
+    if mentions is None:
+        return text
+    return f"{MENTION_TOKEN} {text}"
+
+# ----------------------------
+# ✅ 랭킹: 점수 +1 / 순위 텍스트 생성
+# ----------------------------
+def pq_add_point(room_id: str, uid: str, delta: int = 1):
+    if not uid or uid == "unknown":
+        return
+    with PQ_RANK_LOCK:
+        room_map = PQ_RANK.get(room_id)
+        if room_map is None:
+            room_map = {}
+            PQ_RANK[room_id] = room_map
+        room_map[uid] = int(room_map.get(uid) or 0) + int(delta)
+
+def pq_build_leaderboard(room_id: str, topn: int = 10):
+    with PQ_RANK_LOCK:
+        room_map = dict(PQ_RANK.get(room_id) or {})
+
+    if not room_map:
+        return ("🏆 초성퀴즈 순위\n\n아직 점수가 없어요! 정답을 맞히면 +1점 👍", None)
+
+    items = sorted(room_map.items(), key=lambda x: (-x[1], x[0]))[:topn]
+
+    mentions = {}
+    lines = ["🏆 초성퀴즈 순위 (TOP {})".format(min(topn, len(items))), ""]
+    for i, (uid, score) in enumerate(items, start=1):
+        key = f"u{i}"
+        mentions[key] = {"type": "botUserKey", "id": uid}
+        token = f"{{{{#mentions.{key}}}}}"  # ✅ 반드시 이 형태!
+        lines.append(f"{i}. {token} {score}점")
+
+    lines.append("\n랭킹은 주기적으로 갱신됩니다.")  
+    
+    return ("\n".join(lines), mentions)
+
+def _expired_response(room_id: str, mentions):
+    st = get_state(room_id)
+    if not st:
+        return None
+    player = st["player"]
+    ans = player.get("name_ko")
+    img_url = player.get("img_url", "")
+    clear_state(room_id)
+    msg = _with_mention_prefix(f"⏰ 시간 초과! 정답은 '{ans}' 입니다!", mentions)
+    return pq_text_with_image_next(msg, img_url, ans, mentions)
+
+def _playerquiz_handle(body: dict):
+    room_id = get_room_id(body)
+
+    utter_raw = extract_utterance(body)
+    utter = pq_strip_mention(utter_raw)
+    cmd = (utter or "").strip()
+    cmd_n = pq_norm(cmd)
+
+    mentions = _build_mentions(body)
+    uid = _uid(body)
+
+    st = get_state(room_id)
+    rem = remaining(st) if st else None
+    print(f"[PQ] room={room_id} utter_raw={utter_raw!r} cmd={cmd!r} pq={'Y' if st else 'N'} remain={rem}")
+
+    start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
+    rank_cmds  = {pq_norm(x) for x in ["순위보기", "랭킹보기", "랭킹", "순위", "순위 보기"]}
+
+    # ✅ 순위보기: 진행중 아니어도 항상 가능
+    if cmd_n in rank_cmds:
+        text, m = pq_build_leaderboard(room_id, topn=10)
+        return pq_text_with_buttons(text, m)
+
+    # ✅ (4) 시간 초과면: 어떤 입력이든 즉시 시간초과 처리
+    if st and remaining(st) <= 0:
+        return _expired_response(room_id, mentions)
+
+    # ✅ 시작: 진행 중이면 새 문제 뽑지 말고 현재 문제 공유(=공동 진행)
+    if cmd_n in start_cmds:
+        if st and remaining(st) > 0:
+            player = st["player"]
+            quick = [
+                {"label": "힌트", "action": "message", "messageText": "힌트"},
+                {"label": "포기", "action": "message", "messageText": "포기"},
+                {"label": "순위보기", "action": "message", "messageText": "순위보기"},
+            ]
+            return pq_text_with_mention(problem_text(player, remaining(st)), None)
+
+        player = pick_player(room_id)
+        if not player:
+            return pq_text("선수 DB가 비어있어요. player_info.py의 PLAYER_DB를 채워주세요!", None)
+
+        st = get_state(room_id)
+        quick = [
+            {"label": "힌트", "action": "message", "messageText": "힌트"},
+            {"label": "포기", "action": "message", "messageText": "포기"},
+            {"label": "순위보기", "action": "message", "messageText": "순위보기"},
+        ]
+        return pq_text_with_mention(problem_text(player, remaining(st)), None)
+
+    # 종료/포기/힌트
+    if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
+        if st:
+            clear_state(room_id)
+            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '@피파봇 초성퀴즈'라고 말해요.", None)
+        return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
+
+    if cmd in ["초성퀴즈 포기", "포기", "패스"]:
+        if not st:
+            return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
+
+        player = st["player"]
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
+        clear_state(room_id)
+
+        msg = _with_mention_prefix(f"🏳️ 포기! 정답은 '{ans}' 입니다!", mentions)
+        return pq_text_with_image_next(msg, img_url, ans, mentions)
+
+    if cmd.lower() in ["힌트", "hint"]:
+        if not st:
+            return pq_text_with_buttons("먼저 '@피파봇 초성퀴즈'로 시작해 주세요!", None)
+
+        player = st["player"]
+        idx = int(st.get("hint_idx") or 0)
+        if idx >= PQ_MAX_HINTS:
+            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '@피파봇 포기'라고 말해요!", mentions), mentions)
+
+        idx += 1
+        with PQ_LOCK:
+            if room_id in PQ_STATE:
+                PQ_STATE[room_id]["hint_idx"] = idx
+
+        st2 = get_state(room_id)
+        return pq_text(_with_mention_prefix(hint_text(player, idx, remaining(st2)), mentions), mentions)
+
+    # 정답 시도
+    if not st:
+        return pq_text("'@피파봇 초성퀴즈'로 먼저 시작해 주세요!", None)
+
+    guess_n = pq_norm(cmd)
+    if not guess_n:
+        return pq_text(_with_mention_prefix("정답을 입력하거나 '@피파봇 힌트'라고 말해요!", mentions), mentions)
+
+    player = st["player"]
+    answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
+    answers_n = {pq_norm(a) for a in answers if a}
+
+    if guess_n in answers_n:
+        ans = player.get("name_ko")
+        img_url = player.get("img_url", "")
+        clear_state(room_id)
+
+        # ✅ 정답자 +1점 (방 단위 랭킹)
+        pq_add_point(room_id, uid, 1)
+
+        msg = _with_mention_prefix(f"🎉 정답! '{ans}' 입니다! (+1점)", mentions)
+        return pq_text_with_image_next(msg, img_url, ans, mentions)
+
+    msg = _with_mention_prefix(
+        f"❌ 땡! 다시 시도해보세요.\n(⏱ 남은 시간: {remaining(st)}초)\n",
+        mentions
+    )
+    return pq_text_with_hint(msg, mentions)
+
+# ----------------------------
+# (1) 초성퀴즈 전용 스킬
+# ----------------------------
+@app.route("/kakao/playerquiz", methods=["POST"])
+def kakao_playerquiz():
+    body = request.get_json(silent=True) or {}
+    return _playerquiz_handle(body)
+
+# ----------------------------
+# (2) 폴백 라우터
+# ----------------------------
+@app.route("/kakao/fallback_router", methods=["POST"])
+def kakao_fallback_router():
+    body = request.get_json(silent=True) or {}
+    room_id = get_room_id(body)
+
+    st = get_state(room_id)
+    rem = remaining(st) if st else None
+    utter_raw = extract_utterance(body)
+    cmd = pq_strip_mention(utter_raw)
+    cmd_n = pq_norm(cmd)
+
+    start_cmds = {pq_norm(x) for x in ["초성퀴즈", "초성 퀴즈", "선수퀴즈", "선수 퀴즈", "퀴즈", "초성"]}
+    rank_cmds  = {pq_norm(x) for x in ["순위보기", "랭킹보기", "랭킹", "순위", "순위 보기"]}
+
+    print(f"[FB] room={room_id} utter_raw={utter_raw!r} pq_active={'Y' if st else 'N'} remain={rem}")
+
+    # ✅ 퀴즈 진행 중이면(시간 초과 포함) 무조건 위임
+    if st:
+        return _playerquiz_handle(body)
+
+    # ✅ 퀴즈 비진행 중이어도: "초성퀴즈"/"순위보기"는 playerquiz로 위임
+    if cmd_n in start_cmds or cmd_n in rank_cmds:
+        return _playerquiz_handle(body)
+
+    return help_text()
 
 
 # 포트 설정 및 웹에 띄우기
