@@ -2068,7 +2068,6 @@ def kakao_penalty():
                 "template": {
                     "outputs": [
                         # ✅ (추가) 이미지 먼저
-                        # {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                         {"simpleText": {"text": prefix + reaction + summary}},
                         card
                     ]
@@ -2085,7 +2084,6 @@ def kakao_penalty():
             "template": {
                 "outputs": [
                     # ✅ (추가) 이미지 먼저
-                    # {"simpleImage": {"imageUrl": result_img_url, "altText": "penalty"}},
                     {"simpleText": {"text": prefix + reaction}},
                     { "basicCard": {
                         "title": "방향을 선택하세요.",
