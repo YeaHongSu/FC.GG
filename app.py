@@ -2258,18 +2258,36 @@ def pq_text_with_quickreplies(msg: str, mentions, quick_replies=None):
 def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     outputs = [{"simpleText": {"text": msg}}]
 
-    if img_url:
-        outputs.append({
-            "simpleImage": {
-                "imageUrl": img_url,
-                "altText": alt_text or "player"
-            }
-        })
+    # if img_url:
+    #     outputs.append({
+    #         "simpleImage": {
+    #             "imageUrl": img_url,
+    #             "altText": alt_text or "player"
+    #         }
+    #     })
+    
+    from urllib.parse import quote_plus
+    
+    def public_root_from_request(app, request):
+        # PUBLIC_ROOT가 있으면 그걸 쓰고, 없으면 현재 요청 host 기준
+        return app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+    
+    def wrap_img_url(app, request, raw_url: str, *, size=480, bgw=1000, bgh=600) -> str:
+        """
+        raw_url: 원본 이미지 URL(넥슨 CDN 등)
+        return: /tierbadge?url=... 로 래핑된 최종 URL
+        """
+        public_root = public_root_from_request(app, request)
+        return f"{public_root}/tierbadge?url={quote_plus(raw_url)}&size={int(size)}&bgw={int(bgw)}&bgh={int(bgh)}"
 
+    img_url = wrap_img_url(app, request, img_url, size=480, bgw=1000, bgh=600)
+    
+    
     # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
     outputs.append({
-        "textCard": {
+        "basicCard": {
             "title": "다음 문제로 갈까요?",
+            "thumbnail": {"imageUrl": img_url},
             "buttons": [
                 {"label": "순위보기", "action": "message", "messageText": "순위보기"},
                 {"label": "초성퀴즈", "action": "message", "messageText": "초성퀴즈"},
