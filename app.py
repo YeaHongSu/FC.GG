@@ -2267,7 +2267,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
         # PUBLIC_ROOT가 있으면 그걸 쓰고, 없으면 현재 요청 host 기준
         return app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
     
-    def wrap_img_url(app, request, raw_url: str, *, size=48, bgw=100, bgh=60) -> str:
+    def wrap_img_url(app, request, raw_url: str, *, size=480, bgw=1000, bgh=600) -> str:
         """
         raw_url: 원본 이미지 URL(넥슨 CDN 등)
         return: /tierbadge?url=... 로 래핑된 최종 URL
