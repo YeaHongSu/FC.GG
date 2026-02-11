@@ -2001,9 +2001,24 @@ def kakao_penalty():
         total = sum(1 for s in shots if s)
 
         # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
-        public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+        from urllib.parse import quote_plus
+        
+        def public_root_from_request(app, request):
+            # PUBLIC_ROOT가 있으면 그걸 쓰고, 없으면 현재 요청 host 기준
+            return app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
+        
+        def wrap_img_url(app, request, raw_url: str, *, size=48, bgw=100, bgh=60) -> str:
+            """
+            raw_url: 원본 이미지 URL(넥슨 CDN 등)
+            return: /tierbadge?url=... 로 래핑된 최종 URL
+            """
+            public_root = public_root_from_request(app, request)
+            return f"{public_root}/tierbadge?url={quote_plus(raw_url)}&size={int(size)}&bgw={int(bgw)}&bgh={int(bgh)}"
+        
         result_img_url = _pick_result_img(dir_text, success)
-        result_img_url = f"{public_root}/tierbadge?url={quote_plus(result_img_url)}&size=48&bgw=100&bgh=60"
+        print(result_img_url)
+        result_img_url = wrap_img_url(app, request, result_img_url, size=48, bgw=100, bgh=60)
+        print(result_img_url)
         
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
