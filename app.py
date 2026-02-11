@@ -2277,7 +2277,7 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
     
     
     print(img_url)
-    img_url = wrap_img_url(app, request, img_url, size=520, bgw=1000, bgh=600)
+    img_url = wrap_img_url(app, request, img_url, size=500, bgw=1000, bgh=600)
     print(img_url)
     
     # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
