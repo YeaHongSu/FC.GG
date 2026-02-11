@@ -2003,7 +2003,7 @@ def kakao_penalty():
         # ✅ (핵심) 이번 슛 결과(success)에 따라 골/노골 PNG 선택
         public_root = app.config.get("PUBLIC_ROOT", request.url_root.rstrip("/"))
         result_img_url = _pick_result_img(dir_text, success)
-        result_img_url = f"{public_root}/tierbadge?url={quote_plus(result_img_url)}&size=480&bgw=1000&bgh=600"
+        result_img_url = f"{public_root}/tierbadge?url={quote_plus(result_img_url)}&size=48&bgw=100&bgh=60"
         
         # 연속 카운트 계산
         def _streak_tail_local(shots_local, val):
