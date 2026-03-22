@@ -47,18 +47,12 @@
                     configBuilder.addDefaultOrUnique("mobile_banner").setBreakPoint("mobile");
                 }).display("vm-bottom-banner");
 
-                // scope.Config.buildPlacement((configBuilder) => {
-                //     configBuilder.add("video");
-                //     configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
-                // }).display("video");
-                scope.Config.get("video").display("video");
-                // scope.Config.get('mpu').display('mpu');
-                
-                /* mpu */
                 scope.Config.buildPlacement((configBuilder) => {
-                    configBuilder.add("mpu");
-                    configBuilder.addDefaultOrUnique("mobile_mpu").setBreakPoint("mobile");
-                }).display("mpu");
+                    configBuilder.add("video");
+                    configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
+                }).display("video");
+                //scope.Config.get("video").display("video");
+              
             });
         `;
     document.head.appendChild(initScript);
