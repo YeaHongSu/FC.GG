@@ -52,8 +52,13 @@
                 //     configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
                 // }).display("video");
                 scope.Config.get("video").display("video");
-                scope.Config.get('mpu').display('mpu');
+                // scope.Config.get('mpu').display('mpu');
                 
+                /* mpu */
+                scope.Config.buildPlacement((configBuilder) => {
+                    configBuilder.add("mpu");
+                    configBuilder.addDefaultOrUnique("mobile_mpu").setBreakPoint("mobile");
+                }).display("mpu");
             });
         `;
     document.head.appendChild(initScript);
