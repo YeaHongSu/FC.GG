@@ -1,7 +1,7 @@
 google.com, pub-7970639123590302, DIRECT, f08c47fec0942fa0
 ownerdomain=fcgg.kr
 managerdomain=venatus.com
-#V 19.11.2025 VH
+#V 10.03.2026 VH
 #V
 
 
@@ -44,12 +44,10 @@ richaudience.com, 1ru8dKmJJV, RESELLER
 aps.amazon.com, 1ad7261b-91ea-4b6f-b9e9-b83522205b75, RESELLER        
 pubmatic.com, 161335, RESELLER, 5d62403b186f2ace                           
 blockthrough.com, 5643766199222272, DIRECT                                 
+blis.com, 1269, DIRECT, 61453ae19a4b73f4
+rubiconproject.com, 16928, RESELLER, 0bfd66d529a55807
 criteo.com, B-062405, DIRECT, 9fac4a4a87c2a44f                             
-themediagrid.com, CVQXOH, DIRECT, 35d5010d7789b49d                           
-freewheel.tv, sg1258593, RESELLER
-freewheel.tv, sg1274564, RESELLER
-freewheel.tv, 536175-r-524565, RESELLER
-freewheel.tv, 536175-r-523319, RESELLER
+themediagrid.com, CVQXOH, RESELLER, 35d5010d7789b49d                           
 google.com, pub-5781531207509232, DIRECT, f08c47fec0942fa0                   
 google.com, pub-5781531207509232, RESELLER, f08c47fec0942fa0                 
 google.com, pub-2553634189837243, RESELLER, f08c47fec0942fa0                  
@@ -84,9 +82,8 @@ smartadserver.com,3262,RESELLER,060d053dcf45cbf3
 rubiconproject.com,  13762, RESELLER, 0bfd66d529a55807                   
 media.net, 8CU8ARTF8, DIRECT                                                
 Media.net, 8CU198XI2, DIRECT                                               
+Media.net, 8CULP2FJP, DIRECT
 themediagrid.com, LTW57M, DIRECT, 35d5010d7789b49d                           
-ogury.com, 086233d2-e8a8-44fc-907b-f0752e1c85de, DIRECT                       
-appnexus.com, 11470, RESELLER                                                
 onetag.com, 59c7d7f65f9d658, RESELLER
 openx.com, 542378302, RESELLER, 6a698e2ec38604c6
 openx.com, 540134228, RESELLER, 6a698e2ec38604c6
@@ -120,6 +117,7 @@ media.net, 8CUQ6928Q, RESELLER
 onetag.com, 69f48c2160c8113, RESELLER                                       
 gumgum.com, 16112, RESELLER, ffdef49475d318a9
 video.unrulymedia.com, 335119963, RESELLER                                 
+sharethrough.com, 4284, RESELLER, d53b998a7bd4ecd2
 seedtag.com, 68011633bc1ec10007f62708, DIRECT
 xandr.com, 4009, RESELLER, f5ab79cb980f11d1
 rubiconproject.com, 17280, RESELLER, 0bfd66d529a55807
@@ -138,8 +136,6 @@ rubiconproject.com, 19814, RESELLER, 0bfd66d529a55807
 appnexus.com, 10040, RESELLER
 pubmatic.com, 158810, RESELLER, 5d62403b186f2ace
 openx.com, 557083110, RESELLER, 6a698e2ec38604c6
-lijit.com, 237754, DIRECT, fafdf38b16bf6b2b                                  
-lijit.com, 506352, DIRECT, fafdf38b16bf6b2b                             
 teads.tv, 23348, DIRECT, 15a9c44f6d26cbe1
 venatus.com, 1, DIRECT
 triplelift.com, 6059, RESELLER, 6c33edb13117fd86                     
@@ -158,5 +154,6 @@ pubmatic.com, 156512, RESELLER
 indexexchange.com, 183753, RESELLER
 appnexus.com, 806, DIRECT, f5ab79cb980f11d1                                  
 appnexus.com,1908,RESELLER,f5ab79cb980f11d1                               
+yahoo.com, 100034, DIRECT, e1a5b5b6e3255540
 adinplay.com, FTB, DIRECT
 venatus.com, 6930056c35a47984399bef4a, DIRECT
