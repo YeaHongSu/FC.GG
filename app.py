@@ -105,14 +105,31 @@ def serve_robots():
 def serve_ads():
     return send_from_directory('.', 'ads.txt', mimetype='text/plain')
 
+# @app.before_request
+# def redirect_to_fcgg():
+#     # www 도메인을 fcgg.kr로 리다이렉트
+#     if request.host.startswith("www."):
+#         # 쿼리 스트링이 비어 있지 않은 경우에만 추가
+#         if request.query_string and request.query_string != b'':
+#             return redirect(f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}", code=301)
+#         # 쿼리 스트링이 없으면 ?를 포함하지 않음
+#         return redirect(f"https://fcgg.kr{request.path}", code=301)
 @app.before_request
 def redirect_to_fcgg():
-    # www 도메인을 fcgg.kr로 리다이렉트
+    # 1. ads.txt 리디렉션 (가장 먼저 처리)
+    if request.path == "/ads.txt":
+        return redirect(
+            "https://adstxt.venatusmedia.com/fcgg.kr/ads.txt",
+            code=301
+        )
+
+    # 2. www → fcgg.kr 리디렉션
     if request.host.startswith("www."):
-        # 쿼리 스트링이 비어 있지 않은 경우에만 추가
         if request.query_string and request.query_string != b'':
-            return redirect(f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}", code=301)
-        # 쿼리 스트링이 없으면 ?를 포함하지 않음
+            return redirect(
+                f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}",
+                code=301
+            )
         return redirect(f"https://fcgg.kr{request.path}", code=301)
 
 # match_type 값을 이름으로 변환
