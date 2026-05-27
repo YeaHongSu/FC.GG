@@ -984,7 +984,7 @@ def kakao_skill():
 
         # 발화 전처리
         text = re.sub(r"\s+", " ", utter)
-        text = re.sub(r"^@\S+\s*", "", text)  # @피파봇 제거
+        text = re.sub(r"^@\S+\s*", "", text)  # @축구봇 제거
         tokens = text.split(" ") if text else []
 
         # 명령어 탐지
@@ -1970,7 +1970,7 @@ def kakao_penalty():
                 "template": {
                     "outputs": [{
                         "simpleText": {
-                            "text": "먼저 '@피파봇 승부차기'로 시작해 주세요!"
+                            "text": "먼저 '@축구봇 승부차기'로 시작해 주세요!"
                         }
                     }]
                 }
@@ -2127,7 +2127,7 @@ def kakao_penalty():
             "template": {
                 "outputs": [{
                     "simpleText": {
-                        "text": "문제가 발생했어요. '@피파봇 승부차기'로 다시 시작해 주세요."
+                        "text": "문제가 발생했어요. '@축구봇 승부차기'로 다시 시작해 주세요."
                     }
                 }]
             }
@@ -2168,7 +2168,7 @@ PQ_CYCLE = {}
 PQ_RANK_LOCK = threading.Lock()
 PQ_RANK = {}
 
-MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@피파봇 ' 제거
+MENTION_RE = re.compile(r"^\s*@[^\s]+\s*")  # '@축구봇 ' 제거
 
 # ✅ 멘션 토큰은 절대 format() 쓰면 깨질 수 있음. 그대로 출력만 한다.
 MENTION_KEY = "sender"
@@ -2250,7 +2250,7 @@ def pq_text_with_mention(msg: str, mentions):
                         "textCard": {
                             "title": "정답을 입력해보세요! 😄",
                             "buttons": [
-                                {"label": "@피파봇", "action": "mention"}
+                                {"label": "@축구봇", "action": "mention"}
                             ]
                         }
             }]}
@@ -2445,8 +2445,8 @@ def pick_player(room_id: str):
 #         "초성을 보고 선수 이름을 맞춰보세요!\n\n"
 #         f"초성은 [{player.get('chosung','')}] 입니다.\n"
 #         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
-#         "정답을 채팅에 입력하세요! (예: @피파봇 손흥민)\n"
-#         "힌트가 필요하면 '@피파봇 힌트'라고 말해요!"
+#         "정답을 채팅에 입력하세요! (예: @축구봇 손흥민)\n"
+#         "힌트가 필요하면 '@축구봇 힌트'라고 말해요!"
 #     )
 
 def problem_text(player: dict, remain: int) -> str:
@@ -2455,9 +2455,9 @@ def problem_text(player: dict, remain: int) -> str:
         "초성을 보고 선수 이름을 맞춰보세요.\n\n"
         f"초성은 [{player.get('chosung','')}] 입니다.\n"
         f"⏱ 제한시간: {PQ_TIME_LIMIT}초\n\n"
-        "✍️ 정답: 예) @피파봇 손흥민\n"
-        "🧠 힌트: @피파봇 힌트\n"
-        "🏳️ 포기: @피파봇 포기"
+        "✍️ 정답: 예) @축구봇 손흥민\n"
+        "🧠 힌트: @축구봇 힌트\n"
+        "🏳️ 포기: @축구봇 포기"
         # "🏆 순위: '순위보기'\n"
         # "※ 60초가 지나면 다음 입력에서 시간초과 처리돼요."
     )
@@ -2493,7 +2493,7 @@ def help_text() -> str:
         "version": "2.0",
         "template": {"outputs": [{"textCard": {
             "title": "🤔 잘 이해하지 못했어요. \n 아래 버튼을 눌러 사용법을 확인하세요.\n",
-            "buttons": [{"label": "피파봇 사용법", "action": "webLink", "webLinkUrl": "https://pf.kakao.com/_xoxlZen/111143579"}]
+            "buttons": [{"label": "축구봇 사용법", "action": "webLink", "webLinkUrl": "https://pf.kakao.com/_xoxlZen/111143579"}]
         }}]}
     })
 
@@ -2612,7 +2612,7 @@ def _playerquiz_handle(body: dict):
     if cmd in ["초성퀴즈 종료", "종료", "그만", "나가기"]:
         if st:
             clear_state(room_id)
-            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '@피파봇 초성퀴즈'라고 말해요.", None)
+            return pq_text("📣 초성퀴즈를 종료했어요! 다시 하려면 '@축구봇 초성퀴즈'라고 말해요.", None)
         return pq_text("'초성퀴즈'로 먼저 시작해 주세요!", None)
 
     if cmd in ["초성퀴즈 포기", "포기", "패스"]:
@@ -2629,12 +2629,12 @@ def _playerquiz_handle(body: dict):
 
     if cmd.lower() in ["힌트", "hint"]:
         if not st:
-            return pq_text_with_buttons("먼저 '@피파봇 초성퀴즈'로 시작해 주세요!", None)
+            return pq_text_with_buttons("먼저 '@축구봇 초성퀴즈'로 시작해 주세요!", None)
 
         player = st["player"]
         idx = int(st.get("hint_idx") or 0)
         if idx >= PQ_MAX_HINTS:
-            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '@피파봇 포기'라고 말해요!", mentions), mentions)
+            return pq_text(_with_mention_prefix("힌트가 더 없어요. 정답을 입력하거나 '@축구봇 포기'라고 말해요!", mentions), mentions)
 
         idx += 1
         with PQ_LOCK:
@@ -2646,11 +2646,11 @@ def _playerquiz_handle(body: dict):
 
     # 정답 시도
     if not st:
-        return pq_text("'@피파봇 초성퀴즈'로 먼저 시작해 주세요!", None)
+        return pq_text("'@축구봇 초성퀴즈'로 먼저 시작해 주세요!", None)
 
     guess_n = pq_norm(cmd)
     if not guess_n:
-        return pq_text(_with_mention_prefix("정답을 입력하거나 '@피파봇 힌트'라고 말해요!", mentions), mentions)
+        return pq_text(_with_mention_prefix("정답을 입력하거나 '@축구봇 힌트'라고 말해요!", mentions), mentions)
 
     player = st["player"]
     answers = [player.get("name_ko", "")] + (player.get("aliases") or [])
