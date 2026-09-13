@@ -1145,6 +1145,9 @@
     padding: 8px 10px;
     text-align: center;
     border-bottom: 1px solid var(--border-color);
+    /* ✅ 2026-09-14 피드백 — 숫자 칼럼이 자릿수마다 폭이 달라 세로로 삐뚤빼뚤해
+       보이던 것을, 고정폭 숫자(표 정렬용 글꼴 지표)로 맞춰서 반듯하게 정렬한다. */
+    font-variant-numeric: tabular-nums;
 }
 
 .player-detail-table th {
@@ -1171,6 +1174,19 @@
     border-radius: 50%;
     object-fit: cover;
     background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+/* ✅ 2026-09-14 피드백 — 선수 시즌(등급) 배지 추가. seasonid.json에서 온 실제
+   등급 아이콘이며(get_player_rarity가 이미 채워주고 있었는데 이 표에만 안
+   그려지고 있었음), 가로로 긴 직사각형 이미지라 원형으로 자르지 않고 그대로
+   보여준다. */
+.player-detail-rarity-badge {
+    height: 16px;
+    width: auto;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+    background: #fff;
     flex-shrink: 0;
 }
 
