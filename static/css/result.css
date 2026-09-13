@@ -127,6 +127,79 @@
     line-height: 1.2;
 }
 
+/* ✅ 대표 선수 프로필 (신규) — 기본정보 카드에서 이 유저가 최근 가장 잘 쓴(평균
+   평점 1위) 선수를 닉네임 왼쪽에 크게 보여준다(2026-09-12 피드백: 더 크게, 평점은
+   빼고 시즌만). top_players[0]을 그대로 재사용(새 API 호출 없음). */
+.representative-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.representative-player-photo-wrap {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+}
+
+.representative-player-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    display: block;
+    border: 2px solid var(--border-color);
+}
+
+/* 등급 배지는 원형이 아니라 원본 비율 그대로(2026-09-12 피드백 반영) */
+.representative-player-rarity-badge {
+    position: absolute;
+    left: -4px;
+    bottom: -2px;
+    width: 26px;
+    height: auto;
+    border-radius: 3px;
+    background: white;
+    box-shadow: 0 0 0 1px var(--border-color);
+}
+
+.representative-player-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    max-width: 72px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* 모바일 레이아웃(player-info-mobile) 안에서는 더 작게, 가로 배치 유지 */
+.representative-player-mobile {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.representative-player-mobile .representative-player-photo-wrap {
+    width: 26px;
+    height: 26px;
+}
+
+.representative-player-mobile .representative-player-rarity-badge {
+    width: 14px;
+    height: auto;
+    left: -3px;
+}
+
+.representative-player-mobile .representative-player-name {
+    font-size: 0.72rem;
+}
+
 .bookmark-btn {
     background: none;
     border: none;
@@ -273,49 +346,114 @@
     margin-bottom: 12px;
 }
 
+/* ✅ 2026-09-12 리디자인 — "축구장 사진이 안 멋있다"는 피드백으로 저해상도
+   배경 이미지(soccer-field.png) 대신, 화면 크기에 상관없이 항상 선명한 순수
+   CSS 잔디밭(모잉 스트라이프 그라데이션 + 실제 라인 마킹 SVG)으로 교체했다. */
 .squad-field {
     position: relative;
-    background-image: url('/static/축구장.png');
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-radius: var(--radius-md);
+    border-radius: 16px;
     aspect-ratio: 3 / 4;
-    overflow: visible;
+    overflow: hidden;
+    background-color: #1c7a3d;
+    background-image:
+        repeating-linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.06) 0,
+            rgba(255, 255, 255, 0.06) 11.11%,
+            rgba(0, 0, 0, 0.05) 11.11%,
+            rgba(0, 0, 0, 0.05) 22.22%
+        ),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'%3E%3Crect x='6' y='6' width='288' height='388' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Cline x1='6' y1='200' x2='294' y2='200' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Ccircle cx='150' cy='200' r='42' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Ccircle cx='150' cy='200' r='2.5' fill='white' fill-opacity='0.6'/%3E%3Crect x='70' y='6' width='160' height='58' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Crect x='110' y='6' width='80' height='22' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Crect x='70' y='336' width='160' height='58' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3Crect x='110' y='372' width='80' height='22' fill='none' stroke='white' stroke-width='2' stroke-opacity='0.6'/%3E%3C/svg%3E");
+    background-size: cover, cover;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.18);
 }
 
+/* ✅ 2026-09-12 재정렬 — position-tag가 마커 "바깥 위"에 따로 떠 있어서(별도
+   레이아웃 흐름), 세로로 촘촘한 라인(예: LDM/RDM 바로 아래 LCB/RCB)에서 윗줄
+   마커의 이름표와 아랫줄 마커의 포지션 태그가 서로 겹치는 문제가 있었다.
+   position-tag를 사진 위 왼쪽 상단에 "붙이는" 배지로 바꾸고, 마커 전체를
+   flex column으로 만들어 사진→닉네임이 항상 일정한 간격으로 정렬되게 했다. */
 .player-marker {
     position: absolute;
     transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
     text-align: center;
+    z-index: 1;
 }
 
 .position-tag {
     position: absolute;
-    top: -14px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.75);
+    top: -4px;
+    left: -4px;
+    background: rgba(0, 0, 0, 0.82);
     color: white;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
-    padding: 2px 5px;
-    border-radius: 3px;
+    padding: 1px 5px;
+    border-radius: 999px;
     white-space: nowrap;
+    letter-spacing: 0.02em;
+    z-index: 2;
+}
+
+.player-photo-wrap {
+    position: relative;
+    display: inline-block;
 }
 
 .player-img {
     width: 48px;
     height: auto;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* ✅ 선수 등급(시즌) 배지 (신규) — 사진 왼쪽 아래에 겹치는 작은 등급 아이콘.
+   spid.json과 마찬가지로 완전 공개인 seasonid.json에서 온 실제 데이터. 등급
+   아이콘은 정사각형이 아니라 가로로 긴 직사각형이라, 원형으로 잘라내지 않고
+   원본 비율 그대로 보여준다(2026-09-12 피드백 반영). */
+.player-rarity-badge {
+    position: absolute;
+    left: -4px;
+    bottom: 2px;
+    width: 22px;
+    height: auto;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+    background: white;
+}
+
+/* ✅ 강화 단계 배지 (신규) — 사진 오른쪽 아래, "+N" 텍스트(넥슨이 이미지 에셋을
+   제공하지 않아 직접 렌더링). */
+.player-grade-badge {
+    position: absolute;
+    right: -4px;
+    bottom: 2px;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    color: white;
+    background: #9ca3af;
+    padding: 2px 3px;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
 .player-name-tag {
+    display: inline-block;
     font-size: 11px;
     font-weight: 700;
-    margin-top: 3px;
+    margin-top: 4px;
     white-space: nowrap;
-    color: var(--text-primary);
-    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    color: #111;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 1px 7px;
+    border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* Controller Card */
@@ -514,6 +652,18 @@
         width: 40px;
     }
 
+    .player-rarity-badge {
+        width: 16px;
+        height: auto;
+        left: -3px;
+    }
+
+    .player-grade-badge {
+        font-size: 7px;
+        padding: 1px 2px;
+        right: -3px;
+    }
+
     .player-name-tag {
         font-size: 9px;
     }
@@ -582,5 +732,824 @@
 
     .result-video {
         max-width: 100%;
+    }
+}
+
+/* ===========================================
+   매치 상세 박스스코어 (신규)
+   =========================================== */
+.match-row.has-detail {
+    position: relative;
+    cursor: pointer;
+}
+
+.match-detail-toggle {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 0.72rem;
+    opacity: 0.85;
+    background: rgba(0, 0, 0, 0.18);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.match-detail-panel {
+    margin: -2px 0 8px 0;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* ✅ 2026-09-12 리디자인 — 나/상대를 완전히 나눈 두 개의 표 대신, 지표별로 두
+   게이지가 가운데서 마주보는 하나의 비교 표로 바꿨다. */
+.match-detail-compare {
+    width: 100%;
+}
+
+.match-detail-compare-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.match-detail-compare-header .match-detail-side-name {
+    margin-bottom: 0;
+}
+
+.match-detail-compare-header .match-detail-side-name:last-child {
+    text-align: right;
+}
+
+/* 매치 MVP 배너 (신규) */
+.match-mvp-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--primary-green);
+    border-radius: var(--radius-md);
+}
+
+.match-mvp-img {
+    width: 44px;
+    height: auto;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+}
+
+.match-mvp-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.match-mvp-badge {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--primary-green);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.match-mvp-name {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.match-mvp-side {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.match-mvp-rating {
+    margin-left: auto;
+    font-weight: 700;
+    color: var(--primary-green);
+}
+
+/* 경기 피드백 (신규, 룰 기반) — 승/무/패에 따라 좌측 색 띠로 톤을 구분 */
+.match-feedback-box {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    border-left: 4px solid var(--border-color);
+}
+
+.match-feedback-box.win {
+    border-left-color: var(--win-blue, #3b82f6);
+}
+
+.match-feedback-box.draw {
+    border-left-color: var(--draw-yellow, #eab308);
+}
+
+.match-feedback-box.lose {
+    border-left-color: var(--lose-red, #ef4444);
+}
+
+.match-feedback-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.match-feedback-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.match-feedback-list li + li {
+    margin-top: 4px;
+}
+
+/* 주력 선수 TOP5 (신규) */
+.top-players-card {
+    margin-bottom: 24px; /* 위/아래 카드 섹션과 간격을 다른 카드들과 동일하게 맞춤 */
+}
+
+.top-players-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+.top-player-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 14px 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.top-player-rank {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--primary-green);
+}
+
+.top-player-photo-wrap {
+    position: relative;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.top-player-img {
+    width: 56px;
+    height: auto;
+    display: block;
+}
+
+/* ✅ 선수 등급(시즌) 배지 (신규) — TOP5 카드에도 대표 선수 프로필과 동일하게 적용.
+   원형이 아니라 원본 비율 그대로(2026-09-12 피드백 반영). */
+.top-player-rarity-badge {
+    position: absolute;
+    left: -4px;
+    bottom: -2px;
+    width: 24px;
+    height: auto;
+    border-radius: 3px;
+    background: white;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* ✅ 강화 단계 배지 (신규) — "+N" 텍스트 */
+.top-player-grade-badge {
+    position: absolute;
+    right: -4px;
+    bottom: -2px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    color: white;
+    background: #9ca3af;
+    padding: 2px 4px;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* ✅ 강화 단계별 색상(신규, 2026-09-12) — 예전엔 몇 강이든 무조건 빨간색이었는데,
+   FC 온라인 커뮤니티/데이터 사이트에서 널리 쓰이는 구간별 색 관례(1~3 브론즈,
+   4~7 실버, 8~10 골드, 11/12/13은 각각 별도 특수색)를 참고해 배지 색을 강화
+   단계에 맞게 다르게 표시한다. 넥슨이 제공하는 이미지 에셋은 없어서 텍스트
+   배지 색상으로 재현했다. 배지 기본 규칙(.player-grade-badge 등)과 클래스
+   개수(specificity)를 똑같이 "클래스 2개"로 맞춰서, 이 규칙이 스타일시트
+   어디에 있든(선언 순서와 무관하게) 항상 우선 적용되게 했다. */
+.player-grade-badge.grade-tier-bronze,
+.top-player-grade-badge.grade-tier-bronze,
+.player-detail-grade.grade-tier-bronze { background: #b5723a; }
+.player-grade-badge.grade-tier-silver,
+.top-player-grade-badge.grade-tier-silver,
+.player-detail-grade.grade-tier-silver { background: #9aa5b1; }
+.player-grade-badge.grade-tier-gold,
+.top-player-grade-badge.grade-tier-gold,
+.player-detail-grade.grade-tier-gold { background: #d69e2e; }
+/* ⚠️ 2026-09-12 수정 — 11~13강을 각각 별도 색(주황/파랑/그라데이션)으로 잘못
+   배정했었는데, 사용자가 준 참고 스크린샷을 다시 보니 11~13강도 실버 색상이었다.
+   grade_badge_class()가 이제 11~13강도 "grade-tier-silver"를 반환하므로 여기 별도
+   규칙은 더 이상 필요 없어 제거한다(위 grade-tier-silver 규칙이 그대로 적용됨). */
+
+.top-player-name {
+    margin-top: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.top-player-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.top-player-rating {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-green);
+}
+
+/* 카드 헤더에 표시하는 선정 기준 라벨 (예: "출전 횟수 기준") */
+.top-players-criteria {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 2px 10px;
+}
+
+/* ✅ 슛 타입 분포 (신규) — 넥슨 API가 제공하는 슛 위치/상황 분류
+   (헤더/프리킥/페널티박스 안·밖/PK) 기준 25경기 집계 위젯 */
+.shot-type-card {
+    margin-bottom: 24px;
+}
+
+/* ⚠️ 버그 수정(2026-09-12) — 예전엔 auto-fit이라 화면 폭에 따라 한 줄에 6개까지도
+   들어가서(기타슛 제거 후 8개 기준 2행4열이 되길 원함) 레이아웃이 들쭉날쭉했고,
+   라벨+성공률이 한 줄(justify-content: space-between, wrap 없음)이라 "감아차기"처럼
+   글자 수가 많은 라벨은 폭을 넘어가 카드 밖으로 삐져나온 것처럼 보이는 문제가 있었다.
+   4열 고정 + 헤더 줄바꿈 허용 + 카드 최소 높이 통일로 해결한다. */
+.shot-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.shot-type-item {
+    padding: 12px 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* ⚠️ 버그 수정(2026-09-13) — flex-wrap에만 기대면 라벨 글자 수에 따라 성공률이
+   같은 줄에 붙기도, 다음 줄로 밀리기도 해서 카드마다 줄바꿈 위치가 들쭉날쭉했다
+   ("일관성이 없다"는 피드백). 라벨 행(.shot-type-label-row)과 성공률 행
+   (.shot-type-pct-row)을 아예 별도의 block 행으로 분리해, 라벨 길이와 무관하게
+   항상 라벨 다음 줄에 성공률이 오도록 고정한다. */
+.shot-type-item-header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 6px;
+}
+
+.shot-type-label-row {
+    display: block;
+    min-width: 0;
+}
+
+.shot-type-label {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.shot-type-share {
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.shot-type-pct-row {
+    display: block;
+}
+
+.shot-type-pct {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--primary-green);
+    white-space: nowrap;
+}
+
+.shot-type-gauge-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border-color);
+    overflow: hidden;
+}
+
+.shot-type-gauge-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--primary-green), #4ade80);
+    transition: width 0.3s ease;
+}
+
+.shot-type-count {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* ✅ 선수별 상세 지표 테이블 (신규) — 열이 많아 폭이 넓으므로, 표 자체만 가로
+   스크롤되게 감싸서(페이지 전체가 가로로 밀리지 않도록) 모바일에서도 안전하다. */
+.player-detail-card {
+    margin-bottom: 24px;
+}
+
+/* ✅ 정렬 컨트롤(신규, 2026-09-13) */
+.player-detail-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.player-detail-sort-select {
+    padding: 5px 8px;
+    border-radius: var(--radius-sm, 6px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.player-detail-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.player-detail-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.player-detail-table th,
+.player-detail-table td {
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.player-detail-table th {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.player-detail-col-name {
+    text-align: left !important;
+}
+
+.player-detail-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.player-detail-img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+/* ✅ fc-info.com 스타일 공격력/수비력 색상 강조(신규, 2026-09-12) — 배경색 자체는
+   파이썬(build_player_detail_stats)에서 행마다 rgba로 계산해 인라인 style로 넣고,
+   여기서는 글자색/굵기만 처리한다. 배경이 진해지면(light=true) 흰 글자로 바꿔
+   가독성을 유지한다. */
+.player-detail-heat {
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.player-detail-heat.light {
+    color: #fff;
+}
+
+.player-detail-grade {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: white;
+    background: #9ca3af;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* ✅ 포지션 그룹별 색상 구분(신규, 2026-09-13 피드백) — 수비수 파란색/미드필더
+   초록색/공격수 빨간색/골키퍼 주황색 계열. */
+.player-detail-pos {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.72rem;
+}
+
+.player-detail-pos.pos-group-gk {
+    background: rgba(249, 115, 22, 0.16);
+    color: #c2410c;
+}
+
+.player-detail-pos.pos-group-df {
+    background: rgba(37, 99, 235, 0.14);
+    color: #1d4ed8;
+}
+
+.player-detail-pos.pos-group-mf {
+    background: rgba(22, 163, 74, 0.14);
+    color: #15803d;
+}
+
+.player-detail-pos.pos-group-fw {
+    background: rgba(220, 38, 38, 0.14);
+    color: #b91c1c;
+}
+
+/* ✅ 위험표시(2026-09-14 피드백 재배치) — 포지션별 절대 기준에 못 미치는 선수의
+   수비 지수 숫자 오른쪽에 달아, 마우스를 올리면(title 속성) 안내 문구가 보인다.
+   (2026-09-13엔 이름 옆에 달았었는데, "수비지수 숫자 오른쪽이 좋겠다"는 피드백으로 이동) */
+.player-detail-risk-badge {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.78rem;
+    color: #d97706;
+    cursor: help;
+}
+
+@media (max-width: 640px) {
+    .top-players-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .shot-type-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .match-mvp-banner {
+        flex-wrap: wrap;
+    }
+    .match-mvp-rating {
+        margin-left: 0;
+    }
+}
+
+.match-detail-vs {
+    align-self: center;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.match-detail-side-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+/* 1v1 공식경기 최고 티어 표시 (신규) — 매치 목록/상세에서 닉네임 옆에 붙는 작은 뱃지 */
+.match-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.match-tier-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.match-tier-text {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: var(--radius-md);
+    background: rgba(128, 128, 128, 0.2);
+    color: inherit;
+    white-space: nowrap;
+}
+
+.match-detail-side-name .match-tier-badge {
+    margin-right: 4px;
+}
+
+.match-detail-side-name .match-tier-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* 11v11 잔디밭 뷰 — 매치 상세에서 나/상대 11명씩을 각자 독립된 잔디밭에 표시.
+   ⚠️ 2026-09-12 재재설계(피드백: "하나의 경기장에 다 있어야 한다") — 좌우 압축
+   (겹침 문제) → 완전히 독립된 두 컨테이너(겹침은 해결됐지만 "한 경기장"이 아니게
+   됨)를 거쳐, 다시 하나의 잔디밭 안에 위(상대)/아래(나) 절반으로 나눠 담는다.
+   상대 팀은 build_pitch_view()에서 이미 좌우 반전된 좌표를 받으므로 여기서는
+   그대로 렌더링만 하면 된다. */
+.match-pitch-section {
+    margin-top: 16px;
+}
+
+.match-pitch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.match-pitch-team-label.me {
+    color: var(--primary-green);
+}
+
+.match-pitch-team-label.opponent {
+    color: #ef4444;
+}
+
+/* ✅ 2026-09-13 3차 재설계 — 한 잔디밭 안에서 좌/우로 완전히 나뉘므로(상대: 왼쪽
+   절반, 나: 오른쪽 절반) 원래 에셋(pitch-field-landscape.png) 비율인 16:10을
+   그대로 쓴다. */
+.match-pitch-field {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background-image: url('/static/pitch-field-landscape.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: var(--radius-md);
+    overflow: visible;
+}
+
+/* 두 팀 절반(좌/우)을 시각적으로 구분해주는 중앙선(장식용) — 세로선으로 변경
+   (2026-09-13, 좌/우 분리 재설계에 맞춰 가로선 → 세로선) */
+.match-pitch-halfway-line {
+    position: absolute;
+    top: 4%;
+    bottom: 4%;
+    left: 50%;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.55);
+    transform: translateX(-50%);
+    z-index: 0;
+}
+
+/* 선수 이름/이미지/평점이 너무 작다는 피드백 반영 — 마커 전체와 각 요소 크기를 확대 */
+.pitch-player {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 88px;
+    z-index: 1;
+}
+
+.pitch-player-img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--primary-green);
+    background: var(--bg-primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.pitch-player.opponent .pitch-player-img {
+    border-color: #ef4444;
+}
+
+.pitch-player-name {
+    margin-top: 3px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.pitch-player-rating {
+    margin-top: 1px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--primary-green);
+    background: var(--bg-primary);
+    padding: 0 5px;
+    border-radius: 4px;
+}
+
+.pitch-player.opponent .pitch-player-rating {
+    color: #ef4444;
+}
+
+/* MVP는 눈에 띄게 — 금색 링 강조 + 별 뱃지를 이미지 위에 크게 표시 */
+.pitch-player.mvp {
+    z-index: 2;
+}
+
+.pitch-player.mvp .pitch-player-img {
+    width: 56px;
+    height: 56px;
+    border-color: gold;
+    border-width: 3px;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.pitch-player.mvp .pitch-player-name {
+    font-weight: 800;
+    color: #7a5b00;
+    background: linear-gradient(180deg, #fff6d8, #ffe066);
+}
+
+.pitch-player-mvp-badge {
+    position: absolute;
+    top: -14px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #111;
+    background: linear-gradient(180deg, #ffe066, gold);
+    padding: 1px 7px;
+    border-radius: 999px;
+    line-height: 1.5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.03em;
+}
+
+@media (max-width: 640px) {
+    /* ✅ 2026-09-13 — 좌/우 분리 재설계에서는 각 팀이 세로(y)축 전체를 한 줄
+       대형의 선수 배치에 쓰므로, 모바일에서 세로 공간을 넉넉히 늘려(16:10 → 3:4)
+       같은 라인 선수끼리 겹치지 않을 여유를 확보한다. */
+    .match-pitch-field {
+        aspect-ratio: 3 / 4;
+    }
+    .pitch-player {
+        width: 46px;
+    }
+    .pitch-player-img {
+        width: 26px;
+        height: 26px;
+        border-width: 2px;
+    }
+    .pitch-player.mvp .pitch-player-img {
+        width: 32px;
+        height: 32px;
+    }
+    .pitch-player-name {
+        max-width: 46px;
+        font-size: 0.55rem;
+        padding: 0 3px;
+        margin-top: 1px;
+    }
+    .pitch-player-rating {
+        font-size: 0.55rem;
+        padding: 0 3px;
+    }
+    .pitch-player-mvp-badge {
+        font-size: 0.55rem;
+        top: -10px;
+        padding: 0px 5px;
+    }
+}
+
+/* ✅ 2026-09-12 전면 재설계 — 예전엔 나=오른쪽 정렬/상대=왼쪽 정렬의 두 게이지를
+   가운데 라벨을 두고 마주보게 배치했는데, 나 쪽은 [숫자 위·게이지 아래], 상대
+   쪽은 [게이지 위·숫자 아래] 순서로 DOM이 서로 달라 상하 정렬이 안 맞는다는
+   피드백을 받았다. 그래서 참고 이미지(팀 단위 "주요 통계")처럼 지표당 한 줄:
+   [내 숫자] — [라벨 + 하나로 이어진 막대바] — [상대 숫자]로 단순화했다. 막대는
+   내 몫만큼 파랑, 상대 몫만큼 빨강으로 나뉘어 한 줄 안에서 바로 비교된다.
+   불필요하다는 피드백을 받은 드리블/코너킥/오프사이드 묶음행, 파울/옐로카드,
+   평점 항목은 아예 뺐다. */
+.boxscore-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.boxscore-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.boxscore-stat-num {
+    flex: 0 0 auto;
+    min-width: 34px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.boxscore-stat-num.me {
+    text-align: right;
+    color: #2563eb;
+}
+
+.boxscore-stat-num.opponent {
+    text-align: left;
+    color: #dc2626;
+}
+
+.boxscore-stat-mid {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.boxscore-stat-label {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.boxscore-stat-track {
+    display: flex;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--border-color);
+}
+
+.boxscore-stat-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.boxscore-stat-fill.me {
+    background: linear-gradient(90deg, #60a5fa, #2563eb);
+}
+
+.boxscore-stat-fill.opponent {
+    background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+@media (max-width: 640px) {
+    .match-detail-compare-header {
+        gap: 8px;
+    }
+    .boxscore-stat-num {
+        font-size: 0.75rem;
+        min-width: 28px;
+    }
+    .boxscore-stat-label {
+        font-size: 0.64rem;
+    }
+    .match-detail-toggle {
+        position: static;
+        display: inline-block;
+        margin-top: 6px;
     }
 }

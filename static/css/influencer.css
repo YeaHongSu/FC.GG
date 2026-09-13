@@ -1,0 +1,199 @@
+/* ===========================================
+   인플루언서/프로게이머 페이지 (신규)
+   =========================================== */
+
+.influencer-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px 0;
+}
+
+.page-title {
+    text-align: center;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    text-align: center;
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.influencer-tabs {
+    margin-bottom: 20px;
+}
+
+.influencer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.influencer-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+/* JS로 붙이는 hidden 속성 — .influencer-card에 display:flex를 지정했기 때문에
+   [hidden]의 기본 display:none이 묻히지 않도록 명시적으로 다시 선언해야 한다. */
+.influencer-card[hidden] {
+    display: none;
+}
+
+.influencer-card:hover {
+    border-color: var(--primary-green);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.influencer-photo-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+}
+
+.influencer-card:hover .influencer-photo-wrap {
+    border-color: var(--primary-green);
+}
+
+.influencer-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.influencer-photo-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-green), #1a7a4a);
+}
+
+.influencer-nickname {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ✅ 신규(2026-09-13) — 팀/실명/게임 닉네임을 tots.gg처럼 표시 */
+.influencer-team-heading {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.influencer-team-group:first-child .influencer-team-heading {
+    margin-top: 0;
+}
+
+.influencer-real-name {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.influencer-handle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.influencer-handle strong {
+    color: var(--primary-green);
+}
+
+.influencer-handle-unknown {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.influencer-card-links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 2px;
+}
+
+.influencer-card-cta-link {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.influencer-card:hover .influencer-card-cta-link {
+    color: var(--primary-green);
+}
+
+.influencer-channel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #fff;
+    background: #e0293e;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.influencer-channel-badge:hover {
+    opacity: 0.85;
+}
+
+.influencer-suggest-note {
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.influencer-suggest-note a {
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .page-title {
+        font-size: 1.35rem;
+    }
+
+    .page-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .influencer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .influencer-photo-wrap {
+        width: 52px;
+        height: 52px;
+    }
+}

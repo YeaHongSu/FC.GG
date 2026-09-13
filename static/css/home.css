@@ -12,7 +12,16 @@
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 16px;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+}
+
+/* ✅ 신규(2026-09-14) — 히어로 부제. 출시 공지 말투 대신 짧은 태그라인 아래에
+   실제 기능을 담백하게 안내하는 보조 문구. */
+.hero-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin: 0;
 }
 
 .text-primary { color: var(--primary-green); }
@@ -36,6 +45,66 @@
     background: linear-gradient(135deg, #e8f4ff, #d8ecff);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+}
+
+/* ✅ 신규(2026-09-13) — 카카오톡 챗봇 '축구봇' 정식 출시 안내 배너. 검색창과
+   실시간 인기 구단주 사이에 한 줄짜리 박스로 표시하고, 축구봇 아이콘을 왼쪽에 둔다. */
+.chatbot-banner-section {
+    max-width: 600px;
+    margin: 0 auto 24px;
+}
+
+.chatbot-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    /* ⚠️ 2026-09-14 round 13 피드백 — 배경은 다크모드에서도 카카오 옐로우 톤을
+       그대로 유지하는 브랜드 배너라, 글자색을 var(--text-primary)로 두면 다크
+       모드에서 밝은색으로 뒤집혀 옅은 노란 배경 위에서 거의 안 보이게(하얗게)
+       된다. 그래서 배경색과 상관없이 항상 읽히도록 글자색을 고정했다. */
+    background: linear-gradient(135deg, #fff9db, #fff3bf);
+    border: 1px solid #ffe066;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: #6b5300;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.chatbot-banner:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.chatbot-banner-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.chatbot-banner-text {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.chatbot-banner-link {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0078ff;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .chatbot-banner-text {
+        font-size: 0.78rem;
+    }
+    .chatbot-banner-link {
+        font-size: 0.72rem;
+    }
 }
 
 /* Flash Alert */
@@ -166,6 +235,15 @@
 
 .popular-item:hover .popular-nickname {
     color: var(--primary-green);
+}
+
+/* ✅ 신규(2026-09-13) — 실시간 인기 구단주 목록에서 프로게이머/인플루언서 닉네임
+   옆에 "프로"/"인플루언서" 라벨을 표시 */
+.popular-creator-badge {
+    margin-left: 6px;
+    vertical-align: middle;
+    font-size: 0.68rem;
+    padding: 2px 8px;
 }
 
 .popular-tier {
@@ -366,6 +444,7 @@
 
 @media (max-width: 768px) {
     .hero-title { font-size: 1.4rem; }
+    .hero-subtitle { font-size: 0.85rem; }
 
     .popular-item {
         padding: 10px 12px;
@@ -394,6 +473,7 @@
 @media (max-width: 480px) {
     .hero-section { padding: 16px 0; }
     .hero-title { font-size: 1.2rem; }
+    .hero-subtitle { font-size: 0.8rem; }
 
     .chatbot-link {
         padding: 8px 16px;

@@ -45,3 +45,42 @@
     --radius-lg: 16px;
     --radius-xl: 20px;
 }
+
+/* ===========================================
+   Dark Mode (2026-09-14 피드백: "다크모드 기능이 모든 html에 적용되면 좋겠다")
+   사이트 전체가 이미 이 파일의 변수(--bg-*, --text-*, --border-color, --shadow-*)만
+   가져다 쓰고 있어서, 여기서 값만 다시 정의해주면 별도 CSS를 페이지마다 고칠
+   필요 없이 자연스럽게 다크 모드가 적용된다. <html data-theme="dark">일 때 적용되며,
+   토글은 헤더의 "후원하기" 버튼 오른쪽 다크모드 버튼(components.css .btn-theme-toggle,
+   components/header.html)이 켜고 끈다. 상태는 localStorage(fcgg-theme)에 저장돼
+   페이지를 옮겨도 유지된다. */
+:root[data-theme="dark"] {
+    --primary-green: #34ce57;
+    --primary-green-dark: #28a745;
+    --primary-green-light: #4ade80;
+
+    --accent-yellow: #ffc107;
+    --accent-yellow-dark: #e0a800;
+
+    --win-blue: #60a5fa;
+    --win-bg: #1e3a5f;
+    --draw-yellow: #fbbf24;
+    --draw-bg: #78640a;
+    --lose-red: #f87171;
+    --lose-bg: #7f1d1d;
+
+    --bg-primary: #0f172a;
+    --bg-secondary: #1a2436;
+    --bg-card: #1a2436;
+    --bg-dark: #0b1220;
+
+    --text-primary: #e5e9f0;
+    --text-secondary: #9aa7bd;
+    --text-muted: #6b7891;
+
+    --border-color: #2a3750;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.35), 0 2px 4px -1px rgba(0,0,0,0.25);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.3);
+}

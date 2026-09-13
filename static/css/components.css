@@ -135,6 +135,30 @@
     left: 100%;
 }
 
+/* ✅ 다크 모드 토글 버튼(2026-09-14 피드백) — "후원하기" 오른쪽에 배치 */
+.btn-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-left: 8px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-theme-toggle:hover {
+    border-color: var(--primary-green);
+    background: rgba(40, 167, 69, 0.08);
+    transform: translateY(-2px);
+}
+
 /* Mobile Menu Toggle */
 .menu-toggle {
     display: none;
@@ -655,6 +679,16 @@
     font-size: 0.95rem;
 }
 
+.match-player-opponent {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
+
+.match-player-opponent:hover {
+    color: var(--primary-green, #2ecc71);
+}
+
 .match-vs {
     font-size: 0.75rem;
     opacity: 0.7;
@@ -719,6 +753,15 @@
         margin-left: 0;
         margin-top: 8px;
         padding: 12px 16px;
+    }
+
+    .btn-theme-toggle {
+        width: 100%;
+        height: auto;
+        margin-left: 0;
+        margin-top: 8px;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
     }
 
     .header-nav .dropdown {
