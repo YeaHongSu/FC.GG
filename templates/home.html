@@ -35,13 +35,13 @@
 {% endwith %}
 
 <!-- Hero Section -->
+<!-- ✅ 2026-09-13 피드백 — "카카오톡 챗봇 출시" 안내는 검색창 아래 전용 배너로 옮김.
+     ✅ 2026-09-14 피드백 — "전적검색·감독모드 지표 분석 기능 출시!" 문구가 촌스럽다는
+     피드백으로, 기능 출시 공지문 톤 대신 짧은 브랜드 태그라인 + 작은 부제 구성으로
+     교체(느낌표/"출시" 같은 공지 말투 제거). -->
 <section class="hero-section">
-  <h1 class="hero-title">
-    카카오톡 챗봇 <span class="text-primary">'축구봇'</span> 정식 출시!
-  </h1>
-  <a href="https://pf.kakao.com/_xoxlZen" target="_blank" class="chatbot-link">
-    💬 챗봇 채널 바로가기
-  </a>
+  <h1 class="hero-title">데이터로 완성하는 <span class="text-primary">나의 축구</span></h1>
+  <p class="hero-subtitle">전적 검색부터 감독모드 지표 분석까지, FC.GG에서 한눈에</p>
 </section>
 
 <!-- 상단 배너 -->
@@ -60,6 +60,16 @@
   </div>
 </section>
 
+<!-- ✅ 신규(2026-09-13) — 카카오톡 챗봇 '축구봇' 정식 출시 안내 배너.
+     닉네임 검색과 실시간 인기 구단주 사이에 한 줄 박스로 배치합니다. -->
+<section class="chatbot-banner-section">
+  <a href="https://pf.kakao.com/_xoxlZen" target="_blank" class="chatbot-banner">
+    <img src="{{ url_for('static', filename='img/soccerbot-icon.jpg') }}" alt="축구봇" class="chatbot-banner-icon">
+    <span class="chatbot-banner-text">카카오톡 챗봇 <strong>'축구봇'</strong> 정식 출시!</span>
+    <span class="chatbot-banner-link">💬 챗봇 채널 바로가기</span>
+  </a>
+</section>
+
 <!-- Popular Players -->
 <section class="popular-section">
   <div class="card-modern">
@@ -69,11 +79,11 @@
     <div class="card-body-modern">
       {% if top_nicknames %}
       <ul class="popular-list">
-        {% for nickname, lv, tier_image, search_count in top_nicknames %}
+        {% for nickname, lv, tier_image, search_count, creator_label in top_nicknames %}
         <li class="popular-item" data-nickname="{{ nickname }}">
           <span class="popular-rank">Top {{ loop.index }}</span>
           <span class="popular-level">Lv. {{ lv }}</span>
-          <span class="popular-nickname">{{ nickname }}</span>
+          <span class="popular-nickname">{{ nickname }}{% if creator_label %} <span class="player-badge popular-creator-badge {% if creator_label == '프로' %}badge-progamer{% else %}badge-influencer{% endif %}">{{ creator_label }}</span>{% endif %}</span>
           <img src="{{ tier_image }}" alt="Tier" class="popular-tier">
         </li>
         {% endfor %}
@@ -102,53 +112,49 @@
     </div>
     <div class="card-body-modern">
       <div class="notice-list">
+        <!-- ✅ 신규(2026-09-12) — 전적검색 고도화(선수 지표/슛 타입 분석 강화) 업데이트.
+             피드백에 따라 날짜/버전 경과 시간은 표시하지 않습니다. -->
         <div class="notice-item" data-id="17">
           <div class="notice-title">
-            26/02/10 2.2.0v 업데이트 (카카오톡 챗봇 '축구봇' 기능 추가)
+            2.2.0v 업데이트 (<span class="text-danger">전적 검색 고도화: 선수별 상세 지표</span>)
           </div>
-          <div class="notice-date" id="notice17-date"></div>
           <div class="notice-content" id="notice17-content">
-            <p>이번 업데이트에서는 카카오톡 앱 내에서 '축구봇' 그룹 챗봇 기능이 추가되었습니다. 초성퀴즈 미니게임 추가 및 승부차기 이미지 추가입니다. 많은 이용 부탁드립니다.</p>
+            <p>전적 검색 결과에서 선수별 공격 지수/수비 지수/기대득점률, 슛 종류별(감아차기/헤더/발리 등) 성공률, 매치별 선수 지표를 더 자세히 확인하실 수 있도록 개선했습니다.</p>
           </div>
         </div>
-        
+
         <div class="notice-item" data-id="16">
           <div class="notice-title">
-            25/10/22 2.1.0v 업데이트 (<span class="text-danger">카카오톡 챗봇 '축구봇' 출시</span>)
+            2.1.0v 업데이트 (<span class="text-danger">카카오톡 그룹 챗봇 '축구봇' 출시</span>)
           </div>
-          <div class="notice-date" id="notice16-date"></div>
           <div class="notice-content" id="notice16-content">
             <p>이번 업데이트에서는 카카오톡 앱 내에서 '축구봇' 그룹 챗봇을 이용하실 수 있습니다. 챗봇 내에서 전적검색, 승률개선, 선수티어, 승부차기, 공피하기 이용이 가능합니다. 많은 이용 부탁드립니다.</p>
           </div>
         </div>
 
         <div class="notice-item" data-id="15">
-          <div class="notice-title">25/09/29 1.6.0v 업데이트 (미니게임: 공 피하기)</div>
-          <div class="notice-date" id="notice15-date"></div>
+          <div class="notice-title">1.6.0v 업데이트 (미니게임: 공 피하기)</div>
           <div class="notice-content" id="notice15-content">
             <p>이번 업데이트에서는 기존 빠칭코 연습실이 스폐셜 상점 연습실로 명칭이 변화되었으며, 미니게임으로 통합과 동시에 공 피하기 콘텐츠가 추가되었습니다.</p>
           </div>
         </div>
 
         <div class="notice-item" data-id="14">
-          <div class="notice-title">25/07/01 1.5.0v 업데이트 (선수 티어, 플레이스타일)</div>
-          <div class="notice-date" id="notice14-date"></div>
+          <div class="notice-title">1.5.0v 업데이트 (선수 티어, 플레이스타일)</div>
           <div class="notice-content" id="notice14-content">
             <p>이번 업데이트에서는 구단주님의 플레이스타일을 더 다채롭게 변화시켰으며 인게임 패치에 따른 선수 티어도 변화되었습니다.</p>
           </div>
         </div>
 
         <div class="notice-item" data-id="13">
-          <div class="notice-title">25/02/15 1.4.0v 업데이트 (전적 검색 서비스)</div>
-          <div class="notice-date" id="notice13-date"></div>
+          <div class="notice-title">1.4.0v 업데이트 (전적 검색 서비스)</div>
           <div class="notice-content" id="notice13-content">
             <p>이번 업데이트에서는 전적 검색 시 구단주님의 스쿼드를 확인할 수 있도록 수정하였습니다.</p>
           </div>
         </div>
 
         <div class="notice-item" data-id="12">
-          <div class="notice-title">25/01/23 1.3.0v 업데이트 (빠칭코 연습실 : <span class="text-pink">SSL</span>)</div>
-          <div class="notice-date" id="notice12-date"></div>
+          <div class="notice-title">1.3.0v 업데이트 (빠칭코 연습실 : <span class="text-pink">SSL</span>)</div>
           <div class="notice-content" id="notice12-content">
             <p>이번 업데이트에서는 신규 빠칭코 : SSL 규칙에 맞게 연습실을 개편하였습니다.</p>
           </div>
@@ -165,16 +171,14 @@
     <div class="card-body-modern">
       <div class="notice-list">
         <div class="notice-item" data-id="u12">
-          <div class="notice-title">2.2.0v 신규 기능 추가 예정 (카카오톡 챗봇 '축구봇')</div>
-          <div class="notice-date" id="upcoming12-date"></div>
+          <div class="notice-title">2.2.0v 편의성 개선 예정 (전적 검색 고도화 후속 보완)</div>
           <div class="notice-content" id="upcoming12-content">
-            <p>FC온라인 유저분들이 카카오톡 앱 내에서도 초성퀴즈, 승부차기 미니게임을 이용하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
+            <p>선수별 상세 지표와 슛 타입 분석을 더 다듬고, 매치 상세 화면도 계속 보완할 예정입니다.</p>
           </div>
         </div>
-        
+
         <div class="notice-item" data-id="u11">
-          <div class="notice-title">2.1.0v 신규 서비스 추가 예정 (카카오톡 챗봇 '축구봇')</div>
-          <div class="notice-date" id="upcoming11-date"></div>
+          <div class="notice-title">2.1.0v 신규 기능 추가 예정 (카카오톡 그룹 챗봇 '축구봇')</div>
           <div class="notice-content" id="upcoming11-content">
             <p>FC온라인 유저분들이 카카오톡 앱 내에서도 전적검색, 승률개선 콘텐츠를 이용하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
           </div>
@@ -182,7 +186,6 @@
 
         <div class="notice-item" data-id="u10">
           <div class="notice-title">1.6.0v 신규 기능 추가 예정 (미니게임: 공 피하기)</div>
-          <div class="notice-date" id="upcoming10-date"></div>
           <div class="notice-content" id="upcoming10-content">
             <p>FC온라인 유저분들이 공 피하기 미니게임을 체험하실 수 있도록 신규 기능을 추가할 예정입니다.</p>
           </div>
@@ -190,7 +193,6 @@
 
         <div class="notice-item" data-id="u9">
           <div class="notice-title">1.5.0v 편의성 개선 예정 (선수 티어, 플레이스타일)</div>
-          <div class="notice-date" id="upcoming9-date"></div>
           <div class="notice-content" id="upcoming9-content">
             <p>FC온라인 유저분들이 전적 검색 시 더 다채로운 플레이스타일을 만나보실 수 있도록 개편 예정입니다.</p>
           </div>
@@ -198,7 +200,6 @@
 
         <div class="notice-item" data-id="u8">
           <div class="notice-title">1.4.0v 편의성 개선 예정 (전적 검색 서비스)</div>
-          <div class="notice-date" id="upcoming8-date"></div>
           <div class="notice-content" id="upcoming8-content">
             <p>FC온라인 유저분들이 전적 검색 시 자신의 스쿼드를 확인하실 수 있도록 개편 예정입니다.</p>
           </div>
@@ -206,7 +207,6 @@
 
         <div class="notice-item" data-id="u7">
           <div class="notice-title">1.3.0v 편의성 개선 예정 (빠칭코 연습실 : SSL)</div>
-          <div class="notice-date" id="upcoming7-date"></div>
           <div class="notice-content" id="upcoming7-content">
             <p>FC온라인 유저분들이 신규 빠칭코 : SSL을 연습하실 수 있도록 개편 예정입니다.</p>
           </div>
@@ -219,32 +219,9 @@
 
 {% block extra_js %}
 <script>
-  // Calculate time ago (months or days)
-  function calculateDaysAgo(uploadDate) {
-    const now = new Date();
-    const uploaded = new Date(uploadDate);
-    const diffTime = Math.abs(now - uploaded);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const diffMonths = Math.floor(diffDays / 30);
-
-    if (diffMonths >= 1) return diffMonths + "달 전";
-    return diffDays + "일 전";
-  }
-
-  // Set notice dates
-  document.getElementById("notice12-date").textContent = calculateDaysAgo("2025-01-23");
-  document.getElementById("notice13-date").textContent = calculateDaysAgo("2025-02-15");
-  document.getElementById("notice14-date").textContent = calculateDaysAgo("2025-07-01");
-  document.getElementById("notice15-date").textContent = calculateDaysAgo("2025-09-29");
-  document.getElementById("notice16-date").textContent = calculateDaysAgo("2025-10-21");
-  document.getElementById("notice17-date").textContent = calculateDaysAgo("2026-02-10");
-
-  document.getElementById("upcoming7-date").textContent = calculateDaysAgo("2025-01-22");
-  document.getElementById("upcoming8-date").textContent = calculateDaysAgo("2025-02-10");
-  document.getElementById("upcoming9-date").textContent = calculateDaysAgo("2025-06-25");
-  document.getElementById("upcoming10-date").textContent = calculateDaysAgo("2025-09-24");
-  document.getElementById("upcoming11-date").textContent = calculateDaysAgo("2025-10-05");
-  document.getElementById("upcoming12-date").textContent = calculateDaysAgo("2026-01-15");
+  // ⚠️ 2026-09-12 제거 — 공지/예정 항목마다 "N달 전"처럼 경과 시간을 보여주던
+  // calculateDaysAgo()를 없앴다(피드백: "몇달인지 빼줘"). 날짜 자체를 더 이상
+  // 계산/표시하지 않는다.
 
   // Notice toggle
   document.querySelectorAll('.notice-item').forEach(item => {

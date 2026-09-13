@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}FC.GG - 인플루언서/프로게이머{% endblock %}
+
+{% block extra_meta %}
+<meta name="keywords" content="피파, 피파온라인, 피파온라인4, FC온라인, 인플루언서, 프로게이머, 스트리머, 에프씨지지, fcgg, fc.gg">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/influencer.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="influencer-section">
+    <h1 class="page-title">인플루언서 / 프로게이머</h1>
+    <p class="page-subtitle">FC온라인 인플루언서와 프로게이머의 전적을 검색해 보세요!</p>
+
+    <div id="vm-top-banner"
+         style="width:100%; display:flex; justify-content:center; margin:32px 0;">
+    </div>
+
+    <div class="card-modern">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern">전체 <span style="color: var(--primary-green);">{{ people|length }}</span>명</h2>
+        </div>
+        <div class="card-body-modern">
+            <!-- 카테고리 탭 (전체/프로게이머/인플루언서) -->
+            <div class="game-mode-tabs influencer-tabs">
+                <button class="tab-item active" data-filter="all">전체 보기</button>
+                <button class="tab-item" data-filter="progamer">프로게이머 보기</button>
+                <button class="tab-item" data-filter="influencer">인플루언서 보기</button>
+            </div>
+
+            <!-- ✅ 2026-09-13 전면 재설계 — tots.gg처럼 소속 팀/조직별로 묶어서 보여준다.
+                 개인 방송인(org 없음)은 "개인 방송" 그룹으로 모인다. -->
+            <div id="influencer-grid">
+                {% for group in team_groups %}
+                <div class="influencer-team-group" data-team="{{ group.label }}">
+                    <h3 class="influencer-team-heading">{{ group.label }}</h3>
+                    <div class="influencer-grid">
+                        {% for person in group.members %}
+                        <div class="influencer-card" data-category="{{ person.category }}">
+                            <div class="influencer-photo-wrap">
+                                {% if person.photo_url %}
+                                <img class="influencer-photo" src="{{ person.photo_url }}" alt="{{ person.display_name }}" loading="lazy"
+                                     onerror="this.parentElement.innerHTML = '<div class=&quot;influencer-photo-fallback&quot;>{{ person.display_name[0] }}</div>';">
+                                {% else %}
+                                <div class="influencer-photo-fallback">{{ person.display_name[0] }}</div>
+                                {% endif %}
+                            </div>
+                            <span class="player-badge {% if person.category == 'progamer' %}badge-progamer{% else %}badge-influencer{% endif %}">{{ person.category_label }}</span>
+                            <span class="influencer-nickname">{{ person.display_name }}</span>
+                            {% if person.real_name %}<span class="influencer-real-name">실명 {{ person.real_name }}</span>{% endif %}
+                            {% if person.has_handle %}
+                            <span class="influencer-handle">게임 닉네임 <strong>{{ person.handle }}</strong></span>
+                            {% else %}
+                            <span class="influencer-handle influencer-handle-unknown">게임 닉네임 미확인</span>
+                            {% endif %}
+                            <div class="influencer-card-links">
+                                {% if person.has_handle %}
+                                <a class="influencer-card-cta-link influencer-record-search-link" href="{{ url_for('result', character_name=person.handle, match_type_name='공식경기') }}">전적 검색 →</a>
+                                {% endif %}
+                                {% for ch in person.channels %}
+                                <a class="influencer-channel-badge" href="{{ ch.url }}" target="_blank" rel="noopener noreferrer">
+                                    {{ ch.label or '방송 채널' }} ↗
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if not people %}
+            <p class="no-match-message">아직 등록된 인플루언서/프로게이머가 없습니다.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="influencer-suggest-note">
+        여기 없는 인플루언서/프로게이머가 있다면 <a href="/커뮤니티/자유게시판" target="_blank">커뮤니티</a>에 제보해주세요!
+    </p>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tabs = document.querySelectorAll(".influencer-tabs .tab-item");
+    const cards = document.querySelectorAll("#influencer-grid .influencer-card");
+    const groups = document.querySelectorAll("#influencer-grid .influencer-team-group");
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+            tabs.forEach(function (t) { t.classList.remove("active"); });
+            tab.classList.add("active");
+            const filter = tab.getAttribute("data-filter");
+            cards.forEach(function (card) {
+                const show = filter === "all" || card.getAttribute("data-category") === filter;
+                card.hidden = !show;
+            });
+            // ✅ 필터링 후 팀 그룹 안 카드가 전부 숨겨졌으면 팀 제목(헤딩)도 같이 숨긴다.
+            groups.forEach(function (group) {
+                const visibleCount = group.querySelectorAll(".influencer-card:not([hidden])").length;
+                group.hidden = visibleCount === 0;
+            });
+        });
+    });
+
+    // ✅ round 15 피드백 — "전적 검색 →" 클릭 시 홈 화면의 인기 검색어 카드와
+    // 동일하게(원래 있던 공용 로딩 화면을 그대로) 로딩 화면을 띄운 뒤 이동한다.
+    document.querySelectorAll(".influencer-record-search-link").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            const href = this.getAttribute("href");
+            showLoading();
+            setTimeout(function () {
+                window.location.href = href;
+            }, 10);
+        });
+    });
+});
+</script>
+{% endblock %}

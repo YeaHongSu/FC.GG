@@ -27,12 +27,12 @@
             <div id="players-container">
                 <div class="player-row">
                     <div class="input-group">
-                        <input type="text" class="form-input price-input-trillion" placeholder="조 단위">
-                        <span class="input-suffix">조</span>
-                    </div>
-                    <div class="input-group">
                         <input type="text" class="form-input price-input-billion" placeholder="억 단위">
                         <span class="input-suffix">억</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-input price-input-man" placeholder="만 단위">
+                        <span class="input-suffix">만</span>
                     </div>
                     <div class="input-group small">
                         <input type="number" class="form-input count-input" value="1" min="1" max="10">
@@ -99,6 +99,10 @@
     </div>
 </section>
 
+<!-- Ads (베나투스 광고 기입 예정)-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970639123590302" crossorigin="anonymous"></script>
+<ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-7970639123590302" data-ad-slot="5624069254"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
 {% endblock %}
 
 {% block extra_js %}
@@ -112,11 +116,11 @@
     }
 
     function getTotalSalePrice(player) {
-        var trillionInput = player.querySelector(".price-input-trillion");
         var billionInput = player.querySelector(".price-input-billion");
-        var trillion = parseInt(removeCommas(trillionInput.value) || "0") * 1000000000000;
+        var manInput = player.querySelector(".price-input-man");
         var billion = parseInt(removeCommas(billionInput.value) || "0") * 100000000;
-        return trillion + billion;
+        var man = parseInt(removeCommas(manInput.value) || "0") * 10000;
+        return billion + man;
     }
 
     function addCommaFormattingAndCalculation(input) {
@@ -140,11 +144,11 @@
 
             if (isNaN(salePrice) || salePrice <= 0) {
                 valid = false;
-                player.querySelector(".price-input-trillion").classList.add("is-invalid");
                 player.querySelector(".price-input-billion").classList.add("is-invalid");
+                player.querySelector(".price-input-man").classList.add("is-invalid");
             } else {
-                player.querySelector(".price-input-trillion").classList.remove("is-invalid");
                 player.querySelector(".price-input-billion").classList.remove("is-invalid");
+                player.querySelector(".price-input-man").classList.remove("is-invalid");
 
                 var count = parseInt(player.querySelector(".count-input").value);
                 var discount = parseFloat(player.querySelector(".coupon-select").value);
@@ -181,12 +185,12 @@
         newRow.classList.add("player-row");
         newRow.innerHTML = `
             <div class="input-group">
-                <input type="text" class="form-input price-input-trillion" placeholder="조">
-                <span class="input-suffix">조</span>
-            </div>
-            <div class="input-group">
                 <input type="text" class="form-input price-input-billion" placeholder="억">
                 <span class="input-suffix">억</span>
+            </div>
+            <div class="input-group">
+                <input type="text" class="form-input price-input-man" placeholder="만">
+                <span class="input-suffix">만</span>
             </div>
             <div class="input-group small">
                 <input type="number" class="form-input count-input" value="1" min="1" max="10">
@@ -214,8 +218,8 @@
         `;
         container.appendChild(newRow);
 
-        addCommaFormattingAndCalculation(newRow.querySelector(".price-input-trillion"));
         addCommaFormattingAndCalculation(newRow.querySelector(".price-input-billion"));
+        addCommaFormattingAndCalculation(newRow.querySelector(".price-input-man"));
         newRow.querySelector(".count-input").addEventListener("input", calculateFees);
         newRow.querySelector(".coupon-select").addEventListener("change", calculateFees);
 
@@ -225,8 +229,8 @@
         });
     });
 
-    document.querySelectorAll('.price-input-trillion, .price-input-billion, .count-input, .coupon-select, #premium_pc, #top_class').forEach(function(input) {
-        if (input.classList.contains("price-input-trillion") || input.classList.contains("price-input-billion")) {
+    document.querySelectorAll('.price-input-billion, .price-input-man, .count-input, .coupon-select, #premium_pc, #top_class').forEach(function(input) {
+        if (input.classList.contains("price-input-billion") || input.classList.contains("price-input-man")) {
             addCommaFormattingAndCalculation(input);
         } else {
             input.addEventListener("input", calculateFees);

@@ -1,6 +1,72 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- ✅ 다크 모드 초기 적용(2026-09-14 피드백) — CSS/헤더 버튼보다 먼저 실행돼야
+         새로고침할 때 잠깐 밝은 화면이 번쩍이는 걸(FOUC) 막을 수 있어서 head 맨
+         위에 둔다. localStorage(fcgg-theme)에 저장된 값이 있으면 그대로 쓰고,
+         저장된 값이 없으면(첫 방문 등) 이제 OS 설정과 무관하게 기본값을 다크로
+         한다(2026-09-14 round 13 피드백 — "디폴트값 다크로"). 라이트 모드를
+         원하면 토글로 바꾸면 되고, 그 선택은 localStorage에 저장돼 계속 유지된다. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('fcgg-theme');
+          var theme = saved || 'dark';
+          if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {
+          // localStorage 막힌 환경(시크릿 모드 등)이어도 기본값은 다크로.
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+
+    <!-- ✅ 선수 이미지 폴백(2026-09-14, 결과 페이지 곳곳에서 "가끔" 사진이 깨져
+         보인다는 피드백으로 result.html 안 extra_js에서 여기로 옮김) — 원래는
+         페이지 맨 아래(extra_js, chart.js CDN 스크립트 다음)에 정의돼 있었는데,
+         <img onerror="handlePlayerImgError(this)">는 이미지 네트워크 요청이
+         "먼저" 끝나면 이 함수가 아직 정의되기 전에 호출될 수 있다(특히 CDN
+         스크립트 로딩이 느릴 때 레이스 컨디션 발생). 그래서 body 파싱이 시작되기도
+         전인 head 맨 앞쪽에서 미리 정의해, 어떤 이미지든 onerror가 언제 발동하든
+         항상 함수가 이미 존재하도록 보장한다. -->
+    <script>
+      const PLAYER_IMG_PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+          '<rect width="64" height="64" rx="10" fill="#d1d5db"/>' +
+          '<circle cx="32" cy="25" r="13" fill="#9ca3af"/>' +
+          '<path d="M8 58c2-16 15-23 24-23s22 7 24 23" fill="#9ca3af"/>' +
+          '</svg>'
+      );
+
+      function handlePlayerImgError(imgEl) {
+          const fallbackUrl = imgEl.getAttribute('data-fallback-src');
+          // ⚠️ 2026-09-14 버그 수정 — 선수 이미지가 아예 없어서(spId 못 찾음 등)
+          // image/image_fallback이 둘 다 비어있으면 fallbackUrl이 빈 문자열/"None"
+          // 문자열이 되는데, 예전엔 이것도 "유효한 폴백"으로 잘못 보고 계속 같은
+          // (깨진) 주소로 재시도해서 최종 실루엣 플레이스홀더까지 못 가는 경우가
+          // 있었다. 이제 그런 값은 폴백으로 안 치고 바로 플레이스홀더로 넘어간다.
+          const usable = fallbackUrl && fallbackUrl !== "None" && fallbackUrl !== imgEl.getAttribute('src');
+          if (usable && !imgEl.dataset.triedFallback) {
+              imgEl.dataset.triedFallback = "1";
+              imgEl.src = fallbackUrl;
+              return;
+          }
+          imgEl.onerror = null;
+          imgEl.src = PLAYER_IMG_PLACEHOLDER;
+      }
+
+      // ⚠️ 버그 수정 — "이미지가 없는 선수는 깨진 것처럼 나온다"는 피드백. onerror만으로는
+      // 서버가 진짜 404/에러를 내려줄 때만 잡히는데, 드물게 200 OK와 함께 텅 빈/1x1짜리
+      // 이미지를 내려주는 경우가 있어 그럴 땐 onerror가 아예 발동하지 않고 "빈 원"만
+      // 남는다. onload에서도 naturalWidth를 확인해서, 실제로 그려질 내용이 없는
+      // 이미지면 onerror와 똑같은 폴백 체인을 강제로 태운다.
+      function handlePlayerImgLoad(imgEl) {
+          if (imgEl.naturalWidth > 1) return;
+          handlePlayerImgError(imgEl);
+      }
+    </script>
+
     <!-- ✅ (옵션) 카카오 인앱 브라우저 감지: 광고 완전 비활성화(원하면 유지) -->
     <script>
       (function () {
@@ -52,8 +118,7 @@
                 //     configBuilder.addDefaultOrUnique("video").setBreakPoint("mobile");
                 // }).display("video");
                 scope.Config.get("video").display("video");
-                
-                
+              
             });
         `;
     document.head.appendChild(initScript);
@@ -200,6 +265,31 @@
             document.getElementById('happyPopup').style.display = 'none';
             document.getElementById('popupOverlay').style.display = 'none';
         });
+
+        // ✅ 다크 모드 토글(2026-09-14 피드백) — 헤더 "후원하기" 버튼 오른쪽 버튼.
+        // head 맨 위 스크립트가 이미 초기 테마를 적용해뒀으니, 여기서는 클릭할 때
+        // 상태를 뒤집고 localStorage에 저장하는 역할만 한다.
+        (function () {
+            const toggleBtn = document.getElementById('darkModeToggle');
+            if (!toggleBtn) return;
+            function isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
+            function syncIcon() {
+                toggleBtn.textContent = isDark() ? '☀️' : '🌙';
+                toggleBtn.setAttribute('aria-label', isDark() ? '라이트 모드로 전환' : '다크 모드로 전환');
+                toggleBtn.setAttribute('title', isDark() ? '라이트 모드' : '다크 모드');
+            }
+            syncIcon();
+            toggleBtn.addEventListener('click', () => {
+                const next = isDark() ? 'light' : 'dark';
+                if (next === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                try { localStorage.setItem('fcgg-theme', next); } catch (e) {}
+                syncIcon();
+            });
+        })();
     </script>
 
     {% block extra_js %}{% endblock %}

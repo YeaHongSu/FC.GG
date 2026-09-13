@@ -229,12 +229,27 @@
 
     const futureWinRate = {{ "%.1f"|format(modified_win_rate * 100) }};
 
+    // ⚠️ 버그 수정(2026-09-14, 승률개선 그래프/퍼센트 피드백) — 예전엔 "패배" 조각을
+    // 100 - futureWinRate - drawRate로 단순히 빼서 구했다. 그런데 원래 승률이 낮을수록
+    // 모델이 찾아내는 개선폭(win_rate_improvement)이 커질 수 있어(최대 +70%p까지도
+    // 허용됨), futureWinRate + drawRate가 100을 넘는 경우 이 값이 음수가 됐다.
+    // 도넛 그래프는 음수 조각을 정상적으로 그리지 못해 링 비율이 깨지고, 가운데
+    // 퍼센트 숫자와 실제 링 모양이 서로 안 맞아 보였다("그래프랑 퍼센트가 잘 안됨").
+    // 무승부/패배의 원래 비율은 유지한 채, 승률이 늘어난 만큼 남는 몫
+    // (100 - futureWinRate)에 비례해서 두 값이 같이 줄어들도록 고쳐 세 조각의 합이
+    // 항상 정확히 100이 되도록(그리고 절대 음수가 되지 않도록) 보장한다.
+    const remainingRate = 100 - futureWinRate;
+    const nonWinRate = drawRate + loseRate;
+    const futureScale = nonWinRate > 0 ? remainingRate / nonWinRate : 0;
+    const futureDrawRate = Math.max(0, drawRate * futureScale);
+    const futureLoseRate = Math.max(0, remainingRate - futureDrawRate);
+
     const futureWinRateChart = new Chart(futureWinRateCtx, {
         type: 'doughnut',
         data: {
             labels: ['승리', '무승부', '패배'],
             datasets: [{
-                data: [futureWinRate, drawRate, 100 - futureWinRate - drawRate],
+                data: [futureWinRate, futureDrawRate, futureLoseRate],
                 backgroundColor: ['#3b82f6', '#ffc107', '#ef4444'],
                 hoverOffset: 4
             }]

@@ -56,11 +56,35 @@
                         <span class="level-mobile">Lv.{{ level_data.level }}</span>
                         <span class="player-nickname-mobile">{{ level_data.nickname }}</span>
                         <span class="player-badge" id="title-box-mobile" style="display: none;"></span>
+                        {% if representative_player %}
+                        <div class="representative-player representative-player-mobile" title="대표 선수: {{ representative_player.name or ('선수#' ~ representative_player.spId) }}{% if representative_player.class_name %} ({{ representative_player.class_name }}){% endif %}">
+                            <div class="representative-player-photo-wrap">
+                                <img src="{{ representative_player.image }}" alt="{{ representative_player.name or ('선수#' ~ representative_player.spId) }}" class="representative-player-img"
+                                     data-fallback-src="{{ representative_player.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                                {% if representative_player.season_img %}
+                                <img src="{{ representative_player.season_img }}" alt="{{ representative_player.class_name or '등급' }}" class="representative-player-rarity-badge">
+                                {% endif %}
+                            </div>
+                            <span class="representative-player-name">{{ representative_player.name or ('선수#' ~ representative_player.spId) }}</span>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <!-- Desktop Layout -->
                     <div class="player-info-desktop">
                         <div class="player-main">
+                            {% if representative_player %}
+                            <div class="representative-player" title="대표 선수: {{ representative_player.name or ('선수#' ~ representative_player.spId) }}{% if representative_player.class_name %} ({{ representative_player.class_name }}){% endif %}">
+                                <div class="representative-player-photo-wrap">
+                                    <img src="{{ representative_player.image }}" alt="{{ representative_player.name or ('선수#' ~ representative_player.spId) }}" class="representative-player-img"
+                                         data-fallback-src="{{ representative_player.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                                    {% if representative_player.season_img %}
+                                    <img src="{{ representative_player.season_img }}" alt="{{ representative_player.class_name or '등급' }}" title="{{ representative_player.class_name }}" class="representative-player-rarity-badge">
+                                    {% endif %}
+                                </div>
+                                <span class="representative-player-name">{{ representative_player.name or ('선수#' ~ representative_player.spId) }}</span>
+                            </div>
+                            {% endif %}
                             <span class="player-nickname">{{ level_data.nickname }}</span>
                             <span class="player-badge" id="title-box" style="display: none;"></span>
                         </div>
@@ -185,10 +209,19 @@
                 {% for player in players %}
                 {% if player.x_coord and player.y_coord %}
                 <div class="player-marker" style="left: {{ player.x_coord }}%; top: {{ player.y_coord }}%;">
-                    {% if player.pos_desc %}
-                    <div class="position-tag">{{ player.pos_desc }}</div>
-                    {% endif %}
-                    <img src="{{ player.sd_image }}" alt="{{ player.name }}" class="player-img">
+                    <div class="player-photo-wrap">
+                        {% if player.pos_desc %}
+                        <div class="position-tag">{{ player.pos_desc }}</div>
+                        {% endif %}
+                        <img src="{{ player.sd_image }}" alt="{{ player.name }}" class="player-img"
+                             data-fallback-src="{{ player.sd_image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                        {% if player.season_img %}
+                        <img src="{{ player.season_img }}" alt="{{ player.class_name or '등급' }}" title="{{ player.class_name }}" class="player-rarity-badge">
+                        {% endif %}
+                        {% if player.grade_badge %}
+                        <span class="player-grade-badge {{ player.grade_badge_class or '' }}">{{ player.grade_badge }}</span>
+                        {% endif %}
+                    </div>
                     <div class="player-name-tag">{{ player.name }}</div>
                 </div>
                 {% endif %}
@@ -197,6 +230,170 @@
         </div>
     </div>
 </div>
+
+{% if top_players %}
+<!-- 주력 선수 TOP5 (신규) — 최근 매치들에서 가장 많이 기용된 선수 -->
+<div class="card-modern top-players-card">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">최근 <span style="color: var(--primary-green);">{{ match_data|length }}</span>경기 주력 선수 TOP5</h3>
+        <span class="top-players-criteria">평균 평점 기준</span>
+    </div>
+    <div class="card-body-modern">
+        <div class="top-players-grid">
+            {% for p in top_players %}
+            <div class="top-player-card">
+                <span class="top-player-rank">Top{{ loop.index }}</span>
+                <div class="top-player-photo-wrap">
+                    <img src="{{ p.image }}" alt="{{ p.name or ('선수#' ~ p.spId) }}" class="top-player-img"
+                         data-fallback-src="{{ p.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                    {% if p.season_img %}
+                    <img src="{{ p.season_img }}" alt="{{ p.class_name or '등급' }}" title="{{ p.class_name }}" class="top-player-rarity-badge">
+                    {% endif %}
+                    {% if p.grade_badge %}
+                    <span class="top-player-grade-badge {{ p.grade_badge_class or '' }}">{{ p.grade_badge }}</span>
+                    {% endif %}
+                </div>
+                <div class="top-player-name">{{ p.name or ('선수#' ~ p.spId) }}</div>
+                <div class="top-player-count">{{ p.count }}경기 출전</div>
+                {% if p.avg_rating is not none %}
+                <div class="top-player-rating">평균 평점 {{ "%.1f"|format(p.avg_rating) }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if shot_type_stats %}
+<!-- 슛 타입 분포 (2026-09-13 수정) — 25경기 슛 데이터를 넥슨 공식
+     match-detail 스키마의 shootDetail[].type(슛 종류) 기준으로 집계합니다.
+     일반슛/감아차기/헤더/낮은슛/프리킥/파워슛 등 실제 사용한 슛 종류 그대로입니다.
+     ⚠️ 2026-09-13 — "라벨 길이에 따라 성공률이 같은 줄에 붙기도, 다음 줄로
+     넘어가기도 해서 일관성이 없다"는 피드백. flex-wrap에 기대는 대신 라벨/공유율
+     행과 성공률 행을 아예 별도의 block 요소로 분리해, 라벨 길이와 무관하게 항상
+     같은 위치(라벨 다음 줄)에 성공률이 나오도록 고정한다. -->
+<div class="card-modern shot-type-card">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">최근 <span style="color: var(--primary-green);">{{ match_data|length }}</span>경기 슛 타입 분포</h3>
+        <span class="top-players-criteria">비중/성공률 기준</span>
+    </div>
+    <div class="card-body-modern">
+        <div class="shot-type-grid">
+            {% for s in shot_type_stats %}
+            <div class="shot-type-item">
+                <div class="shot-type-item-header">
+                    <div class="shot-type-label-row">
+                        <span class="shot-type-label">{{ s.label }}</span>{% if s.share is not none %} <span class="shot-type-share">({{ s.share }}%)</span>{% endif %}
+                    </div>
+                    <div class="shot-type-pct-row">
+                        <span class="shot-type-pct">성공률 {{ s.pct }}%</span>
+                    </div>
+                </div>
+                <div class="shot-type-gauge-track">
+                    <div class="shot-type-gauge-fill" style="width: {{ s.pct }}%;"></div>
+                </div>
+                <div class="shot-type-count">시도 {{ s.try }}회 · 유효 {{ s.on_target }}회 · 득점 {{ s.goal }}골</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if player_detail_stats %}
+<!-- ✅ 선수별 상세 지표 (2026-09-13 정렬/필터/위험표시/포지션 색상 반영) — fc-info.com
+     감독모드 분석 표를 참고했습니다. 공격 지수/수비 지수/기대득점률은 그 사이트의
+     비공개 자체 산식을 그대로 베낄 수는 없어서, 넥슨 공식 API로 실제 확인되는 골/
+     어시/유효슛/드리블/공중볼/패스/슛 좌표 기반 기대득점 근사치를 조합한 저희 자체
+     지수입니다(같은 스쿼드 안에서 상대적으로 누가 더 기여했는지 비교하는 용도이며,
+     fc-info의 수치와 같은 의미는 아닙니다. 명칭도 fc-info와 겹치지 않도록 "공격
+     지수"/"수비 지수"로 표기합니다). 나머지 칼럼은 전부 match-detail의
+     player[].status 실제 필드로 계산한 값입니다. 선방력은 넥슨 API에 골키퍼 선방
+     관련 필드가 없어 뺐습니다. 포지션 칼럼은 수비수(파란색)/미드필더(초록색)/
+     공격수(빨간색)/골키퍼(주황색)로 색상을 구분했고, 공격·수비 지수가 이 스쿼드
+     안에서 둘 다 하위권(20% 이하)인 선수는 이름 옆에 ⚠ 위험표시를 달아 마우스를
+     올리면 안내 문구가 보이도록 했습니다. -->
+<div class="card-modern player-detail-card">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">최근 <span style="color: var(--primary-green);">{{ match_data|length }}</span>경기 선수 지표</h3>
+        <span class="top-players-criteria">공격 지수 높은 순 · 공격 지수/수비 지수/기대득점률은 자체 지수</span>
+    </div>
+    <div class="card-body-modern">
+        <div class="player-detail-controls">
+            <label for="player-detail-sort">정렬 기준</label>
+            <select id="player-detail-sort" class="player-detail-sort-select">
+                <option value="attack_score" selected>공격 지수 높은순</option>
+                <option value="defense_score">수비 지수 높은순</option>
+                <option value="expected_goal">기대득점률 높은순</option>
+                <option value="rating">평점 높은순</option>
+                <option value="count">출전 많은순</option>
+                <option value="win_pct">승률 높은순</option>
+            </select>
+        </div>
+        <div class="player-detail-table-wrap">
+            <table class="player-detail-table" id="player-detail-table">
+                <thead>
+                    <tr>
+                        <th class="player-detail-col-name">선수</th>
+                        <th>포지션</th>
+                        <th>출전</th>
+                        <th>승률</th>
+                        <th>공격 지수</th>
+                        <th>수비 지수</th>
+                        <th>기대득점률</th>
+                        <th>공격P</th>
+                        <th>골</th>
+                        <th>어시</th>
+                        <th>패스%</th>
+                        <th>드리블%</th>
+                        <th>공중볼%</th>
+                        <th>가로채기</th>
+                        <th>태클%</th>
+                        <th>블록%</th>
+                        <th>평점</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in player_detail_stats %}
+                    <tr data-attack_score="{{ p.attack_score }}" data-defense_score="{{ p.defense_score }}"
+                        data-expected_goal="{{ p.expected_goal }}" data-rating="{{ p.rating if p.rating is not none else -1 }}"
+                        data-count="{{ p.count }}" data-win_pct="{{ p.win_pct if p.win_pct is not none else -1 }}">
+                        <td class="player-detail-col-name">
+                            <div class="player-detail-name-cell">
+                                <img src="{{ p.image }}" alt="{{ p.name or ('선수#' ~ p.spId) }}" class="player-detail-img"
+                                     data-fallback-src="{{ p.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                                <span>{{ p.name or ('선수#' ~ p.spId) }}</span>
+                                {% if p.grade_badge %}<span class="player-detail-grade {{ p.grade_badge_class or '' }}">{{ p.grade_badge }}</span>{% endif %}
+                            </div>
+                        </td>
+                        <td><span class="player-detail-pos {{ p.pos_group_class or '' }}">{{ p.pos_desc or '-' }}</span></td>
+                        <td>{{ p.count }}</td>
+                        <td>{{ (p.win_pct ~ '%') if p.win_pct is not none else '-' }}</td>
+                        <td class="player-detail-heat{% if p.attack_text_light %} light{% endif %}" style="background: {{ p.attack_bg }};">{{ "%.1f"|format(p.attack_score) }}</td>
+                        <td class="player-detail-heat{% if p.defense_text_light %} light{% endif %}" style="background: {{ p.defense_bg }};">
+                            {{ "%.1f"|format(p.defense_score) }}
+                            {% if p.risk_flag %}<span class="player-detail-risk-badge" title="{{ p.risk_tooltip }}">⚠</span>{% endif %}
+                        </td>
+                        <td>{{ "%.1f"|format(p.expected_goal) }}</td>
+                        <td>{{ p.attack_points }}</td>
+                        <td>{{ p.goal }}</td>
+                        <td>{{ p.assist }}</td>
+                        <td>{{ (p.pass_pct ~ '%') if p.pass_pct is not none else '-' }}</td>
+                        <td>{{ (p.dribble_pct ~ '%') if p.dribble_pct is not none else '-' }}</td>
+                        <td>{{ (p.aerial_pct ~ '%') if p.aerial_pct is not none else '-' }}</td>
+                        <td>{{ p.intercept_avg if p.intercept_avg is not none else '-' }}</td>
+                        <td>{{ (p.tackle_pct ~ '%') if p.tackle_pct is not none else '-' }}</td>
+                        <td>{{ (p.block_pct ~ '%') if p.block_pct is not none else '-' }}</td>
+                        <td>{{ "%.1f"|format(p.rating) if p.rating is not none else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Metrics Grid -->
 <div class="metrics-grid">
@@ -276,18 +473,108 @@
             <div>컨트롤러</div>
         </div>
         <div class="match-list">
+            {# ✅ 1v1 공식경기 최고 티어 표시 (신규) — 닉네임 옆에 붙는 작은 티어 뱃지.
+               tier_image가 있으면 아이콘, 없으면 텍스트(tier_name)로 표시하고,
+               둘 다 없으면(조회 실패 등) 아무것도 렌더링하지 않는다. #}
+            {% macro tier_badge(t) %}
+            {% if t and (t.tier_image or t.tier_name) %}
+            <span class="match-tier-badge" title="공식경기 1v1 최고 티어{% if t.tier_name %}: {{ t.tier_name }}{% endif %}">{% if t.tier_image %}<img src="{{ t.tier_image }}" class="match-tier-icon" alt="{{ t.tier_name or '티어' }}">{% else %}<span class="match-tier-text">{{ t.tier_name }}</span>{% endif %}</span>
+            {% endif %}
+            {% endmacro %}
+            {# ✅ 11v11 잔디밭 뷰 (신규) — 선수 한 명을 잔디밭 위 좌표(p.x/p.y, %)에 배치하는 마커 #}
+            {% macro pitch_player(p, side_class) %}
+            <div class="pitch-player {{ side_class }}{% if p.is_mvp %} mvp{% endif %}" style="left: {{ p.x }}%; top: {{ p.y }}%;" title="{{ p.name or ('선수#' ~ p.spId) }}{% if p.rating is not none %} · 평점 {{ p.rating }}{% endif %}">
+                {% if p.image %}<img src="{{ p.image }}" class="pitch-player-img" alt=""
+                     data-fallback-src="{{ p.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">{% endif %}
+                {% if p.is_mvp %}<span class="pitch-player-mvp-badge">★ MVP</span>{% endif %}
+                <span class="pitch-player-name">{{ p.name or ('선수#' ~ p.spId) }}</span>
+                {% if p.rating is not none %}<span class="pitch-player-rating">{{ p.rating }}</span>{% endif %}
+            </div>
+            {% endmacro %}
             {% for match in match_data %}
-            <div class="match-row {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %}">
+            {% set detail = match['상세'] %}
+            {% set has_detail = detail and detail.me and detail.me.available %}
+            <div class="match-row {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %} {% if has_detail %}has-detail{% endif %}"
+                 {% if has_detail %}onclick="toggleMatchDetail('match-detail-{{ loop.index0 }}', this)" role="button" tabindex="0"{% endif %}>
                 <span class="match-date">{{ match['매치 날짜'] }}</span>
                 <span class="match-result">{{ match['결과'] }}</span>
                 <div class="match-players">
+                    {{ tier_badge(match['내_티어']) }}
                     <span class="match-player">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[0] }}</span>
                     <span class="match-vs">vs</span>
-                    <span class="match-player">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[1] }}</span>
+                    <span class="match-player match-player-opponent"
+                          data-opponent-name="{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[1] }}"
+                          title="이 닉네임으로 재검색">{{ match['플레이어 1 vs 플레이어 2'].split(' vs ')[1] }}</span>
+                    {{ tier_badge(match['상대_티어']) }}
                 </div>
                 <span class="match-score">{{ match['스코어'] }}</span>
                 <span class="match-controller">{{ match['컨트롤러'] }}</span>
+                {% if has_detail %}<span class="match-detail-toggle" id="match-detail-toggle-{{ loop.index0 }}">상세 ▾</span>{% endif %}
             </div>
+            {% if has_detail %}
+            <div class="match-detail-panel" id="match-detail-{{ loop.index0 }}" hidden>
+                {% if match['mvp'] %}
+                <div class="match-mvp-banner">
+                    <img src="{{ match['mvp'].image }}" alt="{{ match['mvp'].name or ('선수#' ~ match['mvp'].spId) }}" class="match-mvp-img"
+                         data-fallback-src="{{ match['mvp'].image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                    <div class="match-mvp-info">
+                        <span class="match-mvp-badge">MVP</span>
+                        <span class="match-mvp-name">{{ match['mvp'].name or ('선수#' ~ match['mvp'].spId) }}</span>
+                        <span class="match-mvp-side">({{ match['mvp'].side_label }})</span>
+                        <span class="match-mvp-rating">평점 {{ "%.1f"|format(match['mvp'].rating) }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if match['피드백'] %}
+                {# ✅ 경기 피드백 (신규, 룰 기반) — 승/무/패에 따라 "이렇게 했으면 더 좋았을 것"을 안내 #}
+                <div class="match-feedback-box {% if match['결과'] == '승' %}win{% elif match['결과'] == '무' %}draw{% else %}lose{% endif %}">
+                    <div class="match-feedback-title">경기 피드백</div>
+                    <ul class="match-feedback-list">
+                        {% for tip in match['피드백'] %}
+                        <li>{{ tip }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {# ✅ 2026-09-12 리디자인 — 좌우로 완전히 분리된 두 개의 표 대신, 지표마다
+                   나(오른쪽 정렬)/상대(왼쪽 정렬) 게이지가 가운데서 마주보게 하나로 합쳤다
+                   (피드백: "게이지바가 중앙에서 바로 비교되게"). 더 좋은 쪽은 초록, 더
+                   나쁜 쪽은 옅게 강조. #}
+                <div class="match-detail-compare">
+                    <div class="match-detail-compare-header">
+                        <div class="match-detail-side-name">{{ tier_badge(match['내_티어']) }}{{ detail.me.nickname }} (나)</div>
+                        <div class="match-detail-side-name match-player-opponent"
+                             data-opponent-name="{{ detail.opponent.nickname }}"
+                             title="이 닉네임으로 재검색">{{ detail.opponent.nickname }} (상대){{ tier_badge(match['상대_티어']) }}</div>
+                    </div>
+                    {% with me = detail.me, opponent = detail.opponent %}
+                    {% include 'components/match_boxscore.html' %}
+                    {% endwith %}
+                </div>
+                {% set pitch = match['피치뷰'] %}
+                {% if pitch and (pitch.me.players or pitch.opponent.players) %}
+                {# ✅ 2026-09-13 3차 재설계(피드백: "아직도 선수가 겹친다" — 스크린샷에
+                   직접 그려준 파란 테두리 박스 2장을 비교해보니 좌/우로 정확히 반씩
+                   나뉜 전체 높이의 박스였다) — 위/아래 절반 분리(라운드10)를 다시
+                   좌/우 절반 분리로 되돌린다: 내 팀(왼쪽 절반)과 상대 팀(오른쪽 절반)이
+                   중앙선 부근에서 마주보되 x축 구간이 겹치지 않아 서로의 영역을
+                   침범할 수 없다(2026-09-14: "내 스쿼드가 왼쪽" 피드백으로 좌/우
+                   배정을 뒤집음). build_pitch_view()가 이미 x좌표를 팀별 절반으로
+                   나눠 계산해준다. #}
+                <div class="match-pitch-section">
+                    <div class="match-pitch-header dual">
+                        <span class="match-pitch-team-label me">{{ detail.me.nickname }} (나) 평균 {{ "%.1f"|format(pitch.me.avg_rating) if pitch.me.avg_rating is not none else '-' }}</span>
+                        <span class="match-pitch-team-label opponent">{{ detail.opponent.nickname }} (상대) 평균 {{ "%.1f"|format(pitch.opponent.avg_rating) if pitch.opponent.avg_rating is not none else '-' }}</span>
+                    </div>
+                    <div class="match-pitch-field">
+                        <div class="match-pitch-halfway-line"></div>
+                        {% for p in pitch.opponent.players %}{{ pitch_player(p, 'opponent') }}{% endfor %}
+                        {% for p in pitch.me.players %}{{ pitch_player(p, 'me') }}{% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
             {% endfor %}
         </div>
     </div>
@@ -304,7 +591,62 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // ✅ 선수 이미지 폴백 함수(PLAYER_IMG_PLACEHOLDER/handlePlayerImgError/
+    // handlePlayerImgLoad)는 2026-09-14부터 base.html <head> 맨 앞으로 옮겼다.
+    // (여기 있으면 chart.js 로딩이 느릴 때 이미지 요청이 먼저 끝나 함수가 아직
+    // 정의되기 전에 onerror가 호출되는 레이스 컨디션이 있었음 — "가끔" 사진이
+    // 깨져 보인다는 피드백의 원인)
+
     const matchData = {{ match_data | tojson }};
+    const currentMatchType = {{ match_type | tojson }};
+
+    // 상대 닉네임 클릭 시 그 닉네임으로 재검색
+    // 버그 수정: 예전에는 onclick 속성(큰따옴표로 감싸짐) 안에 tojson 결과(역시 큰따옴표로
+    // 감싸진 JSON 문자열)를 그대로 넣고 있었는데, tojson은 script 태그 안에서 쓰라고 만들어진
+    // 필터라 HTML 속성용으로 따옴표를 이스케이프해주지 않습니다. 그래서 onclick 속성값이
+    // 중간에 잘려서 HTML/JS 파싱이 실패했고, 실제로는 상대 이름을 클릭해도 아무 반응이
+    // 없었습니다(searchOpponent 자체는 정의돼 있었지만 onclick 속성이 깨져서 호출이 안 됐음).
+    // data-* 속성(Jinja가 HTML 속성 컨텍스트에 맞게 안전하게 이스케이프함)으로 바꾸고,
+    // addEventListener로 연결하도록 수정했습니다.
+    function searchOpponent(nickname) {
+        if (!nickname) return;
+        // ✅ 상대 닉네임 재검색 시에도 기존 검색과 동일하게 로딩 화면(#loading-result)을 띄운다.
+        // resultLoading()은 이 페이지 하단에 이미 정의된, 검색 버튼 클릭 시 쓰는 것과 같은 함수.
+        resultLoading();
+        setTimeout(function() {
+            window.location.href = `/result.html?character_name=${encodeURIComponent(nickname)}&match_type=${currentMatchType}`;
+        }, 10);
+    }
+
+    document.querySelectorAll('.match-player-opponent').forEach(function(el) {
+        el.addEventListener('click', function(event) {
+            event.stopPropagation();
+            event.preventDefault();
+            searchOpponent(el.getAttribute('data-opponent-name'));
+        });
+    });
+
+    // ✅ 선수별 상세 지표 정렬 컨트롤(신규, 2026-09-13 피드백) — 서버 재요청 없이
+    // 이미 렌더링된 tbody의 <tr>을 data-* 속성 값 기준으로 클라이언트에서 재정렬한다.
+    // 기본값은 공격 지수 내림차순(서버에서도 이미 그렇게 정렬해서 내려주지만,
+    // 드롭다운을 바꿨다가 다시 "공격 지수"로 되돌릴 때도 동일하게 동작하도록 JS에서도
+    // 항상 내림차순 정렬한다).
+    (function() {
+        const sortSelect = document.getElementById('player-detail-sort');
+        const table = document.getElementById('player-detail-table');
+        if (!sortSelect || !table) return;
+        const tbody = table.querySelector('tbody');
+        sortSelect.addEventListener('change', function() {
+            const key = sortSelect.value;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function(a, b) {
+                const av = parseFloat(a.getAttribute('data-' + key));
+                const bv = parseFloat(b.getAttribute('data-' + key));
+                return bv - av; // 내림차순(높은 값이 위로)
+            });
+            rows.forEach(function(row) { tbody.appendChild(row); });
+        });
+    })();
 
     // Opponent Stats Calculation
     function calculateOpponentStats() {
@@ -365,6 +707,7 @@
     }
 
     // Page Load Handler
+    // 상대 전적(맞대결) 위젯은 커스텀매치에서만 보여줍니다.
     document.addEventListener("DOMContentLoaded", function() {
         const pathParts = window.location.pathname.split('/');
         const matchTypeName = decodeURIComponent(pathParts[pathParts.length - 1]);
@@ -386,8 +729,12 @@
     }
 
     // Title Badges
-    const influencerList = ["해설한승엽", "메시연", "교로텔리", "뀨뀨rr", "호날두", "굴리트", "크라우터", "잉유진", "신림동밀탱크", "방배우", "af박준효", "빅윈", "감스트", "천국", "lictfe", "유튜브싸커러리", "af김우다", "김칠홍", "타워"];
-    const proGamerList = ["geng박세영", "kt곽준혁", "kt박찬화", "kdf강준호", "kdf최호석", "kimyoomin"];
+    // ✅ 2026-09-13 — 이 두 배열을 손으로 옮겨 적던 방식(닉네임을 바꿀 때마다 여기도
+    // 같이 고쳐야 해서 어긋나기 쉬웠다)에서, app.py의 INFLUENCER_NICKNAMES/
+    // PRO_GAMER_NICKNAMES를 Jinja 전역(app.jinja_env.globals)으로 그대로 읽어오는
+    // 방식으로 바꿔 항상 자동으로 동기화되게 했다.
+    const influencerList = {{ (INFLUENCER_NICKNAMES if INFLUENCER_NICKNAMES is defined else []) | tojson }};
+    const proGamerList = {{ (PRO_GAMER_NICKNAMES if PRO_GAMER_NICKNAMES is defined else []) | tojson }};
     const fifaInventKingList = ["화성간정무", "무리윤주니어"];
     const firsttenList = ["pgzi발", "관찰력", "agw펠레", "펠레해적단", "마포구3pop", "내일이되면", "터러기fc", "왕금복"];
 
@@ -528,6 +875,20 @@
                 }
             }
         });
+    }
+
+    // 매치 상세 박스스코어 펼치기/접기
+    function toggleMatchDetail(panelId, rowEl) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        const isHidden = panel.hasAttribute('hidden');
+        if (isHidden) {
+            panel.removeAttribute('hidden');
+        } else {
+            panel.setAttribute('hidden', '');
+        }
+        const toggleLabel = rowEl.querySelector('.match-detail-toggle');
+        if (toggleLabel) toggleLabel.textContent = isHidden ? '상세 ▴' : '상세 ▾';
     }
 
     // Bookmark
