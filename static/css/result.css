@@ -1113,9 +1113,23 @@
     font-weight: 600;
 }
 
+/* ✅ 2026-09-14 피드백 — 최근 25경기 동안 뛴 선수가 많으면(로테이션 심한 경우 최대
+   50명 가까이) 표가 한없이 길어지던 문제. 기본으로 11명 정도만 보이게 세로 스크롤을
+   추가하고, 스크롤해도 헤더(칼럼명)는 계속 보이도록 고정했다. 11행 높이는 실제 행
+   높이(이름 셀 아바타 26px + 위아래 패딩 8px씩=42px, 대략적인 여유 포함 44px)를
+   기준으로 계산한 값이라, 선수가 11명 이하면 스크롤 없이 그대로 보인다. */
 .player-detail-table-wrap {
     width: 100%;
     overflow-x: auto;
+    max-height: 526px; /* 헤더(~42px) + 본문 11행(행당 ~44px) */
+    overflow-y: auto;
+}
+
+.player-detail-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-card);
 }
 
 .player-detail-table {
