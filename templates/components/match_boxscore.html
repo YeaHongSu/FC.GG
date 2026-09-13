@@ -1,0 +1,60 @@
+{# 매치 상세 박스스코어 (2026-09-12 전면 재설계) — 예전엔 지표마다 나=오른쪽/
+   상대=왼쪽 정렬의 게이지 두 개를 마주보게 배치했는데, 나쪽은 [숫자]→[게이지]
+   순서, 상대쪽은 [게이지]→[숫자] 순서로 DOM이 서로 반대라 "상하 정렬이 안
+   맞는다"는 피드백을 받았다. 그리고 드리블/코너킥/오프사이드, 파울/옐로카드,
+   평점 항목은 불필요하다는 피드백도 있었다. 그래서 참고 이미지(팀 단위
+   "주요 통계" 스타일)처럼, 항목마다 [내 숫자] — [라벨 + 하나로 이어진 막대바
+   (내 몫만큼 파랑, 상대 몫만큼 빨강)] — [상대 숫자] 한 줄로 단순화했다.
+   result.html에서 {% with me=detail.me, opponent=detail.opponent %}로 include됨 #}
+
+{% macro stat_row(label, my_val, opp_val, my_display, opp_display) %}
+{% set has_both = my_val is not none and opp_val is not none %}
+{% set total = ((my_val or 0) + (opp_val or 0)) if has_both else 0 %}
+{% set my_share = ((my_val / total * 100) if (has_both and total) else 50) | round(2) %}
+<div class="boxscore-stat-row">
+    <span class="boxscore-stat-num me">{{ my_display if my_val is not none else '-' }}</span>
+    <div class="boxscore-stat-mid">
+        <div class="boxscore-stat-label">{{ label }}</div>
+        <div class="boxscore-stat-track">
+            <div class="boxscore-stat-fill me" style="width: {{ my_share }}%;"></div>
+            <div class="boxscore-stat-fill opponent" style="width: {{ (100 - my_share) | round(2) }}%;"></div>
+        </div>
+    </div>
+    <span class="boxscore-stat-num opponent">{{ opp_display if opp_val is not none else '-' }}</span>
+</div>
+{% endmacro %}
+
+<div class="boxscore-stats">
+    {% if me.extra.possession is not none or opponent.extra.possession is not none %}
+    {{ stat_row(
+        "공 점유율",
+        me.extra.possession, opponent.extra.possession,
+        (me.extra.possession ~ '%') if me.extra.possession is not none else '-',
+        (opponent.extra.possession ~ '%') if opponent.extra.possession is not none else '-'
+    ) }}
+    {% endif %}
+    {{ stat_row(
+        "전체 슛",
+        me.shoot.total, opponent.shoot.total,
+        me.shoot.total if me.shoot.total is not none else '-',
+        opponent.shoot.total if opponent.shoot.total is not none else '-'
+    ) }}
+    {{ stat_row(
+        "유효 슛",
+        me.shoot.effective, opponent.shoot.effective,
+        me.shoot.effective if me.shoot.effective is not none else '-',
+        opponent.shoot.effective if opponent.shoot.effective is not none else '-'
+    ) }}
+    {{ stat_row(
+        "코너킥",
+        me.discipline.corner_kick, opponent.discipline.corner_kick,
+        me.discipline.corner_kick if me.discipline.corner_kick is not none else '-',
+        opponent.discipline.corner_kick if opponent.discipline.corner_kick is not none else '-'
+    ) }}
+    {{ stat_row(
+        "정확한 패스",
+        me.pass.total.pct, opponent.pass.total.pct,
+        (me.pass.total.pct ~ '%') if me.pass.total.pct is not none else '-',
+        (opponent.pass.total.pct ~ '%') if opponent.pass.total.pct is not none else '-'
+    ) }}
+</div>
