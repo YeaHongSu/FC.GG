@@ -4,13 +4,22 @@ from wtforms import StringField, SelectField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired
 from datetime import datetime, timedelta, timezone
 import os
+import traceback
 import requests
 import pandas as pd
 import numpy as np
 from config import Config
 from flask import flash
 from utils.utils import me, you, avg_data, top_n_argmax, top_n_argmin, calculate_time_difference
-from utils.data_processing import data_list, data_list_cl, data_label, determine_play_style
+from utils.data_processing import (
+    data_list, data_list_cl, data_label, determine_play_style, build_match_boxscore,
+    compute_match_mvp, collect_player_appearances, build_top_players,
+    resolve_division_tier, build_pitch_view, generate_match_feedback,
+    DIVISION_MAPPING, derive_season_id, get_player_rarity, attach_rarity,
+    format_grade_badge, grade_badge_class, PLAYER_IMAGE_FALLBACK_URL_TMPL,
+    aggregate_shot_types, build_player_detail_stats, accumulate_shot_xg,
+)
+from collections import Counter, defaultdict, OrderedDict
 from utils.win_utils import calculate_win_improvement
 from tier.tier_info import tier
 import warnings
@@ -29,7 +38,20 @@ from functools import lru_cache
 
 # 데이터베이스 초기화 함수
 def init_db():
-    conn = sqlite3.connect('search_data.db')
+    # ⚠️ 방어 처리(신규) — initialize_database()와 동일한 이유로, search_data.db가
+    # 손상된 상태로 존재할 경우를 대비해 자동 복구합니다.
+    try:
+        conn = sqlite3.connect('search_data.db')
+        conn.execute('SELECT 1')
+    except sqlite3.DatabaseError:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        if os.path.exists('search_data.db'):
+            os.remove('search_data.db')
+        conn = sqlite3.connect('search_data.db')
+
     c = conn.cursor()
     # 닉네임 검색 기록 테이블에 lv와 tier_image 컬럼 추가
     c.execute('''CREATE TABLE IF NOT EXISTS nickname_searches (
@@ -65,6 +87,60 @@ async def fetch_all_match_data(matches, headers):
 
 def get_match_data(matches, headers):
     return asyncio.run(fetch_all_match_data(matches, headers))
+
+
+# ✅ 1v1 공식경기 최고 티어 표시 (신규) — 매치 목록에 뜨는 닉네임(나/상대) 옆에
+# 그 사람의 "공식경기"(matchType=50) 1v1 최고 티어를 같이 보여주기 위한 조회 함수들.
+# 한 페이지에 최근 매치가 25개까지 있고 상대가 매번 다를 수 있어서, 닉네임을
+# 중복 제거한 뒤 aiohttp로 한꺼번에(동시에) 조회한다 — 순차 호출보다 훨씬 빠르고,
+# 이미 match-detail을 동시에 가져오는 fetch_all_match_data와 같은 패턴이다.
+async def fetch_ouid_async(session, nickname, headers):
+    url = f"https://open.api.nexon.com/fconline/v1/id?nickname={nickname}"
+    async with session.get(url, headers=headers) as response:
+        data = await response.json()
+        return data.get("ouid") if isinstance(data, dict) else None
+
+
+async def fetch_maxdivision_async(session, ouid, headers):
+    url = f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid}"
+    async with session.get(url, headers=headers) as response:
+        data = await response.json()
+        return data if isinstance(data, list) else []
+
+
+async def fetch_nickname_tier_async(session, nickname, headers, match_type_code):
+    ouid = await fetch_ouid_async(session, nickname, headers)
+    if not ouid:
+        return nickname, {"tier_name": None, "tier_image": None}
+    division_info = await fetch_maxdivision_async(session, ouid, headers)
+    return nickname, resolve_division_tier(division_info, match_type_code)
+
+
+async def fetch_tiers_for_nicknames(nicknames, headers, match_type_code):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_nickname_tier_async(session, nn, headers, match_type_code) for nn in nicknames]
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def get_nickname_tiers(nicknames, headers, match_type_code="50"):
+    """닉네임 목록(중복 제거)을 받아 {닉네임: {"tier_name":..., "tier_image":...}} 딕셔너리로 반환.
+    개별 닉네임 조회가 실패해도(탈퇴/오타 등) 그 닉네임만 빠지고 나머지는 정상 반환되며,
+    전체가 실패해도 빈 dict를 반환해 화면에서는 조용히 뱃지가 생략된다(기존 방어 패턴과 동일)."""
+    unique_nicknames = sorted({n for n in nicknames if n})
+    if not unique_nicknames:
+        return {}
+    try:
+        results = asyncio.run(fetch_tiers_for_nicknames(unique_nicknames, headers, match_type_code))
+    except Exception:
+        traceback.print_exc()
+        return {}
+    tier_map = {}
+    for r in results:
+        if isinstance(r, Exception) or r is None:
+            continue
+        nickname, tier_info = r
+        tier_map[nickname] = tier_info
+    return tier_map
    
 # Flask 선언
 app = Flask(__name__)
@@ -88,9 +164,15 @@ def home():
                  GROUP BY nickname
                  ORDER BY search_count DESC
                  LIMIT 5''')
-    top_nicknames = c.fetchall()  # nickname, lv, tier_image를 포함한 리스트
+    # ✅ 2026-09-13 피드백 — "실시간 인기 구단주"에 프로게이머/인플루언서 닉네임이면
+    # 이름 옆에 "프로"/"인플루언서" 라벨을 붙인다. PRO_GAMER_NICKNAMES/
+    # INFLUENCER_NICKNAMES는 이 파일 아래쪽(인플루언서 페이지용)에 정의돼 있지만,
+    # 모듈이 전부 로드된 뒤에 요청이 들어오므로 여기서 참조해도 문제없다.
+    top_nicknames = [
+        row + (creator_label_for_nickname(row[0]),) for row in c.fetchall()
+    ]  # nickname, lv, tier_image, search_count, creator_label
     conn.close()
-    
+
     return render_template('home.html', top_nicknames=top_nicknames)
 
 @app.route('/sitemap.xml')
@@ -114,6 +196,7 @@ def serve_ads():
 #             return redirect(f"https://fcgg.kr{request.path}?{request.query_string.decode('utf-8')}", code=301)
 #         # 쿼리 스트링이 없으면 ?를 포함하지 않음
 #         return redirect(f"https://fcgg.kr{request.path}", code=301)
+
 @app.before_request
 def redirect_to_fcgg():
     # 1. ads.txt 리디렉션 (가장 먼저 처리)
@@ -131,6 +214,7 @@ def redirect_to_fcgg():
                 code=301
             )
         return redirect(f"https://fcgg.kr{request.path}", code=301)
+        
 
 # match_type 값을 이름으로 변환
 MATCH_TYPE_MAP = {
@@ -177,7 +261,11 @@ def result(character_name=None, match_type_name=None):
        
         # API key 설정
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
-        
+
+        # ✅ 선수 등급(시즌) 배지용 메타데이터 (신규) — 캐시돼 있어 API 호출은 사실상
+        # 1시간에 한 번뿐. 실패해도 빈 dict라 아래 배지 관련 코드가 조용히 생략된다.
+        season_meta_map = get_season_meta_map()
+
         # ✅ 유저 닉네임 및 레벨 가져오기
         url_user = f"https://open.api.nexon.com/fconline/v1/id?nickname={character_name}"
         characterName = requests.get(url_user, headers=headers).json()["ouid"]
@@ -210,7 +298,9 @@ def result(character_name=None, match_type_name=None):
                     if player.get("spPosition") != 28:
                         player_list.append({
                             "spId": player.get("spId"),
-                            "spPosition": player.get("spPosition")
+                            "spPosition": player.get("spPosition"),
+                            # ✅ 강화 단계(신규) — 넥슨 공식 match-detail 스키마의 player[].spGrade
+                            "spGrade": player.get("spGrade"),
                         })
 
         # ✅ 선수 정보 DataFrame 변환
@@ -275,50 +365,36 @@ def result(character_name=None, match_type_name=None):
             df_final["y_coord"] = df_final["spPosition"].apply(lambda pos: vertical_position_mapping.get(pos, (0, 0))[1])
             df_final["pos_desc"] = df_final["spPosition"].apply(lambda pos: position_desc.get(pos, ""))
 
+            # ✅ 선수 등급(시즌) 배지 (신규) — spId만으로 등급을 알 수 있어서 새 API 호출
+            # 없이(seasonid.json은 위에서 이미 캐시해 받아온 season_meta_map 재사용)
+            # "몇 카인지" 테두리 배지를 붙일 수 있다.
+            df_final["season_id"] = df_final["spId"].apply(derive_season_id)
+            df_final["class_name"] = df_final["spId"].apply(
+                lambda spId: get_player_rarity(spId, season_meta_map).get("class_name")
+            )
+            df_final["season_img"] = df_final["spId"].apply(
+                lambda spId: get_player_rarity(spId, season_meta_map).get("season_img")
+            )
+            # ✅ 강화 단계 배지 (신규) — match-detail의 spGrade를 "+N" 텍스트로 표시.
+            # 이미지 에셋은 넥슨이 제공하지 않아 직접 렌더링한다.
+            df_final["grade_badge"] = df_final["spGrade"].apply(format_grade_badge) if "spGrade" in df_final.columns else None
+            # ✅ 강화 단계별 색상(신규) — 1~13강 구간별로 배지 색을 다르게(브론즈/실버/골드/특수).
+            df_final["grade_badge_class"] = df_final["spGrade"].apply(grade_badge_class) if "spGrade" in df_final.columns else None
+            # ✅ 선수 이미지 폴백용(신규) — playersAction 액션샷이 없는 선수를 위한 대체 URL
+            df_final["sd_image_fallback"] = df_final["spId"].apply(
+                lambda spId: PLAYER_IMAGE_FALLBACK_URL_TMPL.format(spId=spId)
+            )
 
-        # divisionId와 divisionName 매핑 테이블
-        division_mapping = [
-            {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank0.png"},
-            {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank1.png"},
-            {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank2.png"},
-            {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank3.png"},
-            {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank4.png"},
-            {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank5.png"},
-            {"divisionId": 1700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank6.png"},
-            {"divisionId": 1800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank7.png"},
-            {"divisionId": 1900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank8.png"},
-            {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank9.png"},
-            {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank10.png"},
-            {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank11.png"},
-            {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank12.png"},
-            {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank13.png"},
-            {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank14.png"},
-            {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank15.png"},
-            {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank16.png"},
-            {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank17.png"},
-            {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank18.png"},
-            {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank19.png"},
-            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank20.png"}
-        ]
-        
-        # matchType의 division 가져오기
-        match_type_info = next((item for item in division_info if item["matchType"] == int(match_type)), None)
-        if match_type_info:
-            tier_id = match_type_info.get("division", "정보 없음")
-            division_item = next((item for item in division_mapping if item["divisionId"] == tier_id), None)
-            if division_item:
-                if division_item["divisionName"].startswith("http"):
-                    tier_name = None
-                    tier_image = division_item["divisionName"]
-                else:
-                    tier_name = division_item["divisionName"]
-                    tier_image = None
-            else:
-                tier_name = "정보 없음"
-                tier_image = None
-        else:
+
+        # ✅ divisionId → 티어 뱃지 매핑 (신규 "마스터" 티어 추가로 인해 utils/data_processing.py의
+        # DIVISION_MAPPING/resolve_division_tier()로 통일 — 예전에는 이 자리에 오래된
+        # division_mapping 테이블이 따로 있어서, 새로 생긴 티어(마스터 등)의 유저는
+        # "정보 없음"으로 표시되는 문제가 있었다.
+        _tier = resolve_division_tier(division_info, match_type)
+        tier_name = _tier["tier_name"]
+        tier_image = _tier["tier_image"]
+        if tier_name is None and tier_image is None:
             tier_name = "정보 없음"
-            tier_image = None
 
         save_nickname_search(character_name, lv, tier_image)
 
@@ -345,6 +421,34 @@ def result(character_name=None, match_type_name=None):
         result_list = []
         imp_data = []
         controller_stats = {"🎮": 0, "⌨️": 0, "탈주": 0}
+        # ✅ 주력 선수 TOP5 (신규) — 최근 매치들에서 실제로 기용된 내 선수 spId를 누적,
+        # 평점(찾은 경우에만)도 같이 누적해서 평균을 계산한다
+        player_usage = Counter()
+        player_rating_sum = defaultdict(float)
+        player_rating_count = defaultdict(int)
+        # ✅ 강화 단계(신규) — 여러 매치 중 마지막으로 확인된 값을 그대로 사용(자주
+        # 안 바뀌는 값이라 어느 매치 기준이든 큰 차이가 없다)
+        player_grade_map = {}
+        # MVP 표시(신규)에 쓸 spId→이름 매핑. 실패해도 빈 dict라 화면에서 이름만 조용히 빠짐
+        spid_name_map = get_spid_name_map()
+        # ✅ 슛 타입 분포(신규) — shootDetail이 들어있는 원본 me 사이드를 그대로 모아뒀다가
+        # 루프가 끝난 뒤 한 번에 집계한다(추가 API 호출 없음).
+        raw_me_sides = []
+        # ✅ 선수별 상세 지표 테이블(신규) — spId별로 25경기치 스탯을 누적한다.
+        player_stat_acc = defaultdict(lambda: {
+            "count": 0, "wins": 0, "win_known": 0,
+            "rating_sum": 0.0, "rating_count": 0,
+            "position_counts": Counter(),
+            "goal": 0, "assist": 0,
+            "pass_try": 0, "pass_success": 0,
+            "dribble_try": 0, "dribble_success": 0,
+            "aerial_try": 0, "aerial_success": 0,
+            "tackle_try": 0, "tackle_success": 0,
+            "block_try": 0, "block_success": 0,
+            "intercept": 0, "last_grade": None,
+            # ✅ 공격력/기대득점 지수 계산용(신규, 2026-09-12)
+            "shoot_try": 0, "effective_shoot": 0, "xg_sum": 0.0,
+        })
 
         for data in match_data_list:
             date = calculate_time_difference(data['matchDate'])
@@ -377,18 +481,105 @@ def result(character_name=None, match_type_name=None):
             my_goal_total = my_data['shoot']['goalTotal'] if my_data['shoot']['goalTotal'] is not None else 0
             your_goal_total = your_data['shoot']['goalTotal'] if your_data['shoot']['goalTotal'] is not None else 0
 
+            # ✅ 슛 타입 분포(신규) — shootDetail을 포함한 원본을 그대로 보관
+            raw_me_sides.append(my_data)
+
+            # ✅ 주력 선수 TOP5 (신규) — 이 매치에서 기용된(SUB 제외) 내 선수 spId 누적,
+            # 평점을 찾은 선수는 평균 계산용으로 합계/횟수도 같이 누적
+            appearances = collect_player_appearances(my_data, match_result=w_l)
+            player_usage.update(a['spId'] for a in appearances)
+            for a in appearances:
+                if a['rating'] is not None:
+                    player_rating_sum[a['spId']] += a['rating']
+                    player_rating_count[a['spId']] += 1
+                if a.get('spGrade') is not None:
+                    player_grade_map[a['spId']] = a['spGrade']
+
+                # ✅ 선수별 상세 지표(신규) — player[].status 실제 필드를 spId별로 누적
+                acc = player_stat_acc[a['spId']]
+                acc["count"] += 1
+                if a.get('win') is not None:
+                    acc["win_known"] += 1
+                    if a['win']:
+                        acc["wins"] += 1
+                if a['rating'] is not None:
+                    acc["rating_sum"] += a['rating']
+                    acc["rating_count"] += 1
+                if a.get('spPosition') is not None:
+                    acc["position_counts"][a['spPosition']] += 1
+                if a.get('spGrade') is not None:
+                    acc["last_grade"] = a['spGrade']
+                stat = a.get('stat') or {}
+                acc["goal"] += stat.get("goal") or 0
+                acc["assist"] += stat.get("assist") or 0
+                acc["pass_try"] += stat.get("passTry") or 0
+                acc["pass_success"] += stat.get("passSuccess") or 0
+                acc["dribble_try"] += stat.get("dribbleTry") or 0
+                acc["dribble_success"] += stat.get("dribbleSuccess") or 0
+                acc["aerial_try"] += stat.get("aerialTry") or 0
+                acc["aerial_success"] += stat.get("aerialSuccess") or 0
+                acc["tackle_try"] += stat.get("tackleTry") or 0
+                acc["tackle_success"] += stat.get("tackle") or 0
+                acc["block_try"] += stat.get("blockTry") or 0
+                acc["block_success"] += stat.get("block") or 0
+                acc["intercept"] += stat.get("intercept") or 0
+                acc["shoot_try"] += stat.get("shoot") or 0
+                acc["effective_shoot"] += stat.get("effectiveShoot") or 0
+
+            # ✅ 공격력 지수의 기대득점(xG) 부분 — shootDetail(슛별 좌표/종류)을
+            # 슈팅 선수(spId)별로 누적한다. 추가 API 호출 없음(이미 받아온 my_data 재사용).
+            accumulate_shot_xg(player_stat_acc, my_data)
+
+            # ✅ 매치 MVP (신규) — 평점 필드를 못 찾으면 None → result.html에서 자동으로 숨김
+            match_mvp = compute_match_mvp(my_data, your_data, spid_name_map)
+            # ✅ 매치 상세 박스스코어 (신규) — 이미 받아온 my_data/your_data를 그대로 재사용,
+            #    추가 API 호출 없음. build_match_boxscore()가 실패해도 예외를 던지지 않는다.
+            my_boxscore = build_match_boxscore(my_data)
+            opponent_boxscore = build_match_boxscore(your_data)
+
             match_data_item = {
                 '매치 날짜': date,
                 '결과': w_l,
                 '플레이어 1 vs 플레이어 2': f'{my_data["nickname"]} vs {your_data["nickname"]}',
                 '스코어': f'{my_goal_total} : {your_goal_total}',
-                '컨트롤러': f"{my_controller} : {your_controller}"
+                '컨트롤러': f"{my_controller} : {your_controller}",
+                '상세': {
+                    'me': my_boxscore,
+                    'opponent': opponent_boxscore,
+                },
+                'mvp': match_mvp,
+                # ✅ 11v11 잔디밭 뷰 (신규) — 이미 받아온 my_data/your_data를 그대로 재사용,
+                #    추가 API 호출 없음. build_pitch_view()가 실패해도 예외를 던지지 않는다.
+                '피치뷰': build_pitch_view(my_data, your_data, spid_name_map, match_mvp),
+                # ✅ 경기 피드백 (신규, 룰 기반 · AI 미사용) — 이미 계산한 박스스코어를 그대로
+                #    재사용해 승/무/패에 따라 "이렇게 했으면 더 좋았을 것"을 최대 3개까지 안내.
+                '피드백': generate_match_feedback(my_boxscore, opponent_boxscore, w_l,
+                                                 my_goals=my_goal_total, opp_goals=your_goal_total),
             }
             result_list.append(match_data_item)
 
             if imp is None or imp2 is None:
                 continue
             imp_data.append(imp)
+
+        # ✅ 1v1 공식경기 최고 티어 표시 (신규) — 매치 목록의 "나 vs 상대" 닉네임 옆에
+        # 각자의 공식경기(matchType=50) 1v1 최고 티어를 표시한다. 내 티어는 이미 받아온
+        # division_info를 재사용(추가 API 호출 없음), 상대 티어는 매치별로 다를 수 있어
+        # 중복 제거한 닉네임들을 동시에(aiohttp) 조회한다. 실패해도 뱃지만 조용히 빠짐.
+        try:
+            me_tier_1v1 = resolve_division_tier(division_info, "50")
+            opponent_nicknames = [m['플레이어 1 vs 플레이어 2'].split(' vs ')[1] for m in result_list]
+            opponent_tier_map = get_nickname_tiers(opponent_nicknames, headers, "50")
+            for m in result_list:
+                opp_name = m['플레이어 1 vs 플레이어 2'].split(' vs ')[1]
+                m['내_티어'] = me_tier_1v1
+                m['상대_티어'] = opponent_tier_map.get(opp_name)
+        except Exception:
+            traceback.print_exc()
+            me_tier_1v1 = None
+            for m in result_list:
+                m['내_티어'] = None
+                m['상대_티어'] = None
 
         most_common_controller = max(controller_stats, key=controller_stats.get)
         if len(imp_data) == 0:
@@ -416,10 +607,44 @@ def result(character_name=None, match_type_name=None):
         min_data = list(zip(filtered_min_idx, filtered_min_values))
         play_style = determine_play_style(max_data, min_data)
 
+        # ✅ 주력 선수 TOP5 (신규) — 최근 매치들의 평균 평점이 가장 높은 내 선수 5명
+        # (2026-09-12: "출전 횟수" 기준 → "평균 평점" 기준으로 변경. build_top_players() 참고)
+        player_avg_ratings = {
+            sp_id: total / player_rating_count[sp_id]
+            for sp_id, total in player_rating_sum.items() if player_rating_count[sp_id] > 0
+        }
+        top_players = build_top_players(player_usage, spid_name_map, player_avg_ratings, player_grade_map=player_grade_map)
+        # ✅ 선수 등급(시즌)/강화 배지 (신규) — TOP5 카드에도 동일하게 배지를 붙인다.
+        top_players = [attach_rarity(p, season_meta_map) for p in top_players]
+        for p in top_players:
+            p["grade_badge"] = format_grade_badge(p.get("spGrade"))
+            p["grade_badge_class"] = grade_badge_class(p.get("spGrade"))
+            p["image_fallback"] = PLAYER_IMAGE_FALLBACK_URL_TMPL.format(spId=p["spId"])
+
+        # ✅ 슛 타입 분포 (2026-09-12 재조사 후 shootDetail 기반으로 전면 수정) — 이미
+        # 받아온 my_data(raw_me_sides)의 shootDetail을 그대로 재사용, 추가 API 호출 없음.
+        shot_type_stats = aggregate_shot_types(raw_me_sides)
+        # ✅ 대표 선수 프로필 (신규) — "기본정보" 카드에 표시할, 이 유저가 최근
+        # 가장 잘 쓴(평균 평점 1위) 선수 한 명. top_players[0]을 그대로 재사용하는
+        # 거라 새 API 호출은 없다.
+        representative_player = top_players[0] if top_players else None
+
+        # ✅ 선수별 상세 지표 테이블 (신규) — fc-info.com "감독모드 분석" 참고. 25경기
+        # 루프에서 이미 누적해둔 player_stat_acc를 화면 표시용으로 변환한다.
+        player_detail_stats = build_player_detail_stats(player_stat_acc, spid_name_map, season_meta_map)
+
         return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type=match_type,
                                max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
-                               play_style=play_style, most_common_controller=most_common_controller, players=df_final.to_dict(orient="records"))
+                               play_style=play_style, most_common_controller=most_common_controller, players=df_final.to_dict(orient="records"),
+                               top_players=top_players, representative_player=representative_player,
+                               shot_type_stats=shot_type_stats, player_detail_stats=player_detail_stats)
     except Exception:
+        # ⚠️ 진단용(신규): 이 except가 원래 어떤 예외든 조용히 삼키고 "최근 전적이
+        # 존재하지 않습니다"로 뭉뚱그려 보여주고 있어서, 진짜 원인이 뭔지 콘솔에서
+        # 전혀 알 수 없었습니다. 실제로 매치가 없는 경우와 코드 어딘가에서 에러가
+        # 난 경우를 구분할 수 있도록 콘솔에 전체 트레이스백을 출력하도록 했습니다.
+        # (화면에 보이는 메시지 자체는 바꾸지 않았습니다 — 터미널에서 확인해주세요.)
+        traceback.print_exc()
         try:
             # 문제가 발생하면 최근 경기의 선수 정보를 다시 시도하여 포함시킵니다.
             url_recent_matches = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=1"
@@ -480,7 +705,6 @@ def ball_redirect():
 @app.route("/privacy", methods=["GET"])
 def privacy():
     return render_template("privacy.html")
-
 
 
 # 승률 개선 솔루션 결과 페이지
@@ -622,6 +846,356 @@ def player_tier_redirect():
     return redirect(url_for('player_tier_new'), code=301)
 
 
+# ============================================================================
+# ✅ 인플루언서/프로게이머 목록 (2026-09-14 재정비) — 라운드12 피드백 "토츠지지꺼
+# 이미지랑 url 다 참조하면 안되나?"를 반영해, 사용자가 이번엔 tots.gg "전체
+# 목록" 페이지를 통째로(렌더링된 HTML 그대로) 붙여넣어줬다. 그 HTML을 파싱해서
+# 각 사람의 실제 프로필 사진(photo_url)과 방송 채널 링크(channels, tots.gg가
+# 보여주는 SOOP/YOUTUBE/CHZZK 배지 그대로)를 tots.gg에서 직접 가져왔다 — 더 이상
+# 우리가 따로 웹 검색해서 "이 채널이 맞는 것 같다"고 추정할 필요가 없어졌고,
+# 사진이 없어서 이니셜로 뜨던 사람들도 이제 대부분 실제 사진이 채워진다.
+# ⚠️ 이 과정에서 지난 라운드(2026-09-13)에 있던 파싱 버그도 같이 고쳤다: 소속팀이
+# 없는 솔로 프로게이머(ELNINO/Froste/Jade/JUBJUB/KBG/Korso/rimGC/Seoby)의 org와
+# tag가 서로 뒤바뀌어 들어가 있었다(예: ELNINO의 org가 '정인호', tag가 'ELNINO'여야
+# 하는데 반대로 들어있었음) — 이번에 tots.gg 원본 그대로 다시 채워 넣으면서
+# 자연히 바로잡혔다(소속 팀이 없으니 "개인 방송" 그룹으로 정상적으로 묶인다).
+# TOTS_GG_ROSTER의 각 항목: category(progamer/influencer), org(소속 팀 — 개인
+# 방송인/솔로 프로게이머는 None), tag(선수 태그/스트리머 활동명 — 화면에 보여줄
+# 이름), real_name(실명), handle(실제 게임 닉네임 — 검색에 쓰는 키. tots.gg에도
+# 안 나와 있으면 None), photo_url(tots.gg가 쓰는 프로필 사진 — 프로게이머는
+# 넥슨 e스포츠 공식 렌더, 인플루언서는 본인 채널 프로필 사진), channels(tots.gg가
+# 표시하는 방송 채널 목록. platform: soop/youtube/chzzk, url: 채널 링크. 없으면
+# 빈 리스트 — tots.gg에도 채널이 연결 안 돼 있다는 뜻).
+# ⚠️ 원본 자체의 이상치는 그대로 옮기지 않고 각주에 남겼다:
+#  1) "호날두"(DN FREECS/두치와뿌꾸) 항목의 실명 자리에 실명이 아닌 'D&B'(하위
+#     브랜드로 추정)가 적혀 있는데, tots.gg 원본 그대로 옮겼다(추측으로 고치지 않음).
+#     ⚠️ 2026-09-14 round 13 피드백 — tots.gg에는 progamer로 분류돼 있었지만
+#     실제로는 인플루언서라는 사용자 확인에 따라 category를 influencer로 정정.
+#  2) "TaeGod"(BNK FEARK, 김태신)과 "Light"(BNK FEARK, 김선재) 두 사람의 handle이
+#     tots.gg 자체에도 똑같이 'BFXLight'로 나온다(직전 라운드엔 확인 전이라 TaeGod
+#     쪽을 비워뒀었는데, tots.gg 원본을 그대로 따르기로 해서 이번엔 그대로 반영했다
+#     — tots.gg 쪽 오표기이거나 실제로 계정을 공유하는 상황일 수 있어, 사용자가
+#     확인해서 고쳐주면 좋을 부분이다).
+# ============================================================================
+TOTS_GG_ROSTER = [
+    {"category": 'progamer', "org": 'DN FREECS', "tag": '9KKI', "real_name": '김시경', "handle": 'DNS9KKI', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/26.png', "channels": []},
+    {"category": 'influencer', "org": None, "tag": '감스트', "real_name": None, "handle": '감스트', "photo_url": 'https://yt3.ggpht.com/rELiEJEE17me3IkoI2bJFFdMssJ4gPnnNMyUbhj4sHcHdPkm_jeP_tpmMhzSGlo0epoT0R0ZUg=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/devil0108'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@gamst6217'}]},
+    {"category": 'influencer', "org": None, "tag": '개복어', "real_name": None, "handle": '송도는섬이아니야', "photo_url": 'https://nng-phinf.pstatic.net/MjAyNTA1MTlfMjI5/MDAxNzQ3NjQ3ODE0Njc4.tbyIUduBdDnk9oTMqQdQ1DL8v5CfkBMKJKjKu1ybqmwg.qKGU4IlZwnV7ktT7f6oNWpM7g6AuLLd5BNDuvVj9rwEg.JPEG/A0EBA9_97EC8C.jpg?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/55e243bd868e55adf3524c85f8db51b5'}]},
+    {"category": 'influencer', "org": None, "tag": '게임하는뱅커', "real_name": None, "handle": '겜뱅이', "photo_url": 'https://yt3.googleusercontent.com/FvMQu-hBdGjO25YFO3Wn82N8B9BLr_z4RIzEZhW13UwSqJWTLNf-L-QHj5ELdLQgsoNGt2lY=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/gamebanker'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@GameBankerTV'}]},
+    {"category": 'influencer', "org": None, "tag": '국호형', "real_name": None, "handle": '국호형의강의실', "photo_url": 'https://yt3.ggpht.com/3XmEqd3dhQe7-Fn0P-gnS84Kao_R8jUjcZDhRTi-C5RIX59EP61fR5yIonujI8f-5NPV9HPy=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/hoya10047'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@leeho6912'}]},
+    {"category": 'influencer', "org": None, "tag": '단군', "real_name": None, "handle": '단군', "photo_url": 'https://nng-phinf.pstatic.net/MjAyMzEyMjJfMjY3/MDAxNzAzMTcxNTgwOTcy.n9CjlCzP502gZOUbdCKPF1zTVJh3hgr_eVC8FTcVCkog.XhDxHxMOkvWdQTNxyW5vjzhcSj2W1fHOPPCz5Q3vrV0g.JPEG/profile01_98x98.jpg?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/243febdbcba51d2248bd97d23d2085af'}]},
+    {"category": 'influencer', "org": None, "tag": '두치와뿌꾸', "real_name": 'D&B', "handle": '호날두', "photo_url": 'https://yt3.googleusercontent.com/KXOOZTxoEMfqqR3tXPb9i8oyxh_Opx9UP5u4kQjtyOwfroHf_n556rKs0MVSr8uyHs67D7FF=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/galsa'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@%EB%91%90%EC%B9%98%EC%99%80%EB%BF%8C%EA%BE%B8'}]},
+    {"category": 'influencer', "org": None, "tag": '마빡', "real_name": None, "handle": '데이비드베컴', "photo_url": 'https://yt3.googleusercontent.com/kvIbAxOY8oUqdzeiQDsHdP5Vb46eE_pphsQeKkf-8hR2_LP8yEJ_VWSlvYuXJtkJxfANeBU-iA=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/vbvb1230'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@BBAK-GAME'}]},
+    {"category": 'influencer', "org": None, "tag": '박성주', "real_name": '울산큰고래', "handle": '케빈울브라위너', "photo_url": 'https://yt3.ggpht.com/zk9H68cSGm7iFc8FdHvJSmPkkZe732fIbsbV8ZU--c6U2bAYcBqfSlOaNWHLnK-Evi58QeBE=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/bach023'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@UBWPSJ'}]},
+    {"category": 'influencer', "org": None, "tag": '방배우', "real_name": None, "handle": '방배우', "photo_url": 'https://yt3.ggpht.com/pia9PCGw93IS6YNQEehjibhSkanfJjEmYVR-r798-7BDtkTrOBu5UDqKbF8uGUDvWnuUmBISlQ=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/bsh0329'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@bang_actor'}]},
+    {"category": 'influencer', "org": None, "tag": '뱅', "real_name": None, "handle": '감자나라배준식', "photo_url": 'https://nng-phinf.pstatic.net/MjAyNTA0MTFfMTU0/MDAxNzQ0MzA0NTg5MjE5.6toa4kRwjhkudPEPzM5M08cuq8RfU2Ptn9Wg6I3YR4Ig.bgsdMNxOyWwzXIksUTuqR-Wsl4RIKRsjj46lxWMrtpsg.PNG/558C0E86-BEE1-4CB1-8814-F503574FD862-1744304587.png?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/9d4f299325b38f9183bdb90b8849d912'}]},
+    {"category": 'influencer', "org": None, "tag": '빅윈', "real_name": None, "handle": '포병부대', "photo_url": 'https://yt3.ggpht.com/Xka7MBbXxqaK6wNiS8DXjasI6kzRfMqiyykEfZ1qt_2NccVL_dRd_PkfGeUWsZiKb7jFWamKoA=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/dstv'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@kimbigwin'}]},
+    {"category": 'influencer', "org": None, "tag": '스카우터', "real_name": None, "handle": '크라우터', "photo_url": 'https://yt3.ggpht.com/mel-yrsWnTc02-TMBTxdgKaEKUZrP6pCfOAtbceY2P0Q9Cxi_1_BqPCKQ5K6YNgtw2r18y80=s176-c-k-c0x00ffffff-no-rj-mo', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/dlckdghk1'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@%EC%8A%A4%EC%B9%B4%EC%9A%B0%ED%84%B0'}]},
+    {"category": 'influencer', "org": None, "tag": '얍얍', "real_name": None, "handle": 'v침대위의메시v', "photo_url": 'https://nng-phinf.pstatic.net/MjAyMzEyMjFfMjYy/MDAxNzAzMTE0MjY0MzEw.4HN2-Prah0mvcdg91VweUfHaVWReJvn4GfnNLoXild4g.uMLiWaqHAhnsVnUozRdWca8fNhNsPlDK1q0bbyIxDeQg.PNG/dbb514f1-469b-479e-b5ba-3ac0f09a2776-profile_image-300x300.png?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/dec8d19f0bc4be90a4e8b5d57df9c071'}]},
+    {"category": 'influencer', "org": None, "tag": '유봉훈', "real_name": None, "handle": '신림동밀탱크', "photo_url": 'https://yt3.googleusercontent.com/qrST8YvZozcxpBeNW7pQNu6TGyYwwmWfTKMNLcX5emqzQAjPc7wt8mYUfuYsAOEp3WA9POmw=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/6650junghun'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@%EC%9C%A0%EB%B4%89%ED%9B%88'}]},
+    {"category": 'influencer', "org": None, "tag": '이상호', "real_name": None, "handle": '메시연', "photo_url": 'https://yt3.ggpht.com/kIYN06qpQsJ12QOUYAON3tGhCixYhAfyGZBT_y_aWhJcHUghleWBr8k6h26ZCQESS9v96zwfTXI=s48-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/lshooooo'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@LeeSangHoTV'}]},
+    {"category": 'influencer', "org": None, "tag": '임유진', "real_name": None, "handle": '잉유진', "photo_url": 'https://yt3.googleusercontent.com/-7QT9i_su8Jx9i8RwDQW4bX_wS7dhabEVJps3IswpC_3xtJ8Jz1QriXuJx7fpuWekIyBtJXq=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/hm05082'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@limyujin'}]},
+    {"category": 'influencer', "org": None, "tag": '정령왕', "real_name": None, "handle": '정령FC', "photo_url": 'https://yt3.googleusercontent.com/E6kfTGrDYbBfn7a8OcBL4frMirAHNl64jAfoaFgyaLfodrzyynYTsbKqkphZNUBqN9WzI4bXjA=s160-c-k-c0x00ffffff-no-rj', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/a9b3377345a2a37e68a6072ba5e77fec'}]},
+    {"category": 'influencer', "org": None, "tag": '정성민', "real_name": None, "handle": 'T1Seon9min', "photo_url": 'https://nng-phinf.pstatic.net/MjAyNTA4MTdfODYg/MDAxNzU1NDAwNjQzNzA2.klWxpPeT562EN1OPOwi3p-Pd70IJmyVoQwOG1695chwg.IzxW1r2QKJWtxuzSeGb-rAviRtR8sktBc_fDHEUz3-og.JPEG/KakaoTalk_20220912_210802002.jpg?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/2d0720ee1e899b13f74486f0a30ba1c6'}]},
+    {"category": 'influencer', "org": None, "tag": '철면수심', "real_name": None, "handle": '차돌짬뻥철면수심', "photo_url": 'https://nng-phinf.pstatic.net/MjAyMzEyMTlfNjAg/MDAxNzAyOTYxMjI1Mjg4.ev-ovcbVksFoIqtNZeCwJ3kS5HZ1s6H49pCYWis0ctQg.DhOocVKPlR6bSH7XNmEyVIv20DrN31q3nlYWqW_2sKMg.PNG/%EC%B2%A0%EB%A9%B4%EC%88%98%EC%8B%AC.png?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/c892177b4d613127d8c587e9da11d384'}]},
+    {"category": 'influencer', "org": None, "tag": '푸린', "real_name": None, "handle": '푸린', "photo_url": 'https://nng-phinf.pstatic.net/MjAyMzEyMTlfNTQg/MDAxNzAyOTY4NDIzNjE0.GN9Dk4gQE0lIL2pfJ1mIz1VnwxaC6aCDFP7XTumaskkg.HwHFCCnnrnHiJfbq6zogmkKyyr7Y4oiaLdisS7TgAXAg.PNG/%ED%91%B8%EB%A6%B0.png?type=f120_120_na', "channels": [{"platform": 'chzzk', "url": 'https://chzzk.naver.com/75bd327f6ba6f57106c79fe3f2c3d19f'}]},
+    {"category": 'progamer', "org": 'Nongshim RedForce', "tag": 'BOX', "real_name": '강성훈', "handle": None, "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/12.png', "channels": []},
+    {"category": 'progamer', "org": 'T1', "tag": 'Byul', "real_name": '박기홍', "handle": 'T1Byul', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/2.png', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/01byulbyulii'}]},
+    {"category": 'progamer', "org": 'DRX', "tag": 'Chan', "real_name": '박찬화', "handle": 'KRXChan', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/15.png', "channels": []},
+    {"category": 'progamer', "org": 'DN FREECS', "tag": 'Chase', "real_name": '권창환', "handle": 'DNSChase', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/7.png', "channels": []},
+    {"category": 'progamer', "org": 'Dplus KIA', "tag": 'Check', "real_name": '김준수', "handle": 'Checkkk', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/38.png', "channels": []},
+    {"category": 'progamer', "org": 'DN FREECS', "tag": 'clutch', "real_name": '박지민', "handle": 'DNSClutch', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/30.png', "channels": []},
+    {"category": 'progamer', "org": 'GEN CITY', "tag": 'Crong', "real_name": '황세종', "handle": 'GCTCrong', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/6.png', "channels": []},
+    {"category": 'progamer', "org": 'kt Rolster', "tag": 'Dike', "real_name": '강무진', "handle": 'KTDike', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/20.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'ELNINO', "real_name": '정인호', "handle": '리바이브엘니뇨', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/14.png', "channels": []},
+    {"category": 'progamer', "org": 'Nongshim RedForce', "tag": 'Exito', "real_name": '윤형석', "handle": 'Exit0', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/31.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'Froste', "real_name": '김승환', "handle": 'Froste', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/24.png', "channels": []},
+    {"category": 'progamer', "org": 'T1', "tag": 'Hoseok', "real_name": '최호석', "handle": 'T1Hoseok', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/3.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'Jade', "real_name": '이현민', "handle": '제이드', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/25.png', "channels": []},
+    {"category": 'progamer', "org": 'GEN CITY', "tag": 'JiffyJay', "real_name": 'Jifree Baikadem', "handle": None, "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/40.png', "channels": []},
+    {"category": 'progamer', "org": 'kt Rolster', "tag": 'JM', "real_name": '김정민', "handle": 'KT김정민', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/9.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'JUBJUB', "real_name": '파타나삭 워라난', "handle": None, "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/32.png', "channels": []},
+    {"category": 'progamer', "org": 'BNK FEARK', "tag": 'Kaiser', "real_name": '송현수', "handle": 'BFXTaeGod', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/35.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'KBG', "real_name": '김병권', "handle": 'KoBigG', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/18.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'Korso', "real_name": '배재성', "handle": '1226', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/28.png', "channels": []},
+    {"category": 'progamer', "org": 'Dplus KIA', "tag": 'KWAK', "real_name": '곽준혁', "handle": 'DKKWAK', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/29.png', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/904jun'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@FCKWAK'}]},
+    {"category": 'progamer', "org": 'BNK FEARK', "tag": 'Light', "real_name": '김선재', "handle": 'BFXLight', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/34.png', "channels": []},
+    {"category": 'progamer', "org": 'Dplus KIA', "tag": 'MiBOB', "real_name": '김태현', "handle": 'DKMiBOB', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/39.png', "channels": []},
+    {"category": 'progamer', "org": 'DRX', "tag": 'MINION', "real_name": '조민혁', "handle": 'KRXMINION', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/33.png', "channels": []},
+    {"category": 'progamer', "org": 'T1', "tag": 'Navy', "real_name": '김유민', "handle": 'T1YooMin', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/4.png', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/kimyoumandu0'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@FConline_KimYooMin'}]},
+    {"category": 'progamer', "org": 'BNK FEARK', "tag": 'NoiZ', "real_name": '노영진', "handle": 'BFXNoiZ', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/19.png', "channels": []},
+    {"category": 'progamer', "org": 'T1', "tag": 'Ofel', "real_name": '강준호', "handle": 'T1Ofel', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/1.png', "channels": [{"platform": 'soop', "url": 'https://ch.sooplive.co.kr/xjxj4040'}, {"platform": 'youtube', "url": 'https://www.youtube.com/@kangjunho1017'}]},
+    {"category": 'progamer', "org": 'DRX', "tag": 'ONE', "real_name": '이원주', "handle": 'KRXONE', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/13.png', "channels": []},
+    {"category": 'progamer', "org": 'Nongshim RedForce', "tag": 'ppuljebi', "real_name": '김경식', "handle": 'ppuljebi', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/22.png', "channels": []},
+    {"category": 'progamer', "org": 'GEN CITY', "tag": 'RILLA', "real_name": '박세영', "handle": 'GCTRILLA', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/5.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'rimGC', "real_name": '장재근', "handle": 'Prime림광철', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/21.png', "channels": []},
+    {"category": 'progamer', "org": 'Nongshim RedForce', "tag": 'RYUK', "real_name": '윤창근', "handle": 'ryuK', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/10.png', "channels": []},
+    {"category": 'progamer', "org": 'DRX', "tag": 'Savior', "real_name": '이상민', "handle": 'DRXSavior', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/16.png', "channels": []},
+    {"category": 'progamer', "org": None, "tag": 'Seoby', "real_name": '신경섭', "handle": '뽀송단수장', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/5/17.png', "channels": []},
+    {"category": 'progamer', "org": 'DN FREECS', "tag": 'Shype', "real_name": '김승환', "handle": 'DNSShype', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/27.png', "channels": []},
+    {"category": 'progamer', "org": 'GEN CITY', "tag": 'Solid', "real_name": '임태산', "handle": None, "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/41.png', "channels": []},
+    {"category": 'progamer', "org": 'BNK FEARK', "tag": 'TaeGod', "real_name": '김태신', "handle": 'BFXLight', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/36.png', "channels": []},
+    {"category": 'progamer', "org": 'kt Rolster', "tag": 'TK777', "real_name": '이태경', "handle": 'KTTK77', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/23.png', "channels": []},
+    {"category": 'progamer', "org": 'Dplus KIA', "tag": 'TOBIO', "real_name": 'Niwae Banyawat', "handle": None, "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/37.png', "channels": []},
+    {"category": 'progamer', "org": 'kt Rolster', "tag": 'UTA', "real_name": '이지환', "handle": 'KTUTA', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/11.png', "channels": []},
+    {"category": 'progamer', "org": 'GEN CITY', "tag": 'Wonder08', "real_name": '고원재', "handle": 'GCTwonder08', "photo_url": 'https://ssl.nexon.com/s2/game/fc/online/esports/static/player/7/8.png', "channels": []},
+]
+
+# ✅ tots.gg "전체 목록" 페이지 자체에는 없지만(이전 라운드부터) FC.GG가 이미
+# 확인해 둔 인플루언서들 — 목록에서 빠졌다고 지우면 오히려 퇴보이므로 별도로
+# 유지한다.
+# ⚠️ 2026-09-14 round 13 피드백 — 채널을 확실히 확인 못 해 비워뒀던 천국/굴리트/
+# 뀨뀨rr/af박준효/김칠홍/유튜브싸커러리는 사용자 요청으로 목록에서 아예 제외했다.
+# 교로텔리: 사용자가 직접 SOOP(https://www.sooplive.com/station/phonics1)와
+# 유튜브(https://www.youtube.com/@Onepunchk1ng_mk) 채널 링크를 알려줬다. 유튜브
+# 채널의 실제 프로필 이름을 확인해보니 "튜브김민교"였고, 이는 사용자가 앞서
+# 알려준 실명(김민교)과도 일치해 동일 인물로 확인했다.
+# ⚠️ 2026-09-14 round 14 피드백 — 타워/af김우다는 사용자 요청으로 제외했다.
+# lictfe의 실명은 사용자가 "정준홍"이라고 확인해줬다(채널 핸들 @junho_J와도
+# 자연스럽게 맞는다). 교로텔리(튜브김민교)는 유튜브 채널 페이지에서 실제 프로필
+# 사진(og:image)을 직접 확인해 채워 넣었다.
+SUPPLEMENTARY_INFLUENCER_ENTRIES = [
+    {"category": "influencer", "org": None, "tag": "해설한승엽", "real_name": None, "handle": "해설한승엽",
+     "photo_url": "https://yt3.ggpht.com/ytc/AIdro_lajVamFuFW9nRiyIGPmPnwzjbaRhtxhx2VDzFONvhrBC4=s192-c-k-c0x00ffffff-no-rj",
+     "channels": [{"platform": "youtube", "url": "https://www.youtube.com/channel/UCdiqIXkagCScUoQnvT_spYw"}]},
+    {"category": "influencer", "org": None, "tag": "튜브김민교", "real_name": "김민교", "handle": "교로텔리",
+     "photo_url": "https://yt3.googleusercontent.com/ytc/AIdro_mme313qwR54BAkBgchsY38c85NZXC07dIB1HfDeJavz4A=s192-c-k-c0x00ffffff-no-rj",
+     "channels": [{"platform": "soop", "url": "https://www.sooplive.com/station/phonics1"},
+                  {"platform": "youtube", "url": "https://www.youtube.com/@Onepunchk1ng_mk"}]},
+    {"category": "influencer", "org": None, "tag": "lictfe", "real_name": "정준홍", "handle": "lictfe",
+     "photo_url": "https://yt3.ggpht.com/h5A6aYBsbKXH7O6CemhmR1h2gP9VqbyGlz_R6gA40_q4F4-YkVuRiwC2PYl-MH0DalHEENzXEUw=s192-c-k-c0x00ffffff-no-rj",
+     "channels": [{"platform": "youtube", "url": "https://www.youtube.com/@junho_J"}]},
+]
+
+ALL_CREATOR_ENTRIES = TOTS_GG_ROSTER + SUPPLEMENTARY_INFLUENCER_ENTRIES
+
+# ⚠️ 아래 두 리스트는 templates/result.html에서도 그대로 참조한다(Jinja
+# 전역으로 등록해서 매번 손으로 맞출 필요 없이 항상 이 두 리스트와 동기화된다 —
+# app.jinja_env.globals 등록 부분 참고). TaeGod/Light처럼 같은 handle을 공유하는
+# 경우가 있어 dict.fromkeys로 중복 제거(순서는 유지)한다.
+PRO_GAMER_NICKNAMES = list(dict.fromkeys(e["handle"] for e in ALL_CREATOR_ENTRIES if e["category"] == "progamer" and e["handle"]))
+INFLUENCER_NICKNAMES = list(dict.fromkeys(e["handle"] for e in ALL_CREATOR_ENTRIES if e["category"] == "influencer" and e["handle"]))
+
+
+def creator_label_for_nickname(nickname):
+    """✅ 신규(2026-09-13) — "실시간 인기 구단주" 위젯 등에서 닉네임이 프로게이머/
+    인플루언서 목록에 있으면 "프로"/"인플루언서" 라벨을, 아니면 None을 반환한다."""
+    if nickname in PRO_GAMER_NICKNAMES:
+        return "프로"
+    if nickname in INFLUENCER_NICKNAMES:
+        return "인플루언서"
+    return None
+
+
+# ✅ result.html의 influencerList/proGamerList가 이 두 리스트를 Jinja tojson으로
+# 그대로 읽어가도록 전역 등록(2026-09-13) — 예전엔 result.html에 따로 옮겨 적은
+# 하드코딩 배열이라 여기서 닉네임을 바꿀 때마다 손으로 맞춰야 했는데, 이제 한
+# 군데만 고치면 자동으로 동기화된다.
+app.jinja_env.globals['INFLUENCER_NICKNAMES'] = INFLUENCER_NICKNAMES
+app.jinja_env.globals['PRO_GAMER_NICKNAMES'] = PRO_GAMER_NICKNAMES
+
+# ✅ 2026-09-14 round 12 피드백 5번 — 기존에는 여기 INFLUENCER_META 딕셔너리에
+# 사람마다 채널 URL/사진을 직접 조사해서 채워 넣었지만, 이제는 사용자가 붙여준
+# tots.gg(/influencer) 실제 페이지 HTML을 그대로 파싱해서 TOTS_GG_ROSTER /
+# SUPPLEMENTARY_INFLUENCER_ENTRIES 각 항목에 photo_url/channels를 직접 채워
+# 넣었으므로(위 참고) 이 중간 딕셔너리는 더 이상 필요 없어 삭제했다.
+PLATFORM_LABELS = {
+    "youtube": "유튜브",
+    "chzzk": "치지직",
+    "twitch": "트위치",
+    "afreeca": "숲(아프리카TV)",
+    "soop": "SOOP",
+}
+
+
+@app.route('/인플루언서', methods=['GET'])
+def influencer_list():
+    # ✅ 2026-09-13 전면 재설계 — tots.gg처럼 "팀/실명/게임 닉네임" 형태로 보여준다.
+    # ALL_CREATOR_ENTRIES(TOTS_GG_ROSTER + 보충 목록)를 그대로 카드로 변환하고,
+    # 소속 팀(org)별로 묶어서 team_groups로도 만든다(개인 방송인은 org가 없어
+    # "개인 방송" 그룹으로 따로 모은다). 기존 people 플랫 리스트/탭 필터 UI는
+    # 그대로 유지해 하위 호환한다.
+    def build_person(entry):
+        handle = entry.get("handle")
+        category = entry["category"]
+        tag = entry.get("tag")
+        real_name = entry.get("real_name")
+        # ✅ 2026-09-14 round 16 피드백 — lictfe처럼 tag가 게임 닉네임(handle)과
+        # 완전히 같은 경우(=따로 붙인 활동명이 없다는 뜻)는 큰 이름 자리에 tag를
+        # 그대로 다시 보여주는 대신, 실명이 있으면 그걸 큰 이름으로 쓰고 "게임
+        # 닉네임" 줄에 handle만 보여준다("정준홍" + "게임 닉네임 lictfe"). tag가
+        # handle과 다르면(활동명이 따로 있으면) 기존처럼 tag를 그대로 큰 이름으로 쓴다.
+        if tag and tag != handle:
+            display_name = tag
+        elif real_name:
+            display_name = real_name
+        else:
+            display_name = tag or handle or "?"
+        # 큰 이름 자리에 이미 실명이 쓰였으면 "실명 OOO" 줄은 중복이라 생략한다.
+        real_name_for_display = real_name if real_name != display_name else None
+        channels = [
+            {
+                "platform": c["platform"],
+                "url": c["url"],
+                "label": PLATFORM_LABELS.get(c["platform"], c["platform"]),
+            }
+            for c in entry.get("channels") or []
+        ]
+        first_channel = channels[0] if channels else {}
+        return {
+            "nickname": handle,  # 기존 코드/테스트 호환용 필드명(실제 게임 닉네임)
+            "handle": handle,
+            "has_handle": handle is not None,
+            "category": category,
+            "category_label": "프로게이머" if category == "progamer" else "인플루언서",
+            "org": entry.get("org"),
+            "tag": tag,
+            "real_name": real_name_for_display,
+            "display_name": display_name,
+            "channels": channels,
+            # 기존 코드/테스트 호환용 — 채널이 여러 개면 tots.gg 표시 순서상 첫 번째만.
+            "channel_url": first_channel.get("url"),
+            "channel_platform": first_channel.get("platform"),
+            "channel_platform_label": first_channel.get("label"),
+            "photo_url": entry.get("photo_url"),
+        }
+
+    people = [build_person(e) for e in ALL_CREATOR_ENTRIES]
+
+    # ✅ 2026-09-14 round 15 피드백 — 인플루언서 카드 노출 순서를 사용자가 지정한
+    # 6명(감스트, 교로텔리=김민교, 메시연=이상호, 호날두=두치와뿌꾸, 잉유진, 방배우)
+    # 순서로 먼저 보여주고, 그 다음 나머지 인플루언서는 표시 이름(가나다) 순으로
+    # 정렬한다. 핸들(게임 닉네임) 기준으로 매칭해서 표시 이름이 바뀌어도 안전하다.
+    INFLUENCER_PRIORITY_HANDLES = ["감스트", "교로텔리", "메시연", "호날두", "잉유진", "방배우"]
+
+    def influencer_sort_key(p):
+        if p["category"] == "influencer":
+            handle = p["handle"] or ""
+            if handle in INFLUENCER_PRIORITY_HANDLES:
+                return (0, 0, INFLUENCER_PRIORITY_HANDLES.index(handle), "")
+            return (0, 1, 0, p["display_name"] or "")
+        # 프로게이머는 기존 tots.gg 표시 순서를 그대로 유지(안정 정렬)한다.
+        return (1, 0, 0, "")
+
+    people_for_groups = sorted(people, key=influencer_sort_key)
+
+    teams = OrderedDict()
+    for p in people_for_groups:
+        # ✅ round 15 피드백 — 인플루언서는 예전 소속 팀 표기(예: 호날두-DN FREECS)가
+        # 남아있어도 이 목록에서는 항상 "개인 방송" 그룹으로 모아, 위에서 지정한
+        # 순서가 실제 카드 나열에 그대로 반영되도록 한다(프로게이머만 소속 팀별로
+        # 묶는다).
+        key = p["org"] if (p["org"] and p["category"] == "progamer") else "__solo__"
+        if key not in teams:
+            org_for_group = key if key != "__solo__" else None
+            teams[key] = {"org": org_for_group, "label": org_for_group or "개인 방송", "members": []}
+        teams[key]["members"].append(p)
+    team_groups = list(teams.values())
+
+    return render_template('influencer.html', people=people, team_groups=team_groups)
+
+
+# 기존 URL 리다이렉트
+@app.route('/influencer.html', methods=['GET'])
+def influencer_list_redirect():
+    return redirect(url_for('influencer_list'), code=301)
+
+
+# ============================================================================
+# spid.json(선수 id↔이름) 캐시
+# - result()가 검색 1건마다 매번 새로 받아오던 것을, 서버 메모리에 캐시(1시간)해서
+#   재사용하도록 했습니다. 선수 목록은 자주 안 바뀌는 정적 데이터라 매 요청마다
+#   다시 받을 필요가 없어요 — 넥슨 API 호출 횟수도 줄고 응답도 빨라집니다.
+#   (MVP 표시, 주력 선수 TOP5에서 선수 이름 조회에도 이 캐시를 재사용합니다)
+# ============================================================================
+_spid_cache = {"data": None, "ts": 0.0}
+_spid_cache_lock = threading.Lock()
+SPID_CACHE_TTL_SECONDS = 3600
+
+
+def get_spid_list():
+    """spid.json(선수 id/이름 목록)을 캐시해서 반환. 실패 시 예외를 그대로 전파."""
+    now = time.time()
+    if _spid_cache["data"] is not None and (now - _spid_cache["ts"]) < SPID_CACHE_TTL_SECONDS:
+        return _spid_cache["data"]
+
+    with _spid_cache_lock:
+        # 락을 얻는 동안 다른 스레드가 이미 채웠을 수 있으니 다시 확인
+        now = time.time()
+        if _spid_cache["data"] is not None and (now - _spid_cache["ts"]) < SPID_CACHE_TTL_SECONDS:
+            return _spid_cache["data"]
+
+        headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
+        resp = requests.get(
+            "https://open.api.nexon.com/static/fconline/meta/spid.json",
+            headers=headers, timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _spid_cache["data"] = data
+        _spid_cache["ts"] = time.time()
+        return data
+
+
+def get_spid_name_map():
+    """spId -> 선수 한글 이름 dict. 캐시 실패 시 빈 dict(화면에서 이름만 조용히 빠짐)."""
+    try:
+        return {p.get('id'): p.get('name') for p in get_spid_list()}
+    except Exception:
+        return {}
+
+
+# ============================================================================
+# ✅ 선수 등급(시즌) 메타데이터 캐시 (신규, 2026-09-12)
+#   spid.json 캐시와 완전히 동일한 패턴 — seasonid.json도 로그인/OAuth가 필요 없는
+#   완전 공개 정적 데이터라 매 요청마다 새로 받을 필요가 없다. 선수 카드에 등급
+#   배지("몇 카인지")를 보여주는 데 쓴다(utils/data_processing.py의
+#   derive_season_id()/get_player_rarity() 참고).
+# ============================================================================
+_season_meta_cache = {"data": None, "ts": 0.0}
+_season_meta_cache_lock = threading.Lock()
+SEASON_META_CACHE_TTL_SECONDS = 3600
+
+
+def get_season_meta_list():
+    """seasonid.json(시즌/등급 메타데이터)을 캐시해서 반환. 실패 시 예외를 그대로 전파."""
+    now = time.time()
+    if _season_meta_cache["data"] is not None and (now - _season_meta_cache["ts"]) < SEASON_META_CACHE_TTL_SECONDS:
+        return _season_meta_cache["data"]
+
+    with _season_meta_cache_lock:
+        # 락을 얻는 동안 다른 스레드가 이미 채웠을 수 있으니 다시 확인
+        now = time.time()
+        if _season_meta_cache["data"] is not None and (now - _season_meta_cache["ts"]) < SEASON_META_CACHE_TTL_SECONDS:
+            return _season_meta_cache["data"]
+
+        headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
+        resp = requests.get(
+            "https://open.api.nexon.com/static/fconline/meta/seasonid.json",
+            headers=headers, timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        _season_meta_cache["data"] = data
+        _season_meta_cache["ts"] = time.time()
+        return data
+
+
+def get_season_meta_map():
+    """seasonId(int) -> {"class_name":.., "season_img":..} dict.
+    캐시/API 실패 시 빈 dict(화면에서는 등급 배지만 조용히 빠짐)."""
+    try:
+        return {
+            item.get("seasonId"): {
+                "class_name": item.get("className"),
+                "season_img": item.get("seasonImg"),
+            }
+            for item in get_season_meta_list()
+        }
+    except Exception:
+        return {}
+
+
 # 빠칭코 페이지
 @app.route('/빠칭코연습실', methods=['GET', 'POST'])
 def random_new():
@@ -647,7 +1221,24 @@ DB_PATH = 'community_data.db'
 
 # 데이터베이스 초기화 함수
 def initialize_database():
-    conn = sqlite3.connect(DB_PATH)
+    # ⚠️ 방어 처리(신규): 저장소에 커밋된 community_data.db가 원래 내용이 없는(0바이트)
+    # 상태여야 하는데, git으로 받는 방식(웹 UI로 파일 생성 등)에 따라 1바이트짜리
+    # 개행문자만 있는 손상된 파일로 저장되는 경우가 있었습니다. sqlite3 버전/환경에
+    # 따라 이걸 "file is not a database" 에러로 판단해 앱이 아예 실행되지 않는
+    # 문제가 있어(Windows에서 확인됨), 여기서 연결 시도 후 손상된 파일로 판명되면
+    # 자동으로 지우고 새로 만들도록 했습니다. 정상 사용에는 영향 없습니다.
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('SELECT 1')
+    except sqlite3.DatabaseError:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+        conn = sqlite3.connect(DB_PATH)
+
     cursor = conn.cursor()
     # 커뮤니티 게시글 테이블 생성
     cursor.execute('''
@@ -668,9 +1259,6 @@ def initialize_database():
             INSERT INTO posts (id, category, nickname, content, timestamp) 
             VALUES (?, ?, ?, ?, ?)
         ''', [
-            (98, '자유게시판', '강동하', 'ㄱ', '2026-06-09 10:00:00'),
-            (97, '키보드게시판', '종미우빨', '키보드 파이팅 타도 중거리너프', '2026-02-06 10:00:00'),
-            (96, '자유게시판', '맹하린', '피파봇에서 승부차기 5번 연습하다가 안돼서 그냥 제거 했어요.ㅋㅋ', '2026-02-04 10:00:00'),
             (95, '키보드게시판', '피파봇', '피파봇 화이팅!', '2026-01-27 10:00:00'),
             (94, '건의사항', 'ㅋ', '공피하기 겜 어떻게 하는거임', '2026-01-26 10:00:00'),
             (93, '키보드게시판', '맨체스터유나이티드앱갤러리', '맨체스터유나이티드앱갤러리 화이팅', '2026-01-25 10:00:00'),
@@ -772,6 +1360,12 @@ def initialize_database():
     conn.close()
 
 # 초기화 실행
+# ⚠️ 방어 처리(신규) — init_db()는 원래 `if __name__ == '__main__':` 안에서만 호출되고
+# 있었는데, 이러면 gunicorn/waitress 같은 WSGI 서버가 app.py를 "모듈로 import"만 하고
+# __main__으로 실행하지 않는 배포 방식에서는 search_data.db/nickname_searches 테이블이
+# 아예 생성되지 않아 닉네임 검색 저장 시 "no such table" 오류가 날 수 있었다.
+# initialize_database()와 동일하게 모듈 로드 시점에 항상 실행되도록 맞춘다.
+init_db()
 initialize_database()
 
 # 시간 차이를 계산하는 필터
@@ -1027,29 +1621,10 @@ def kakao_skill():
         # 티어 이미지(여유 있을 때만)
         tier_image = None
 
-        division_mapping = [
-            {"divisionId": 800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank0.png"},
-            {"divisionId": 900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank1.png"},
-            {"divisionId": 1000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank2.png"},
-            {"divisionId": 1100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank3.png"},
-            {"divisionId": 1200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank4.png"},
-            {"divisionId": 1300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank5.png"},
-            {"divisionId": 1700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank6.png"},
-            {"divisionId": 1800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank7.png"},
-            {"divisionId": 1900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank8.png"},
-            {"divisionId": 2000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank9.png"},
-            {"divisionId": 2100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank10.png"},
-            {"divisionId": 2200, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank11.png"},
-            {"divisionId": 2300, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank12.png"},
-            {"divisionId": 2400, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank13.png"},
-            {"divisionId": 2500, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank14.png"},
-            {"divisionId": 2600, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank15.png"},
-            {"divisionId": 2700, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank16.png"},
-            {"divisionId": 2800, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank17.png"},
-            {"divisionId": 2900, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank18.png"},
-            {"divisionId": 3000, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank19.png"},
-            {"divisionId": 3100, "divisionName": "https://ssl.nexon.com/s2/game/fo4/obt/rank/large/update_2026/ico_rank20.png"}
-        ]
+        # ✅ 신규 "마스터" 티어 추가로 인해 공용 DIVISION_MAPPING(utils/data_processing.py)을
+        # 재사용하도록 변경 — 예전에 여기 따로 있던 오래된 테이블은 새 티어를 못 찾아
+        # 정보 없음으로 표시되는 문제가 있었다.
+        division_mapping = DIVISION_MAPPING
         divi = json_get("https://open.api.nexon.com/fconline/v1/user/maxdivision",
                         {"ouid": ouid}, headers)
         tier_image = pick_tier_image(divi, mode)
@@ -2141,8 +2716,6 @@ def kakao_penalty():
         })
 
 
-
-
 # ============================================================================
 # 초성퀴즈(선수 이름 맞추기) + 폴백 라우터
 # - /kakao/playerquiz        : 초성퀴즈 전용 스킬
@@ -2303,10 +2876,10 @@ def pq_text_with_image_next(msg: str, img_url: str, alt_text: str, mentions):
         """
         public_root = public_root_from_request(app, request)
         return f"{public_root}/tierbadge?url={quote_plus(raw_url)}&size={int(size)}&bgw={int(bgw)}&bgh={int(bgh)}"
-
+    
+    
     img_url = wrap_img_url(app, request, img_url, size=480, bgw=1000, bgh=600)
-    
-    
+
     # ✅ 결과 카드(항상 노출) + "순위보기" 버튼 추가
     outputs.append({
         "basicCard": {
@@ -2716,6 +3289,7 @@ def kakao_fallback_router():
         return _playerquiz_handle(body)
 
     return help_text()
+
 
 
 # 포트 설정 및 웹에 띄우기
