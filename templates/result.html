@@ -363,6 +363,9 @@
                             <div class="player-detail-name-cell">
                                 <img src="{{ p.image }}" alt="{{ p.name or ('선수#' ~ p.spId) }}" class="player-detail-img"
                                      data-fallback-src="{{ p.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">
+                                {% if p.season_img %}
+                                <img src="{{ p.season_img }}" alt="{{ p.class_name or '등급' }}" title="{{ p.class_name }}" class="player-detail-rarity-badge">
+                                {% endif %}
                                 <span>{{ p.name or ('선수#' ~ p.spId) }}</span>
                                 {% if p.grade_badge %}<span class="player-detail-grade {{ p.grade_badge_class or '' }}">{{ p.grade_badge }}</span>{% endif %}
                             </div>
