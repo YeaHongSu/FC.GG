@@ -19,6 +19,103 @@
          style="width:100%; display:flex; justify-content:center; margin:32px 0;">
     </div>
 
+    <!-- ✅ 2026-09-16 피드백 — 광고 아래, 전체 인원 목록 위에 "인플루언서 상대
+         전적" 추가. 닉네임 2개를 넣으면 최근 경기(커스텀매치 기준) 안에서
+         서로 맞붙은 경기만 걸러 역대 전적/재미 트리거 멘트/플레이 스타일 분석을
+         보여준다(app.py의 /api/head_to_head). 두 사람이 조회 범위 안에서
+         만난 적이 없으면 "아직 만난 적 없음"으로 나온다(Nexon API 자체가
+         두 유저 간 매치만 조회하는 기능을 지원하지 않아서 생기는 한계). 등록된
+         프로/인플루언서 닉네임이면 프로필 사진을, 아니면 흐릿한 실루엣
+         플레이스홀더(PLAYER_IMG_PLACEHOLDER, 다른 페이지 선수 사진과 동일)를
+         보여준다.
+         ⚠️ 2026-09-16 8차 피드백 — "최근 100경기만 보면 표본이 너무 적다"는
+         지적으로 app.py의 _fetch_recent_match_ids()가 offset을 옮겨가며 최대
+         200경기까지(HEAD_TO_HEAD_SEARCH_PAGES) 훑도록 늘렸다.
+         ⚠️ 2026-09-16 3차 피드백 — ① 이 기능은 커스텀매치 기준이라는 안내를
+         받아 힌트 문구도 맞게 수정 ② 카드 이름을 "상대 전적 검색" → "인플루언서
+         상대 전적"으로 변경 ③ 포메이션 표시는 필요 없다는 요청으로 제거하고
+         대신 "장단점 분석"(잘했던 지표/아쉬웠던 지표, build_head_to_head_analysis)
+         섹션을 추가했다.
+         ⚠️ 2026-09-16 6차 피드백 — "장단점 분석말고 플레이 스타일 분석 느낌이
+         날듯?"이라는 요청으로 섹션 이름/톤을 "플레이 스타일 분석"으로 바꾸고,
+         가장 두드러진 강점 지표를 "⚽ 피니셔형" 같은 스타일 태그로 뽑아 각자
+         이름 옆에 헤드라인으로 보여준다(analysis.player1/2.style). -->
+    <div class="card-modern head-to-head-card">
+        <div class="card-header-modern">
+            <h2 class="card-title-modern">⚔️ 라이벌 상대 전적</h2>
+            <span class="h2h-hint">커스텀매치 기준 최근 200경기 안에서 맞붙은 기록을 찾아드려요</span>
+        </div>
+        <div class="card-body-modern">
+            <!-- ⚠️ 2026-09-16 5차 피드백 — "누가 평균 득점한건지 애매하다"는 지적으로
+                 왼쪽 입력창=나, 오른쪽 입력창=상대라는 걸 입력 placeholder와 결과
+                 화면 선수 사진 위 태그(h2h-player-role) 둘 다에 명시했다. 득점/실점
+                 지표도 "평균 득점"→"내 평균 득점"으로 바꿔 왼쪽(나) 기준임을
+                 라벨만 보고도 알 수 있게 했다. -->
+            <form class="h2h-form" onsubmit="searchHeadToHead(); return false;">
+                <div class="h2h-input-group">
+                    <input type="text" id="h2h-nick1" class="h2h-input" placeholder="닉네임 입력 (나)" autocomplete="off" maxlength="30">
+                    <span class="h2h-vs">VS</span>
+                    <input type="text" id="h2h-nick2" class="h2h-input" placeholder="닉네임 입력 (상대)" autocomplete="off" maxlength="30">
+                </div>
+                <button type="submit" class="btn-primary h2h-search-btn">전적 검색</button>
+            </form>
+
+            <div id="h2h-loading" class="h2h-loading" hidden>
+                <span class="h2h-spinner"></span>
+                <span>최근 경기를 뒤져서 맞대결을 찾는 중...</span>
+            </div>
+
+            <p id="h2h-error" class="h2h-error" hidden></p>
+
+            <div id="h2h-result" class="h2h-result" hidden>
+                <div class="h2h-players">
+                    <div class="h2h-player">
+                        <span class="h2h-player-role">나</span>
+                        <img id="h2h-photo1" class="h2h-player-photo" alt="">
+                        <div class="h2h-player-name" id="h2h-name1"></div>
+                    </div>
+                    <div class="h2h-record-center">
+                        <div class="h2h-record-score" id="h2h-record-score"></div>
+                        <div class="h2h-record-pct" id="h2h-record-pct"></div>
+                    </div>
+                    <div class="h2h-player">
+                        <span class="h2h-player-role">상대</span>
+                        <img id="h2h-photo2" class="h2h-player-photo" alt="">
+                        <div class="h2h-player-name" id="h2h-name2"></div>
+                    </div>
+                </div>
+                <p id="h2h-trigger" class="h2h-trigger" hidden></p>
+                <div class="h2h-detail-grid">
+                    <div class="h2h-detail-item"><span>총 대결</span><strong id="h2h-total"></strong></div>
+                    <div class="h2h-detail-item"><span>내 평균 득점</span><strong id="h2h-avg-for"></strong></div>
+                    <div class="h2h-detail-item"><span>내 평균 실점</span><strong id="h2h-avg-against"></strong></div>
+                </div>
+                <div id="h2h-analysis" class="h2h-analysis" hidden>
+                    <div class="h2h-analysis-title">플레이 스타일 분석 <span class="h2h-analysis-sub">(둘이 붙은 경기 기준)</span></div>
+                    <!-- ⚠️ 2026-09-16 8차 피드백 — "플레이 스타일 분석이 안 뜰 때가 있는데
+                         무조건 뜨게 하자"는 요청으로, 서버가 표본 부족/무승부급 지표라
+                         analysis.fallback을 내려주면 이 안내 문구를 대신 보여준다(섹션 자체를
+                         숨기지 않음). -->
+                    <p id="h2h-analysis-fallback" class="h2h-analysis-fallback" hidden></p>
+                    <div id="h2h-analysis-grid" class="h2h-analysis-grid">
+                        <div class="h2h-analysis-col">
+                            <div class="h2h-analysis-name" id="h2h-analysis-name1"></div>
+                            <div class="h2h-analysis-style" id="h2h-analysis-style1" hidden></div>
+                            <ul class="h2h-analysis-list good" id="h2h-analysis-good1"></ul>
+                            <ul class="h2h-analysis-list bad" id="h2h-analysis-bad1"></ul>
+                        </div>
+                        <div class="h2h-analysis-col">
+                            <div class="h2h-analysis-name" id="h2h-analysis-name2"></div>
+                            <div class="h2h-analysis-style" id="h2h-analysis-style2" hidden></div>
+                            <ul class="h2h-analysis-list good" id="h2h-analysis-good2"></ul>
+                            <ul class="h2h-analysis-list bad" id="h2h-analysis-bad2"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card-modern">
         <div class="card-header-modern">
             <h2 class="card-title-modern">전체 <span style="color: var(--primary-green);">{{ people|length }}</span>명</h2>
@@ -50,7 +147,6 @@
                             </div>
                             <span class="player-badge {% if person.category == 'progamer' %}badge-progamer{% else %}badge-influencer{% endif %}">{{ person.category_label }}</span>
                             <span class="influencer-nickname">{{ person.display_name }}</span>
-                            {% if person.real_name %}<span class="influencer-real-name">실명 {{ person.real_name }}</span>{% endif %}
                             {% if person.has_handle %}
                             <span class="influencer-handle">게임 닉네임 <strong>{{ person.handle }}</strong></span>
                             {% else %}
@@ -85,6 +181,148 @@
 </section>
 
 <script>
+// ✅ 상대 전적 검색(신규, 2026-09-16 피드백) — /api/head_to_head를 호출해
+// 로딩 스피너 → 결과(또는 에러/미대결 안내) 순으로 보여준다.
+function searchHeadToHead() {
+    const nick1 = document.getElementById('h2h-nick1').value.trim();
+    const nick2 = document.getElementById('h2h-nick2').value.trim();
+    const errorEl = document.getElementById('h2h-error');
+    const resultEl = document.getElementById('h2h-result');
+    const loadingEl = document.getElementById('h2h-loading');
+
+    errorEl.hidden = true;
+    resultEl.hidden = true;
+
+    if (!nick1 || !nick2) {
+        errorEl.textContent = '두 닉네임을 모두 입력해주세요.';
+        errorEl.hidden = false;
+        return;
+    }
+    if (nick1.toLowerCase() === nick2.toLowerCase()) {
+        errorEl.textContent = '서로 다른 두 닉네임을 입력해주세요.';
+        errorEl.hidden = false;
+        return;
+    }
+
+    loadingEl.hidden = false;
+    fetch(`/api/head_to_head?nick1=${encodeURIComponent(nick1)}&nick2=${encodeURIComponent(nick2)}`)
+        .then(function (res) {
+            return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+        })
+        .then(function (r) {
+            loadingEl.hidden = true;
+            if (!r.ok || r.data.error) {
+                errorEl.textContent = (r.data && r.data.error) || '검색에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                errorEl.hidden = false;
+                // 에러여도 등록된 프로/인플루언서 사진 정보는 같이 올 수 있어 참고용으로만 쓰고,
+                // 결과 카드 자체는 띄우지 않는다(전적을 못 찾았으니).
+                return;
+            }
+            renderHeadToHeadResult(r.data);
+        })
+        .catch(function () {
+            loadingEl.hidden = true;
+            errorEl.textContent = '검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+            errorEl.hidden = false;
+        });
+}
+
+function h2hPhotoOrPlaceholder(url) {
+    // ✅ 등록된 프로/인플루언서면 실제 프로필 사진, 없으면 다른 페이지와 동일한
+    // 흐릿한 실루엣 플레이스홀더(PLAYER_IMG_PLACEHOLDER, base.html 정의)
+    return url || PLAYER_IMG_PLACEHOLDER;
+}
+
+function renderHeadToHeadResult(data) {
+    document.getElementById('h2h-photo1').src = h2hPhotoOrPlaceholder(data.photo1);
+    document.getElementById('h2h-photo2').src = h2hPhotoOrPlaceholder(data.photo2);
+    document.getElementById('h2h-name1').textContent = data.nick1;
+    document.getElementById('h2h-name2').textContent = data.nick2;
+
+    const resultEl = document.getElementById('h2h-result');
+    resultEl.hidden = false;
+
+    const triggerEl = document.getElementById('h2h-trigger');
+    const analysisEl = document.getElementById('h2h-analysis');
+
+    if (!data.found) {
+        document.getElementById('h2h-record-score').textContent = '아직 만난 적 없음';
+        document.getElementById('h2h-record-pct').textContent = data.message || '최근 경기 안에서는 맞붙은 기록이 없어요';
+        document.getElementById('h2h-total').textContent = '0전';
+        document.getElementById('h2h-avg-for').textContent = '-';
+        document.getElementById('h2h-avg-against').textContent = '-';
+        triggerEl.hidden = true;
+        analysisEl.hidden = true;
+        return;
+    }
+
+    document.getElementById('h2h-record-score').textContent = `${data.wins}승 ${data.draws}무 ${data.losses}패`;
+    document.getElementById('h2h-record-pct').textContent = `승률 ${data.win_pct}%`;
+    document.getElementById('h2h-total').textContent = data.total + '전';
+    document.getElementById('h2h-avg-for').textContent = data.avg_goal_for;
+    document.getElementById('h2h-avg-against').textContent = data.avg_goal_against;
+
+    if (data.trigger) {
+        triggerEl.textContent = data.trigger;
+        triggerEl.hidden = false;
+    } else {
+        triggerEl.hidden = true;
+    }
+
+    // ✅ 플레이 스타일 분석(신규, 2026-09-16 3차 피드백 → 6차 피드백으로
+    // "장단점 분석"에서 리프레이밍) — "교로텔리 vs 메시연처럼 서로 장단점도
+    // 분석해주면 좋을듯"이라는 요청에서 시작해, "장단점 분석말고 플레이
+    // 스타일 분석 느낌이 날듯?"이라는 후속 피드백으로 이름/제목을 바꾸고
+    // 가장 두드러진 지표를 스타일 태그(예: "⚽ 피니셔형")로 헤드라인에 얹었다.
+    // ⚠️ 2026-09-16 8차 피드백 — "표본이 부족하면 섹션이 통째로 안 뜨는데,
+    // 무조건 뜨게 하자"는 요청으로 서버(build_head_to_head_analysis)가 더
+    // 이상 null을 내려주지 않는다. 대신 데이터가 부족하거나 딱히 차이가
+    // 없을 땐 {fallback: true, message} 형태로 오므로, 그럴 땐 두 칸짜리
+    // 그리드 대신 안내 문구 한 줄만 보여준다.
+    function fillList(el, items) {
+        el.innerHTML = '';
+        (items || []).forEach(function (text) {
+            const li = document.createElement('li');
+            li.textContent = text;
+            el.appendChild(li);
+        });
+    }
+
+    function fillStyle(el, style) {
+        if (style) {
+            el.textContent = style;
+            el.hidden = false;
+        } else {
+            el.textContent = '';
+            el.hidden = true;
+        }
+    }
+
+    const analysisGridEl = document.getElementById('h2h-analysis-grid');
+    const analysisFallbackEl = document.getElementById('h2h-analysis-fallback');
+
+    if (data.analysis && !data.analysis.fallback) {
+        document.getElementById('h2h-analysis-name1').textContent = data.nick1 + ' (나)';
+        document.getElementById('h2h-analysis-name2').textContent = data.nick2 + ' (상대)';
+        fillStyle(document.getElementById('h2h-analysis-style1'), data.analysis.player1.style);
+        fillStyle(document.getElementById('h2h-analysis-style2'), data.analysis.player2.style);
+        fillList(document.getElementById('h2h-analysis-good1'), data.analysis.player1.strengths);
+        fillList(document.getElementById('h2h-analysis-bad1'), data.analysis.player1.weaknesses);
+        fillList(document.getElementById('h2h-analysis-good2'), data.analysis.player2.strengths);
+        fillList(document.getElementById('h2h-analysis-bad2'), data.analysis.player2.weaknesses);
+        analysisGridEl.hidden = false;
+        analysisFallbackEl.hidden = true;
+        analysisEl.hidden = false;
+    } else if (data.analysis && data.analysis.fallback) {
+        analysisGridEl.hidden = true;
+        analysisFallbackEl.textContent = data.analysis.message || '';
+        analysisFallbackEl.hidden = false;
+        analysisEl.hidden = false;
+    } else {
+        analysisEl.hidden = true;
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const tabs = document.querySelectorAll(".influencer-tabs .tab-item");
     const cards = document.querySelectorAll("#influencer-grid .influencer-card");
