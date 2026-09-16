@@ -1,6 +1,7 @@
+import hashlib
 import math
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 data_label = ['평균 파울 수', '평균 옐로우 카드 수', '평균 드리블 수', '평균 코너킥 수', '평균 오프사이드 수',
               '평균 슛 수', '평균 유효 슛 수', '슈팅 수 대비 유효 슈팅 수', '슈팅 수 대비 골 수',
@@ -409,6 +410,21 @@ PLAYER_IMAGE_URL_TMPL = "https://fco.dn.nexoncdn.co.kr/live/externalAssets/commo
 # 액션샷 에셋이 없어서 playersAction 쪽이 404가 나는 경우가 있는데, 그럴 때
 # 프론트에서 이 템플릿으로 한 번 더 시도한다(둘 다 실패하면 인라인 SVG로 대체).
 PLAYER_IMAGE_FALLBACK_URL_TMPL = "https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/players/p{spId}.png"
+
+
+# ✅ 경기수 선택(신규, 2026-09-16 피드백) — "최근 25경기 선수 지표"가 항상
+# 25경기로 고정이라 아쉽다는 요청으로, 조회할 매치 개수를 25/50/100 중에서
+# 고를 수 있게 한다. 이 함수는 쿼리스트링(?match_count=...) 값을 검증하는
+# 부분만 따로 떼어내서 테스트하기 쉽게 만든 것 — URL 조작이나 오타로 이상한
+# 값(음수, 문자열, 허용 목록에 없는 숫자 등)이 들어와도 조용히 기본값으로
+# 되돌린다.
+def resolve_match_count(raw_value, allowed=(25, 50, 100), default=25):
+    """쿼리스트링에서 받은 match_count 원본 값을 검증해 허용된 정수로 바꾼다."""
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+    return value if value in allowed else default
 
 
 def format_grade_badge(sp_grade):
@@ -987,6 +1003,305 @@ def resolve_division_tier(division_info, match_type_code):
     return {"tier_name": division_item["divisionName"], "tier_image": None}
 
 
+def division_rank(division_info, match_type_code):
+    """maxdivision API 응답에서 특정 matchType의 divisionId가 DIVISION_MAPPING
+    안에서 몇 번째(0부터, 낮을수록 하위 티어)인지 반환한다. 못 찾으면 None —
+    "상대 전적 검색" 트리거 멘트("맞밸이 아니신데요?")에서 티어 격차를 비교하는
+    용도라, 실패해도 그 멘트만 조용히 생략하면 된다."""
+    if not division_info:
+        return None
+    try:
+        code = int(match_type_code)
+    except (TypeError, ValueError):
+        return None
+    match_type_info = next((item for item in division_info if item.get("matchType") == code), None)
+    if not match_type_info:
+        return None
+    tier_id = match_type_info.get("division")
+    for idx, item in enumerate(DIVISION_MAPPING):
+        if item["divisionId"] == tier_id:
+            return idx
+    return None
+
+
+# ============================================================================
+# ✅ 상대 전적 검색 (신규, 2026-09-16 피드백) — 프로/인플루언서 페이지에서
+# 닉네임 두 개를 넣으면 서로 붙었던 경기만 골라 역대 전적을 보여주는 기능.
+# Nexon API에는 "두 유저 간 매치만" 조회하는 엔드포인트가 없어서, 앱단에서
+# nick1의 최근 매치(최대 100경기)를 순회하며 상대가 nick2인 경기만 걸러내는
+# 방식으로 구현한다(app.py의 head_to_head_search 라우트가 그 필터링을 하고,
+# 여기서는 그 결과를 화면 표시용으로 요약한다).
+# ============================================================================
+
+# ⚠️ 2026-09-16 9차 피드백 — "트리거 멘트도 좀 다양화 해달라, '요즘 상대가
+# 안 되시는데요?'처럼 전적이 살짝 밀릴 때 나오는 것도 있으면 좋겠다"는 요청.
+# 기존엔 "완전 전승/완전 전패/정확히 동률"인 극단적인 경우만 멘트가 붙고,
+# 그 사이(이기는 쪽으로 치우침/지는 쪽으로 치우침)는 아무 멘트도 안 붙었다.
+# 그 사이 구간을 메우는 조건 2개(_H2H_TRIGGER_LOSING_EDGE/_WINNING_EDGE)를
+# 추가하고, 기존 조건들도 문구를 1개→여러 개 풀로 늘려 같은 조건이어도 검색할
+# 때마다(닉네임 조합 기준 결정적으로) 다른 멘트가 나오게 했다.
+_H2H_TRIGGER_SWEEP_WIN = [
+    "이 상대한테는 전승이시네요! 완전 유리한 상성이에요 🔥",
+    "이 상대 앞에서는 무적이시네요 — 상성 甲이에요 💪",
+    "이 상대만 만나면 자신감이 뿜뿜이시겠어요 😎",
+]
+_H2H_TRIGGER_SWEEP_LOSE = [
+    "이 상대한테는 아직 이겨본 적이 없네요... 설욕전이 필요해요 😮‍💨",
+    "이 상대만 만나면 고개를 못 드시네요... 극복이 필요해요 😣",
+    "천적을 제대로 만나셨네요 — 진지하게 대책이 필요해 보여요 🫠",
+]
+_H2H_TRIGGER_RIVAL = [
+    "엎치락뒤치락, 진짜 라이벌 상성이네요!",
+    "물고 물리는 각축전 — 이 정도면 숙명의 라이벌이에요 🥊",
+    "승부는 그때그때 다르네요 — 붙을 때마다 재밌을 상성이에요",
+]
+_H2H_TRIGGER_LOSING_EDGE = [
+    "요즘 상대가 안 되시는데요...? 전적이 살짝 밀리고 있어요 😅",
+    "이 상대한테는 요즘 고전 중이시네요 — 전적이 조금 아쉬워요",
+    "근소하게 열세인 상성이네요, 다음 판엔 뒤집어보세요!",
+]
+_H2H_TRIGGER_WINNING_EDGE = [
+    "그래도 이 상대한테는 한 수 위시네요! 전적상 우위예요 😏",
+    "근소하지만 유리한 상성이에요 — 계속 이 흐름 가져가보세요",
+    "이 상대 앞에서는 그래도 어깨 좀 펴셔도 될 것 같아요 🙂",
+]
+_H2H_TRIGGER_FEW_MEETS = [
+    "아직 몇 번 안 붙어봤네요 — 좀 더 붙어봐야 진짜 상성이 보일 것 같아요",
+    "표본이 좀 적어서, 상성을 논하기엔 아직 일러요",
+]
+
+
+def head_to_head_trigger_message(wins, draws, losses, rank1=None, rank2=None, seed=""):
+    """상대 전적 검색 결과를 보고 재미있는 "트리거" 멘트를 하나 고른다(스트리머들이
+    서로 상대 전적을 볼 때 재밌어할 만한 것 — 사용자 피드백). 실제 전적/티어 격차
+    데이터로만 판단하며, 여러 조건에 해당하면 더 눈에 띄는 것부터 우선한다.
+    seed(보통 "닉네임1|닉네임2")를 넘기면 같은 조건 안에서도 멘트 풀 중 하나를
+    결정적으로 골라 다양성을 준다(_pick_from_pool 재사용)."""
+    total = wins + draws + losses
+    if rank1 is not None and rank2 is not None and abs(rank1 - rank2) >= 6:
+        return "맞밸이 아니신데요...? 티어 차이가 꽤 나네요 👀"
+    if total >= 3 and losses == 0 and wins > 0:
+        return _pick_from_pool(_H2H_TRIGGER_SWEEP_WIN, seed + ':sweep_win')
+    if total >= 3 and wins == 0 and losses > 0:
+        return _pick_from_pool(_H2H_TRIGGER_SWEEP_LOSE, seed + ':sweep_lose')
+    if total >= 2 and wins == losses and wins > 0:
+        return _pick_from_pool(_H2H_TRIGGER_RIVAL, seed + ':rival')
+    if total >= 3 and losses > wins and wins > 0:
+        return _pick_from_pool(_H2H_TRIGGER_LOSING_EDGE, seed + ':losing_edge')
+    if total >= 3 and wins > losses and losses > 0:
+        return _pick_from_pool(_H2H_TRIGGER_WINNING_EDGE, seed + ':winning_edge')
+    if total == 1:
+        return "딱 한 번 만난 사이네요 — 데이터가 더 쌓이면 진짜 상성을 알 수 있어요"
+    if total == 2:
+        return _pick_from_pool(_H2H_TRIGGER_FEW_MEETS, seed + ':few_meets')
+    return None
+
+
+def build_head_to_head_summary(match_results, rank1=None, rank2=None, nick1="", nick2=""):
+    """match_results: [{"result": "승"/"무"/"패", "my_goal": int, "opp_goal": int},
+    ...] — nick1 시점 기준으로 이미 걸러진 두 사람 간 매치 목록. 승/무/패,
+    평균 득실, 재미 트리거 멘트를 종합해 반환한다.
+    ⚠️ 2026-09-16 피드백 — "포메이션은 딱히 안보여줘도 된다"는 요청으로
+    "우세했던 포메이션" 계산/반환을 제거했다(대신 플레이 스타일 분석을 새로
+    추가 — build_head_to_head_analysis() 참고).
+    ⚠️ 2026-09-16 9차 피드백 — 트리거 멘트 다양화를 위해 nick1/nick2를
+    head_to_head_trigger_message()의 seed로 그대로 넘긴다."""
+    total = len(match_results)
+    wins = sum(1 for m in match_results if m['result'] == '승')
+    draws = sum(1 for m in match_results if m['result'] == '무')
+    losses = sum(1 for m in match_results if m['result'] == '패')
+    goal_for = sum(m.get('my_goal') or 0 for m in match_results)
+    goal_against = sum(m.get('opp_goal') or 0 for m in match_results)
+
+    return {
+        "total": total, "wins": wins, "draws": draws, "losses": losses,
+        "win_pct": round(wins / total * 100, 1) if total else 0.0,
+        "goal_for": goal_for, "goal_against": goal_against,
+        "avg_goal_for": round(goal_for / total, 1) if total else 0.0,
+        "avg_goal_against": round(goal_against / total, 1) if total else 0.0,
+        "trigger": head_to_head_trigger_message(
+            wins, draws, losses, rank1, rank2, seed=f"{nick1.lower()}|{nick2.lower()}"
+        ),
+    }
+
+
+# ✅ 상대 전적 플레이 스타일 분석 (신규, 2026-09-16 3차 피드백, 2026-09-16
+# 6차 피드백으로 "장단점 분석" → "플레이 스타일 분석"으로 리프레이밍) —
+# "교로텔리 vs 메시연 검색했을 때 서로 장단점도 분석해주면 좋을듯? 잘했던거
+# 못했던거"라는 요청에서 시작해, "장단점 분석말고 플레이 스타일 분석 느낌이
+# 날듯?"이라는 후속 피드백으로 성적표(잘함/못함) 톤 대신 각자의 플레이
+# 성향을 짚어주는 톤으로 다시 정리했다.
+# 두 선수가 맞붙은 매치들(build_match_boxscore()로 이미 만들어둔 박스스코어)만
+# 모아 평균 골/유효슈팅률/패스성공률/태클성공률/평균 드리블 성공을 비교해서,
+# 한쪽이 뚜렷하게(각 지표별 최소 차이 이상) 앞선 지표를 상대 강점/내 약점으로
+# 나눠 문장으로 만든다. 지표 최소 차이(min_diff) 미만이면 "비슷했다"고 보고
+# 그 지표는 그냥 건너뛴다 — 잘하지도 못하지도 않은 걸 억지로 강점/약점으로
+# 우기지 않기 위함. 실제 경기 데이터로만 판단하며 픽션 추가 없음.
+# 가장 두드러진 지표(지표별 min_diff 대비 편차가 가장 큰 것)는 "⚽ 피니셔형"
+# 같은 플레이 스타일 태그로도 뽑아 헤드라인으로 보여준다(_H2H_STYLE_LABELS).
+def _accumulate_h2h_box_stats(acc, box):
+    """build_match_boxscore() 결과 하나를 누적 합계(acc, plain dict)에 더한다."""
+    if not isinstance(box, dict) or not box.get("available"):
+        return
+    acc["matches"] = acc.get("matches", 0) + 1
+    acc["goal"] = acc.get("goal", 0) + (box["shoot"]["goal"] or 0)
+    acc["shoot_try"] = acc.get("shoot_try", 0) + (box["shoot"]["total"] or 0)
+    acc["shoot_effective"] = acc.get("shoot_effective", 0) + (box["shoot"]["effective"] or 0)
+    acc["pass_try"] = acc.get("pass_try", 0) + (box["pass"]["total"]["try"] or 0)
+    acc["pass_success"] = acc.get("pass_success", 0) + (box["pass"]["total"]["success"] or 0)
+    acc["tackle_try"] = acc.get("tackle_try", 0) + (box["defence"]["tackle"]["try"] or 0)
+    acc["tackle_success"] = acc.get("tackle_success", 0) + (box["defence"]["tackle"]["success"] or 0)
+    acc["dribble"] = acc.get("dribble", 0) + (box["discipline"].get("dribble") or 0)
+
+
+_H2H_ANALYSIS_METRICS = [
+    # (누적 키, 라벨, 강점일 때 문구, 약점일 때 문구, 최소 유효 차이, 표시 포맷)
+    # ⚠️ 2026-09-16 7차 피드백 — "슈팅 정교형, 수비형 이런거 너무 식상하다,
+    # 인플루언서 전적검색은 서로 놀리는 편이니까 좀 재밌게"라는 요청으로
+    # 문구를 딱딱한 리포트 톤에서 서로 놀리는 듯한 캐스터/중계 톤으로 바꿨다.
+    # 숫자·판정 로직(min_diff 등)은 그대로라 어디까지나 "말투"만 바뀐 것.
+    ("goal_avg", "평균 득점", "골 냄새는 기가 막히게 맡았어요", "골 앞에서는 유독 조용했어요", 0.4, "{:.1f}골"),
+    ("shoot_pct", "유효슈팅률", "쏘는 족족 골로 꽂혔어요", "슛은 쏘는데 골은 어디 갔을까요", 8, "{:.0f}%"),
+    ("pass_pct", "패스 성공률", "패스 하나는 국가대표급이었어요", "패스가 자꾸 상대 발로 배달갔어요", 5, "{:.0f}%"),
+    ("tackle_pct", "수비 성공률", "몸으로 다 막아냈어요", "태클만 하면 헛발질이었어요", 10, "{:.0f}%"),
+    ("dribble_avg", "평균 드리블 성공", "혼자서 다 뚫고 다녔어요", "드리블하다 공을 자주 헌납했어요", 1.5, "{:.1f}회"),
+]
+
+# ✅ 지표별 플레이 스타일 태그 (2026-09-16 6차 피드백, 7차 피드백으로 톤 수정)
+# — 강점 지표들 중 가장 두드러진 것 하나를 뽑아 헤드라인으로 붙여준다.
+# "잘함/못함" 평가가 아니라 "이 사람은 이런 스타일"이라는 인상을 주기 위한
+# 라벨인데, "슈팅 정교형/수비형 같은거 너무 식상하다, 인플루언서 상대 전적은
+# 서로 놀리는 편이니까 좀 재밌게"라는 요청으로 딱딱한 "OO형" 대신 실제
+# 중계/커뮤니티에서 쓰는 장난스러운 별명 톤으로 바꿨다.
+# ⚠️ 2026-09-16 9차 피드백 — ① "플레이 스타일이 안 뜰 때가 있다, 항상 나오게
+# 안 되냐"는 요청으로, 강점 지표가 하나도 없는(=min_diff를 넘는 우위가 전혀
+# 없는) 선수에게도 이제 스타일 태그를 붙인다(_H2H_STYLE_FALLBACK_LABELS —
+# "이거다!" 할 만큼 튀는 지표는 없지만 그 자체를 장난스럽게 표현) ② "스타일이
+# 좀 다양했으면"이라는 요청으로 각 지표별 라벨을 1개→여러 개 후보 풀로 늘리고,
+# 검색한 두 닉네임으로 만든 해시로 그중 하나를 결정적으로 골라준다(같은 두
+# 사람을 다시 검색하면 항상 같은 태그가 나오지만, 다른 사람들끼리는 다양하게
+# 갈린다 — 매번 무작위로 바뀌는 것보다 이게 "이 사람 스타일"이라는 느낌에 더
+# 맞다고 판단).
+_H2H_STYLE_LABEL_POOLS = {
+    "goal_avg": [
+        "⚽ 닥치고 골 넣는 해결사", "⚽ 골 냄새 하나는 기가 막힘", "⚽ 만나기만 하면 골 넣는 저승사자",
+    ],
+    "shoot_pct": [
+        "🎯 한 방이면 끝나는 스나이퍼", "🎯 헛발질 없는 명사수", "🎯 쐈다 하면 무조건 골",
+    ],
+    "pass_pct": [
+        "🧠 그라운드 위의 감독", "🧠 패스 하나는 국가대표급", "🧠 축구 지능만큼은 甲",
+    ],
+    "tackle_pct": [
+        "🛡️ 뚫리지 않는 벽", "🛡️ 몸으로 다 막는 수문장", "🛡️ 철벽 방패",
+    ],
+    "dribble_avg": [
+        "⚡ 혼자서도 다 하는 발재간 부자", "⚡ 드리블 쇼맨", "⚡ 발재간으로 다 풀어내는 마술사",
+    ],
+}
+
+# 강점 지표가 하나도 없어도(=뚜렷하게 앞선 지표가 없어도) "무조건 뜨게 해달라"는
+# 요청에 맞춰 붙여주는 캐치올 태그 — 특정 지표를 잘한다고 우기지 않고, "뭐든
+# 고르게 한다"는 뉘앙스로만 표현해 근거 없는 강점을 지어내지 않는다.
+_H2H_STYLE_FALLBACK_LABELS = [
+    "🧩 종잡을 수 없는 올라운더", "🎭 뭐든 고르게 하는 팔방미인", "⚖️ 밸런스 하나는 甲",
+]
+
+
+def _pick_from_pool(pool, seed):
+    """seed 문자열을 md5로 해시해 pool에서 하나를 결정적으로 골라 반환한다.
+    같은 seed는 항상 같은 결과 — "이 사람 스타일"이라는 느낌을 유지하기 위함."""
+    if not pool:
+        return None
+    if len(pool) == 1:
+        return pool[0]
+    digest = hashlib.md5(seed.encode('utf-8')).hexdigest()
+    return pool[int(digest, 16) % len(pool)]
+
+
+def build_head_to_head_analysis(acc1, acc2, min_matches=2, nick1="", nick2=""):
+    """_accumulate_h2h_box_stats()로 누적한 두 선수의 맞대결 스탯 합계(acc1=nick1,
+    acc2=nick2)를 비교해 플레이 스타일 태그와 강점/약점 문장 리스트를 반환한다.
+    {"player1": {"style": str, "strengths": [...], "weaknesses": [...]},
+     "player2": {...}}
+    ⚠️ 2026-09-16 8차 피드백 — "표본이 부족하면 섹션 전체가 조용히 사라지는데,
+    그러지 말고 무조건 뜨게 해달라"는 요청으로 더 이상 None을 반환하지 않는다.
+    대신 표본이 부족하거나(2경기 미만) 두 사람의 지표가 다 고만고만해서 뚜렷한
+    차이가 없을 때도 {"fallback": True, "message": ...} 형태로 안내 문구를
+    반환해, 화면에서는 항상 뭔가는 보여주되 근거 없는 강점/약점을 지어내지는
+    않는다.
+    ⚠️ 2026-09-16 9차 피드백 — "스타일 태그도 항상 뜨게, 좀 다양하게"라는 요청.
+    nick1/nick2를 넘겨주면 그 둘의 닉네임 조합으로 스타일 태그를 결정적으로
+    고른다(_pick_from_pool) — 강점 지표가 있으면 그 지표의 라벨 풀에서,
+    강점이 하나도 없는 선수는 _H2H_STYLE_FALLBACK_LABELS 풀에서 고른다."""
+    m1, m2 = acc1.get("matches", 0), acc2.get("matches", 0)
+    if m1 < min_matches or m2 < min_matches:
+        return {
+            "fallback": True,
+            "message": "아직 두 분이 붙은 경기 수가 적어서 스타일 분석은 다음 맞대결 때 보여드릴게요!",
+        }
+
+    def metrics(acc):
+        n = acc["matches"]
+        return {
+            "goal_avg": acc["goal"] / n,
+            "shoot_pct": _safe_pct(acc["shoot_effective"], acc["shoot_try"]),
+            "pass_pct": _safe_pct(acc["pass_success"], acc["pass_try"]),
+            "tackle_pct": _safe_pct(acc["tackle_success"], acc["tackle_try"]),
+            "dribble_avg": acc["dribble"] / n,
+        }
+
+    v1, v2 = metrics(acc1), metrics(acc2)
+    strengths1, weaknesses1, strengths2, weaknesses2 = [], [], [], []
+    # 강점으로 뽑힌 지표 중 (min_diff 대비 편차가 가장 큰) 하나를 스타일 태그로 승격
+    best1 = best2 = None  # (score, key)
+
+    for key, label, good_phrase, bad_phrase, min_diff, fmt in _H2H_ANALYSIS_METRICS:
+        a, b = v1.get(key), v2.get(key)
+        if a is None or b is None:
+            continue
+        diff = a - b
+        if abs(diff) < min_diff:
+            continue
+        score = abs(diff) / min_diff
+        if diff > 0:
+            strengths1.append(f"{label} · {good_phrase} ({fmt.format(a)} vs {fmt.format(b)})")
+            weaknesses2.append(f"{label} · {bad_phrase} ({fmt.format(b)} vs {fmt.format(a)})")
+            if best1 is None or score > best1[0]:
+                best1 = (score, key)
+        else:
+            strengths2.append(f"{label} · {good_phrase} ({fmt.format(b)} vs {fmt.format(a)})")
+            weaknesses1.append(f"{label} · {bad_phrase} ({fmt.format(a)} vs {fmt.format(b)})")
+            if best2 is None or score > best2[0]:
+                best2 = (score, key)
+
+    if not (strengths1 or weaknesses1 or strengths2 or weaknesses2):
+        return {
+            "fallback": True,
+            "message": "다섯 개 지표가 다 도긴개긴이에요 — 진짜 스타일이 닮은 라이벌인가 봐요!",
+        }
+
+    def style_for(best, seed):
+        if best:
+            pool = _H2H_STYLE_LABEL_POOLS.get(best[1])
+            picked = _pick_from_pool(pool, seed + ':' + best[1])
+            if picked:
+                return picked
+        return _pick_from_pool(_H2H_STYLE_FALLBACK_LABELS, seed + ':fallback')
+
+    seed_base = f"{nick1.lower()}|{nick2.lower()}"
+    return {
+        "player1": {
+            "style": style_for(best1, seed_base + ':1'),
+            "strengths": strengths1[:3], "weaknesses": weaknesses1[:3],
+        },
+        "player2": {
+            "style": style_for(best2, seed_base + ':2'),
+            "strengths": strengths2[:3], "weaknesses": weaknesses2[:3],
+        },
+    }
+
+
 # ✅ 11v11 잔디밭 뷰 (신규) — 한 매치의 나/상대 선수 11명씩(SUB 제외)을 잔디밭 배경 위
 # 좌표(%)로 변환한다. app.py의 "최근 경기" 스쿼드 위젯에서 쓰는 spPosition→좌표 매핑과
 # 같은 값을 쓰되, 여기서는 한 화면에 두 팀을 동시에 그리기 위해 별도로 둔다(단일 팀
@@ -1024,6 +1339,390 @@ DF_DEFENSE_PG_MIN = 12.0    # 수비수: 이 미만이면 수비 기여가 아�
 MF_ATTACK_PG_MIN = 12.0     # 미드필더: 공격/수비 지수가 "둘 다" 이 미만이어야 위험표시
 MF_DEFENSE_PG_MIN = 8.0
 RISK_MIN_APPEARANCES = 3    # 표본이 이보다 적으면(3경기 미만) 판단 보류
+
+
+# ============================================================================
+# ✅ 포메이션별 승률 분석 (신규, 2026-09-16 피드백) — "내가 어떤 포메이션일 때
+# 승률이 좋은지" / "상대의 어떤 포메이션에 약한지"를 최근 N경기에서 집계한다.
+# 새 API 호출은 없다 — 이미 매치 루프에서 받아온 my_data/your_data의 선수
+# spPosition 분포만으로 포메이션을 추정한다.
+# ============================================================================
+
+def derive_formation(appearances):
+    """collect_player_appearances() 결과(spPosition 포함)에서 GK/SUB을 제외한
+    10명의 포지션 분포로 포메이션 문자열("4-2-3-1", "4-4-2" 등)을 만든다.
+    수비형 미드필더(RDM/CDM/LDM, spPosition 9~11)가 있으면 미드필더를 수비형/
+    공격형 두 줄로 나눠 4줄로, 없으면 3줄로 표시한다(흔히 쓰는 포메이션 표기
+    관례와 동일). 선수 10명이 정확히 안 채워지면(데이터 누락 등) None을
+    반환해 호출부에서 그 경기는 조용히 집계에서 빠진다."""
+    outfield = [a for a in appearances if a.get('spPosition') not in (0, 28, None)]
+    if len(outfield) != 10:
+        return None
+    df = sum(1 for a in outfield if POSITION_GROUP.get(a['spPosition']) == 'DF')
+    dmf = sum(1 for a in outfield if a['spPosition'] in (9, 10, 11))
+    amf = sum(1 for a in outfield if a['spPosition'] in (12, 13, 14, 15, 16, 17, 18, 19))
+    fw = sum(1 for a in outfield if POSITION_GROUP.get(a['spPosition']) == 'FW')
+    if df + dmf + amf + fw != 10:
+        return None
+    parts = [df]
+    if dmf:
+        parts.append(dmf)
+    if amf:
+        parts.append(amf)
+    parts.append(fw)
+    return '-'.join(str(p) for p in parts)
+
+
+# ✅ 2026-09-16 피드백 — "5-2-3 같은 것도 보통 5에서 양쪽 풀백은 살짝 더 위로
+# 가있잖아, 기본 베이스를 생각하고 가자(넥슨 공식 스쿼드메이커 참고)". 수비
+# 라인이 일자로 늘어서지 않고 풀백/윙백(양 끝)이 센터백들보다 공격 방향으로
+# 살짝 더 나가 있는 완만한 곡선이 실제 전술판의 기본형이라, formation_to_dots()의
+# 맨 뒷줄(수비 라인)에서만 중앙에서 멀수록 y를 줄여(더 앞으로) 이 곡선을 만든다.
+# 이 숫자(%p)는 넥슨 스쿼드메이커(fconline.nexon.com/squadmaker) 캡처 화면을
+# 참고해 감으로 잡은 값 — 정확한 좌표 API가 아니라 어디까지나 "모양"을 보여주는
+# 개념도라는 점은 동일하다.
+BACKLINE_CURVE_MAX = 9  # %p — 맨 끝 풀백/윙백이 중앙 센터백보다 최대 이만큼 위로
+
+
+def formation_to_dots(formation_code):
+    """'4-2-3-1' 같은 포메이션 코드를 미니 축구장 위 점 배치(x%, y%) 리스트로
+    바꾼다. 그 경기의 실제 좌표가 아니라 포메이션 "모양"을 보여주는 개념도라서,
+    골키퍼는 항상 맨 아래 중앙에 하나 추가하고, 나머지 줄은 뒤(수비, y 큰 값)에서
+    앞(공격, y 작은 값)으로 갈수록 균등한 간격으로 배치한다. 맨 뒷줄(수비 라인)은
+    양 끝(풀백/윙백)이 중앙(센터백)보다 살짝 앞으로 나온 완만한 곡선으로 배치해
+    일자로 늘어선 부자연스러운 모양을 피한다(BACKLINE_CURVE_MAX 참고)."""
+    if not formation_code:
+        return []
+    try:
+        tiers = [int(t) for t in formation_code.split('-')]
+    except (TypeError, ValueError):
+        return []
+    if not tiers:
+        return []
+    dots = [{"x": 50, "y": 92, "label": "GK"}]
+    n = len(tiers)
+    for tier_idx, count in enumerate(tiers):
+        if count <= 0:
+            continue
+        base_y = 45 if n == 1 else round(78 - tier_idx * (63 / (n - 1)), 1)
+        center = (count - 1) / 2
+        for i in range(count):
+            x = round((i + 1) * 100 / (count + 1), 1)
+            y = base_y
+            if tier_idx == 0 and count > 1:
+                normalized = abs(i - center) / center if center else 0
+                y = round(base_y - BACKLINE_CURVE_MAX * (normalized ** 2), 1)
+            dots.append({"x": x, "y": y, "label": None})
+    return dots
+
+
+_FORMATION_TIP_FALLBACK = "포메이션 정보가 부족해 구체적인 공략 팁은 어려워요."
+_FORMATION_STRENGTH_FALLBACK = "이 포메이션에서 좋은 흐름을 만들고 있어요 — 지금의 빌드업/전진 패턴을 유지해보세요."
+
+
+def _parse_formation_shape(formation_code):
+    """포메이션 코드("4-2-3-1" 등)를 {"back", "fw", "mid_tiers"}로 분해한다.
+    mid_tiers는 df/fw 사이의 숫자들 — derive_formation()의 규칙상 dmf/amf 중
+    하나만 있으면 길이 1(어느 쪽인지 코드만으로는 구분 불가), 둘 다 있으면
+    길이 2([dmf, amf])다. 파싱 실패(빈 코드, 숫자 2개 미만)면 None."""
+    if not formation_code:
+        return None
+    tiers = [int(t) for t in formation_code.split('-') if t.strip().isdigit()]
+    if len(tiers) < 2:
+        return None
+    return {"back": tiers[0], "fw": tiers[-1], "mid_tiers": tiers[1:-1]}
+
+
+# ⚠️ 2026-09-16 4차 피드백 — "피드백이 너무 1차원적이야, 너무 당연한 소리하는거
+# 같은데 제대로 찾아서 기입해줘"라는 지적으로, back/mid/fw 세 가지를 각각 독립
+# 판단해서 문장 조각을 조립하는 방식으로 한 번 바꿨었다.
+# ⚠️ 2026-09-16 8차 피드백 — 그런데 그 결과가 "3문장이 항상 다 붙어서 너무
+# 길고 매번 비슷한 틀로 느껴진다"는 지적을 받아, back/mid/fw 중 가장 특징적인
+# 축 "하나만" 골라 한 문장으로 바꿨었다.
+# ⚠️ 2026-09-16 9차 피드백 — 그런데 축 하나만 보고 고르다 보니, 예를 들어
+# 4-2-2-2와 4-2-3-1은 back(4)도 같고 중원의 dmf(수비형 미드필더 수)도 둘 다
+# 2라서 "수미 2명" 카테고리가 똑같이 뽑혀 서로 다른 포메이션인데 문구가
+# 완전히 같아지는 문제가 있었다("하나라도 같으면 안 된다"는 지적). 그래서
+# 이번엔 back/mid(dmf·amf 또는 단일 중원 수 그대로)/fw 세 숫자를 전부
+# 문장 안에 실제 숫자로 박아 넣는 방식으로 바꿨다 — formation_code 자체가
+# 이 세 숫자(들)의 조합이므로, 코드가 다르면 숫자 중 하나는 반드시 달라지고,
+# 그 숫자가 문장에 그대로 들어가는 이상 텍스트도 항상 달라진다(진짜로
+# 겹칠 수 없음). 대신 각 축의 설명을 "숫자 + 짧은 전술 힌트" 한 덩어리로
+# 압축하고 " · "로만 이어붙여 3문장을 나열하던 것보다 훨씬 짧게 유지한다.
+# ⚠️ 2026-09-16 10차 피드백 — "모든 포메이션 팁이 다 '백4은 무난한 뒷라인'
+# 으로 시작해서 너무 획일적이다, 포메이션마다 진짜 상대법이 있는 것처럼
+# 그럴싸하게" 라는 지적. back 값은 사실 mid_tiers+fw가 정해지면 자동으로
+# 정해진다(정식 포메이션 코드는 항상 back+중원 합+fw=10명이므로) — 즉
+# back 숫자를 문장에 넣지 않아도 mid/fw 두 축만으로 formation_code가 다르면
+# 문구도 항상 달라진다는 수학적 보장은 그대로 유지된다. 이 여유를 이용해
+# ① back 표현을 "무난하다"는 밋밋한 사실 진술 대신 실제 공략 포인트가
+# 담긴 여러 문구 후보 풀로 늘리고 ② 세 절(back/mid/fw)을 항상 같은 순서로
+# 나열하지 않고 formation_code를 해시해 순서를 섞어서, "다 똑같은 틀로
+# 시작한다"는 인상 자체를 없앴다(같은 코드는 항상 같은 순서 — 랜덤이 아니라
+# 결정적이라 같은 포메이션을 다시 봐도 문구가 안 바뀐다).
+_FORMATION_BACK_POOL_HIGH = [
+    "백{back}(스리백+윙백)이라 윙백이 전진했을 때 뒷공간을 그대로 파고들 수 있음",
+    "백{back}이라 숫자는 많지만 윙백이 붕 뜨는 타이밍에 크로스로 흔들면 잘 먹힘",
+    "백{back} 스리백이라 측면이 비는 순간 빠른 역습이 잘 통함",
+]
+_FORMATION_BACK_POOL_THREE = [
+    "스리백이라 측면 1대1로 승부를 걸면 승산이 큼",
+    "스리백 특성상 풀백 없이 윙백만 있어 빠른 사이드 돌파에 약함",
+    "스리백이라 중앙보다 사이드 공략이 확실한 정답",
+]
+_FORMATION_BACK_POOL_DEFAULT = [
+    "백{back}은 무난한 편이라도 풀백이 전진했을 때 뒷공간이 살짝 비는 편",
+    "백{back} 기준형이라 크게 안 흔들리지만 스루패스 타이밍만큼은 노려볼만",
+    "백{back}이 안정적이어도 측면 오버래핑 직후 커버가 한 박자 늦는 편",
+]
+
+
+def _formation_back_clause(back, seed):
+    if back >= 5:
+        pool = _FORMATION_BACK_POOL_HIGH
+    elif back == 3:
+        pool = _FORMATION_BACK_POOL_THREE
+    else:
+        pool = _FORMATION_BACK_POOL_DEFAULT
+    return _pick_from_pool(pool, seed + ':back').format(back=back)
+
+
+_FORMATION_MID_POOL_DMF_HEAVY = [
+    "수미{dmf}·공미{amf}로 중앙은 두껍지만 측면으로 전환하면 뚫림",
+    "수미{dmf}·공미{amf}라 중앙 스루패스는 잘 막혀도 크로스는 열려 있음",
+]
+_FORMATION_MID_POOL_AMF_HEAVY = [
+    "수미{dmf}·공미{amf}로 인원이 앞쪽에 몰려 있어 역습 타이밍이 큼",
+    "수미{dmf}·공미{amf}라 전방 압박만 풀면 뒷공간이 바로 열림",
+]
+_FORMATION_MID_POOL_EVEN = [
+    "수미{dmf}·공미{amf}로 하프스페이스가 비니 그쪽을 파고들면 좋음",
+    "수미{dmf}·공미{amf}라 대각선으로 찔러주는 패스에 특히 약함",
+]
+_FORMATION_MID_POOL_SINGLE_HIGH = [
+    "중원 {mid}명으로 숫자는 밀려도 역습 타이밍만큼은 확실히 있음",
+    "중원 {mid}명이라 볼 점유엔 강해도 빠른 전환 수비는 약한 편",
+]
+_FORMATION_MID_POOL_SINGLE_LOW = [
+    "중원 {mid}명뿐이라 한 번만 뺏으면 바로 스루패스 찬스",
+    "중원 {mid}명이라 미드필더끼리 간격이 넓어 그 틈을 노리면 좋음",
+]
+_FORMATION_MID_POOL_SINGLE_MID = [
+    "중원 {mid}명이라 빠른 좌우 전환에 특히 취약",
+    "중원 {mid}명이 넓게 벌어져 있어 중앙 돌파가 의외로 잘 먹힘",
+]
+_FORMATION_MID_POOL_EMPTY = [
+    "중원 자체가 없다시피 해서 뒷공간이 바로 열림",
+    "중원이 거의 비어 있어 롱패스 한 방으로 뒷공간을 바로 노릴 수 있음",
+]
+
+
+def _formation_mid_clause(mid_tiers, seed):
+    if len(mid_tiers) == 2:
+        dmf, amf = mid_tiers
+        if dmf > amf:
+            pool = _FORMATION_MID_POOL_DMF_HEAVY
+        elif amf > dmf:
+            pool = _FORMATION_MID_POOL_AMF_HEAVY
+        else:
+            pool = _FORMATION_MID_POOL_EVEN
+        return _pick_from_pool(pool, seed + ':mid').format(dmf=dmf, amf=amf)
+    if len(mid_tiers) == 1:
+        mid = mid_tiers[0]
+        if mid >= 5:
+            pool = _FORMATION_MID_POOL_SINGLE_HIGH
+        elif mid <= 2:
+            pool = _FORMATION_MID_POOL_SINGLE_LOW
+        else:
+            pool = _FORMATION_MID_POOL_SINGLE_MID
+        return _pick_from_pool(pool, seed + ':mid').format(mid=mid)
+    return _pick_from_pool(_FORMATION_MID_POOL_EMPTY, seed + ':mid')
+
+
+_FORMATION_FW_POOL_HIGH = [
+    "최전방 {fw}명이라 역습은 빠른 대신 수비 가담이 적어 뒷공간이 큼",
+    "최전방 {fw}명이 한꺼번에 전진해 있어 전방 압박에는 약한 편",
+]
+_FORMATION_FW_POOL_ONE = [
+    "최전방 {fw}명만 확실히 묶으면 공격 전개 자체가 끊김",
+    "최전방 {fw}명뿐이라 그 선수만 고립시키면 볼 배급이 막힘",
+]
+_FORMATION_FW_POOL_TWO = [
+    "최전방 {fw}명(투톱)이라 오프사이드 트랩이 잘 통함",
+    "최전방 {fw}명(투톱)이라 수비 라인을 높게 올리면 자주 걸림",
+]
+
+
+def _formation_fw_clause(fw, seed):
+    if fw >= 3:
+        pool = _FORMATION_FW_POOL_HIGH
+    elif fw == 1:
+        pool = _FORMATION_FW_POOL_ONE
+    else:
+        pool = _FORMATION_FW_POOL_TWO
+    return _pick_from_pool(pool, seed + ':fw').format(fw=fw)
+
+
+_FORMATION_CLAUSE_ORDERS = [
+    (0, 1, 2), (0, 2, 1), (1, 0, 2), (1, 2, 0), (2, 0, 1), (2, 1, 0),
+]
+
+
+def formation_counter_tip(formation_code):
+    """상대가 이 포메이션을 쓸 때 어떻게 공략하면 좋을지, 백라인/중원/최전방
+    세 축을 실제 숫자와 함께 짧은 문구로 조립해 반환한다. mid_tiers·fw
+    숫자만으로도 formation_code가 다르면 back은 자동으로 결정되므로(정식
+    포메이션은 항상 back+중원+fw=10명), 이 둘이 문장에 그대로 들어가는 이상
+    문구도 formation_code가 다르면 항상 달라진다(수학적으로 겹칠 수 없음).
+    back 문구·세 절의 나열 순서는 formation_code를 해시해 결정적으로 고르므로
+    같은 포메이션은 항상 같은 문구를 주면서도, 포메이션마다 시작하는 절이
+    달라져 "다 똑같은 틀"이라는 인상은 사라진다."""
+    shape = _parse_formation_shape(formation_code)
+    if not shape:
+        return _FORMATION_TIP_FALLBACK
+    back, fw, mid_tiers = shape["back"], shape["fw"], shape["mid_tiers"]
+    seed = formation_code
+    clauses = [
+        _formation_back_clause(back, seed),
+        _formation_mid_clause(mid_tiers, seed),
+        _formation_fw_clause(fw, seed),
+    ]
+    order = _FORMATION_CLAUSE_ORDERS[int(hashlib.md5(('order:' + seed).encode('utf-8')).hexdigest(), 16) % len(_FORMATION_CLAUSE_ORDERS)]
+    ordered = [clauses[i] for i in order]
+    return " · ".join(ordered) + "."
+
+
+def formation_strength_note(formation_code):
+    """내가 이 포메이션을 쓸 때 왜 잘 통하는 편인지(내 강점 관점)를 조립해서
+    반환한다. formation_counter_tip()과 같은 back/mid/fw 분해를 쓰되, "상대를
+    어떻게 공략할지"가 아니라 "내가 이 배치를 왜 유지하면 좋을지"로 문장을
+    다르게 조립한다."""
+    shape = _parse_formation_shape(formation_code)
+    if not shape:
+        return _FORMATION_STRENGTH_FALLBACK
+    back, fw, mid_tiers = shape["back"], shape["fw"], shape["mid_tiers"]
+    clauses = []
+
+    if back >= 5:
+        clauses.append("백5라 수비 뒷공간을 최소화한 채로 윙백을 전진시켜 안정적으로 공격 숫자를 더할 수 있는 배치입니다")
+    elif back == 3:
+        clauses.append("스리백 기반이라 윙백을 높게 두고도 중앙 수비 숫자가 유지돼, 실점 부담 없이 폭 넓은 공격이 가능합니다")
+    else:
+        clauses.append("백4 기준형이라 수비 밸런스를 잃지 않으면서 풀백의 오버래핑으로 측면 공격을 더할 수 있는 배치입니다")
+
+    if len(mid_tiers) == 2:
+        dmf, amf = mid_tiers
+        if dmf >= 2:
+            clauses.append(f"수비형 미드필더 {dmf}명이 중앙을 지켜주는 덕분에 공격형 미드필더들이 볼 뺏길 걱정 없이 과감하게 전진할 수 있습니다")
+        elif amf >= 3:
+            clauses.append(f"공격형 미드필더가 {amf}명이라 중앙 점유율이 높아 상대가 쉽게 볼을 뺏어가지 못합니다")
+        else:
+            clauses.append("중원이 앞뒤로 나뉘어 있어 볼 전개와 마무리 구간의 역할이 명확하게 분리됩니다")
+    elif len(mid_tiers) == 1:
+        mid = mid_tiers[0]
+        if mid >= 5:
+            clauses.append(f"미드필더 라인이 {mid}명으로 두꺼워 중원 싸움에서 수적 우위를 가져갈 수 있습니다")
+        elif mid <= 2:
+            clauses.append("미드필더 라인이 간결해 공수 전환 속도가 빠른 편입니다")
+        else:
+            clauses.append("중원 인원이 균형 있게 배치돼 있어 공수 어느 쪽에도 치우치지 않습니다")
+    else:
+        clauses.append("최소 인원 구성이라 공수 전환이 빠릅니다")
+
+    if fw >= 3:
+        clauses.append("최전방이 3명이라 역습 상황에서 숫자 우위로 빠르게 마무리할 수 있습니다")
+    elif fw == 1:
+        clauses.append("최전방 1명에게 힘을 실어주는 대신 중원·수비 숫자를 더 확보해 안정적으로 운영할 수 있습니다")
+    else:
+        clauses.append("투톱이 서로 커버하며 최전방에서부터 압박을 걸 수 있습니다")
+
+    return ". ".join(clauses[:3]) + "."
+
+
+def build_formation_analysis(my_formation_stats, opp_formation_stats, overall_goals_against_avg=None,
+                              min_matches=2, weak_top_n=3, best_top_n=3):
+    """포메이션별 승/무/패 누적(app.py 매치 루프에서 만든 defaultdict)을 화면
+    표시용으로 변환한다.
+    - main_formation: 내가 가장 많이 쓴 포메이션(점 배치도 포함) — "내 주력 포메이션"
+    - best_formations: 승률이 좋았던 내 포메이션 TOP N(표본 min_matches경기 이상,
+      1승도 없는(승률 0%) 포메이션은 "승률 좋음" 취지에 안 맞아 제외) — 실제
+      전체 평균 대비 승률 비교(data_insight, 유의미할 때만)와 큐레이션 강점
+      노트(tip)를 같이 담는다.
+    - weak_formations: 상대가 이 포메이션일 때 내 승률이 낮았던 TOP N(표본
+      min_matches경기 이상) — 실제 전적/평균 실점(data_insight, 유의미할 때만)과
+      큐레이션 공략 팁(tip)을 같이 담는다.
+    경기 수가 적어 표본 기준을 만족하는 포메이션이 하나도 없으면 각 리스트이
+    빈 채로 반환되고, 화면에서는 조용히 섹션이 생략된다.
+    ⚠️ 2026-09-16 4차 피드백 반영 — best_formations의 승률 0% 항목 제외,
+    best_formations에도 data_insight/tip 추가(원래 weak_formations만 있었음)."""
+    def win_pct(stat):
+        return round(stat['wins'] / stat['count'] * 100, 1) if stat['count'] else 0.0
+
+    main_formation = None
+    if my_formation_stats:
+        best_code, best_stat = max(my_formation_stats.items(), key=lambda kv: kv[1]['count'])
+        main_formation = {
+            "code": best_code,
+            "count": best_stat['count'],
+            "win_pct": win_pct(best_stat),
+            "dots": formation_to_dots(best_code),
+        }
+
+    total_matches = sum(stat['count'] for stat in my_formation_stats.values())
+    total_wins = sum(stat['wins'] for stat in my_formation_stats.values())
+    overall_win_pct = round(total_wins / total_matches * 100, 1) if total_matches else None
+
+    best_formations = []
+    for code, stat in my_formation_stats.items():
+        # ✅ 4차 피드백 — "승률 좋음이 0%인 게 있으면 굳이 안나와도 될거같아"라서
+        # 1승도 없으면(wins == 0) 아예 후보에서 제외한다(표본 부족과 별개로).
+        if stat['count'] < min_matches or stat['wins'] <= 0:
+            continue
+        pct = win_pct(stat)
+        entry = {
+            "code": code, "count": stat['count'], "win_pct": pct,
+            "wins": stat['wins'], "draws": stat['draws'], "losses": stat['losses'],
+            "dots": formation_to_dots(code),
+            "tip": formation_strength_note(code),
+            "data_insight": None,
+        }
+        if overall_win_pct is not None and pct > overall_win_pct + 8:
+            entry["data_insight"] = (
+                f"이 포메이션을 썼을 때 승률 {pct}%로, 전체 평균 승률({overall_win_pct}%)보다 높았습니다."
+            )
+        best_formations.append(entry)
+    best_formations.sort(key=lambda f: (-f['win_pct'], -f['count']))
+    best_formations = best_formations[:best_top_n]
+
+    weak_formations = []
+    for code, stat in opp_formation_stats.items():
+        if stat['count'] < min_matches:
+            continue
+        avg_against = stat['goals_against_sum'] / stat['count']
+        entry = {
+            "code": code,
+            "count": stat['count'],
+            "wins": stat['wins'], "draws": stat['draws'], "losses": stat['losses'],
+            "win_pct": win_pct(stat),
+            "avg_goals_against": round(avg_against, 1),
+            "dots": formation_to_dots(code),
+            "tip": formation_counter_tip(code),
+            "data_insight": None,
+        }
+        if overall_goals_against_avg is not None and avg_against > overall_goals_against_avg + 0.3:
+            entry["data_insight"] = (
+                f"이 포메이션 상대로는 평균 {avg_against:.1f}실점으로, "
+                f"전체 평균({overall_goals_against_avg:.1f}실점)보다 실점이 많았습니다."
+            )
+        weak_formations.append(entry)
+    weak_formations.sort(key=lambda f: (f['win_pct'], -f['count']))
+    weak_formations = weak_formations[:weak_top_n]
+
+    return {
+        "main_formation": main_formation,
+        "best_formations": best_formations,
+        "weak_formations": weak_formations,
+    }
 
 
 def _pitch_players_for_side(side_data, spid_name_map, x_transform):
@@ -1098,6 +1797,11 @@ def _pitch_players_for_side(side_data, spid_name_map, x_transform):
         rating = _player_rating(player)
         if rating is not None:
             ratings.append(rating)
+        # ✅ 2026-09-16 피드백 — 잔디밭 뷰에서 선수를 마우스오버/클릭했을 때 뜨는
+        # 미니 카드(골/어시스트/슛/패스/태클/가로채기)용 원본 스탯. 이미 받아온
+        # match-detail 응답(player.status)을 그대로 재사용 — 추가 API 호출 없음.
+        # collect_player_appearances()의 stat 필드와 동일한 소스/이름 규칙을 쓴다.
+        status = player.get("status") if isinstance(player.get("status"), dict) else {}
         players.append({
             "spId": sp_id,
             "name": _player_display_name(player, spid_name_map),
@@ -1108,6 +1812,15 @@ def _pitch_players_for_side(side_data, spid_name_map, x_transform):
             "image": PLAYER_IMAGE_URL_TMPL.format(spId=sp_id) if sp_id is not None else None,
             "image_fallback": PLAYER_IMAGE_FALLBACK_URL_TMPL.format(spId=sp_id) if sp_id is not None else None,
             "is_mvp": False,
+            "goal": status.get("goal"),
+            "assist": status.get("assist"),
+            "shoot": status.get("shoot"),
+            "effective_shoot": status.get("effectiveShoot"),
+            "pass_try": status.get("passTry"),
+            "pass_success": status.get("passSuccess"),
+            "tackle_try": status.get("tackleTry"),
+            "tackle_success": status.get("tackle"),
+            "intercept": status.get("intercept"),
         })
     avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else None
     return players, avg_rating
