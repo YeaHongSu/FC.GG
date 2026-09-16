@@ -197,3 +197,346 @@
         height: 52px;
     }
 }
+
+/* ============================================================================
+   ✅ 인플루언서 상대 전적 (신규, 2026-09-16 피드백) — 닉네임 2개를 넣으면 최근
+   100경기(커스텀매치 기준) 안에서 맞붙은 경기만 걸러 역대 전적/재미 트리거
+   멘트/장단점 분석을 보여주는 카드.
+   ⚠️ 2026-09-16 3차 피드백 — 포메이션 표시는 필요 없다는 요청으로 뺐다(미니
+   축구장 점 배치 CSS도 이제 이 페이지에서 안 쓰여서 같이 정리).
+   ============================================================================ */
+.head-to-head-card {
+    margin-bottom: 24px;
+}
+
+.h2h-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.h2h-form {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.h2h-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 320px;
+}
+
+.h2h-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.h2h-input:focus {
+    border-color: var(--primary-green);
+}
+
+.h2h-vs {
+    font-weight: 800;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.h2h-search-btn {
+    flex-shrink: 0;
+    padding: 10px 22px;
+}
+
+.h2h-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.h2h-spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--primary-green);
+    border-radius: 50%;
+    animation: h2h-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes h2h-spin {
+    to { transform: rotate(360deg); }
+}
+
+.h2h-error {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-sm);
+    color: #ef4444;
+    font-size: 0.85rem;
+}
+
+.h2h-result {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.h2h-players {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.h2h-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 96px;
+}
+
+/* ⚠️ 2026-09-16 5차 피드백 — "평균 득점이 누구 기준인지 애매하다"는 지적으로
+   왼쪽=나/오른쪽=상대를 사진 위 작은 태그로 명시. */
+.h2h-player-role {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+
+.h2h-player-photo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-primary);
+    border: 3px solid var(--border-color);
+}
+
+.h2h-player-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    text-align: center;
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.h2h-record-center {
+    text-align: center;
+    min-width: 140px;
+}
+
+.h2h-record-score {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+/* ⚠️ 2026-09-16 9차 피드백 — "승률 38.9% 이런 글자 좀 더 키워도 될듯"이라는
+   요청으로 0.8rem → 1.05rem으로 키웠다. */
+.h2h-record-pct {
+    margin-top: 2px;
+    font-size: 1.05rem;
+    color: var(--primary-green);
+    font-weight: 800;
+}
+
+.h2h-trigger {
+    margin: 14px auto 0;
+    max-width: 480px;
+    text-align: center;
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #fff6d8, #ffe066);
+    color: #7a5b00;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-radius: var(--radius-md);
+}
+
+.h2h-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-width: 460px;
+    margin: 16px auto 0;
+}
+
+.h2h-detail-item {
+    text-align: center;
+    padding: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.h2h-detail-item span {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+}
+
+.h2h-detail-item strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+/* ✅ 플레이 스타일 분석(신규, 2026-09-16 3차 피드백 → 6차 피드백으로 "장단점
+   분석"에서 리프레이밍) — "서로 장단점도 분석해주면 좋을듯? 잘했던거
+   못했던거"라는 요청에서 시작해 "장단점 분석말고 플레이 스타일 분석 느낌이
+   날듯?"이라는 후속 피드백으로 이름을 바꿨다. 두 사람 카드를 좌우로 나란히
+   놓고, 이름 아래에 가장 두드러진 지표로 뽑은 스타일 태그(h2h-analysis-style)
+   를 헤드라인으로 얹은 뒤 강점(초록)/약점(빨강) 문장을 목록으로 보여준다. */
+.h2h-analysis {
+    margin: 18px auto 0;
+    max-width: 560px;
+}
+
+.h2h-analysis-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.h2h-analysis-sub {
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.h2h-analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ⚠️ 2026-09-16 8차 피드백 — "표본이 부족해도 섹션이 무조건 뜨게 해달라"는
+   요청으로, 서버가 {fallback: true} 안내 문구를 내려줬을 때 두 칸짜리 그리드
+   대신 이 한 줄짜리 안내를 보여준다. */
+.h2h-analysis-fallback {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    padding: 16px 12px;
+    background: var(--bg-primary);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.h2h-analysis-col {
+    padding: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.h2h-analysis-name {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.h2h-analysis-style {
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary-green);
+    margin-bottom: 8px;
+}
+
+.h2h-analysis-list {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.h2h-analysis-list:last-child {
+    margin-bottom: 0;
+}
+
+.h2h-analysis-list li {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    padding-left: 14px;
+    position: relative;
+}
+
+.h2h-analysis-list.good li {
+    color: var(--text-secondary);
+}
+
+.h2h-analysis-list.good li::before {
+    content: "▲";
+    position: absolute;
+    left: 0;
+    color: var(--primary-green);
+    font-size: 0.65rem;
+}
+
+.h2h-analysis-list.bad li {
+    color: var(--text-secondary);
+}
+
+.h2h-analysis-list.bad li::before {
+    content: "▼";
+    position: absolute;
+    left: 0;
+    color: #ef4444;
+    font-size: 0.65rem;
+}
+
+@media (max-width: 640px) {
+    .h2h-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .h2h-search-btn {
+        width: 100%;
+    }
+    .h2h-players {
+        gap: 10px;
+    }
+    .h2h-player {
+        width: 76px;
+    }
+    .h2h-player-photo {
+        width: 52px;
+        height: 52px;
+    }
+    .h2h-analysis-grid {
+        grid-template-columns: 1fr;
+    }
+}
