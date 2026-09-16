@@ -18,7 +18,11 @@ from utils.data_processing import (
     DIVISION_MAPPING, derive_season_id, get_player_rarity, attach_rarity,
     format_grade_badge, grade_badge_class, PLAYER_IMAGE_FALLBACK_URL_TMPL,
     aggregate_shot_types, build_player_detail_stats, accumulate_shot_xg,
+    resolve_match_count, derive_formation, build_formation_analysis,
+    division_rank, build_head_to_head_summary,
+    build_head_to_head_analysis,
 )
+from utils.data_processing import _accumulate_h2h_box_stats as accumulate_h2h_box_stats
 from collections import Counter, defaultdict, OrderedDict
 from utils.win_utils import calculate_win_improvement
 from tier.tier_info import tier
@@ -254,11 +258,24 @@ def result(character_name=None, match_type_name=None):
                 return redirect(url_for('home'))
 
             # 기존 URL 요청을 간단한 URL로 리다이렉트
-            return redirect(url_for('result', character_name=character_name, match_type_name=match_type_name), code=301)
+            # ✅ 2026-09-16 피드백 — 경기수 선택(match_count)이 쿼리스트링으로 들어온
+            # 경우 리다이렉트 과정에서 사라지지 않도록 그대로 옮겨준다.
+            redirect_url = url_for('result', character_name=character_name, match_type_name=match_type_name)
+            if request.args.get('match_count'):
+                redirect_url += f"?match_count={request.args.get('match_count')}"
+            return redirect(redirect_url, code=301)
 
         # 닉네임에서 불필요한 공백 제거
         character_name = character_name.strip()
-       
+
+        # ✅ 2026-09-16 피드백 — "최근 25경기 선수 지표"가 항상 25경기 고정이었는데,
+        # 25/50/100경기 중에서 고를 수 있게 해달라는 요청. 표뿐 아니라 승률 카드,
+        # 주력 선수 TOP5, 슛 타입 분포 등 이 페이지의 모든 "최근 N경기" 분석이
+        # 전부 이 값 하나(가져오는 매치 개수)에 연동돼 있어서, 여기서만 값을
+        # 검증해두면 나머지는 자동으로 맞춰진다. 잘못된 값(오타/URL 조작)이 오면
+        # 조용히 기본값(25)으로 되돌린다.
+        match_count = resolve_match_count(request.args.get('match_count', 25))
+
         # API key 설정
         headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
 
@@ -280,7 +297,7 @@ def result(character_name=None, match_type_name=None):
         url_recent_matches = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=2"
         recent_matches = requests.get(url_recent_matches, headers=headers).json()
         if not recent_matches:
-            return render_template('result.html', my_data={}, match_data=[], level_data={"nickname": character_name, "level": lv, "tier_name": None, "tier_image": None}, match_type=match_type,
+            return render_template('result.html', my_data={}, match_data=[], level_data={"nickname": character_name, "level": lv, "tier_name": None, "tier_image": None}, match_type=match_type, match_count=match_count,
                                    max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
                                    players=df_final.to_dict(orient="records") if 'df_final' in globals() and not df_final.empty else [])
         
@@ -405,18 +422,18 @@ def result(character_name=None, match_type_name=None):
             "tier_image": tier_image
         }
 
-        # 유저 매치 데이터 25개 불러오기
-        response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=25", headers=headers)
+        # 유저 매치 데이터 불러오기 (match_count = 25/50/100, 위에서 검증됨)
+        response = requests.get(f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit={match_count}", headers=headers)
         matches = response.json() if response.ok else []
         if not matches:
-            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type, match_count=match_count,
                                    max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
                                    players=df_final.to_dict(orient="records"))
         
         # match 데이터 가져오기
         match_data_list = get_match_data(matches, headers)
         if not match_data_list:
-            return render_template('result.html', level_data=level_data, no_recent_matches=True)
+            return render_template('result.html', level_data=level_data, no_recent_matches=True, match_count=match_count)
 
         result_list = []
         imp_data = []
@@ -449,6 +466,16 @@ def result(character_name=None, match_type_name=None):
             # ✅ 공격력/기대득점 지수 계산용(신규, 2026-09-12)
             "shoot_try": 0, "effective_shoot": 0, "xg_sum": 0.0,
         })
+        # ✅ 포메이션별 승률 분석(신규, 2026-09-16 피드백) — "내가 어떤 포메이션일
+        # 때 승률이 좋은지" / "상대의 어떤 포메이션에 약한지"를 위한 누적.
+        # my_formation_stats: 내가 그 포메이션을 썼을 때의 내 승/무/패.
+        # opp_formation_stats: 상대가 그 포메이션을 썼을 때의 내 승/무/패 + 그때
+        # 내가 내준 골(goals_against_sum) — build_formation_analysis()가 이걸
+        # "평균보다 실점이 많았는지" 비교하는 데 쓴다.
+        my_formation_stats = defaultdict(lambda: {"count": 0, "wins": 0, "draws": 0, "losses": 0})
+        opp_formation_stats = defaultdict(lambda: {"count": 0, "wins": 0, "draws": 0, "losses": 0, "goals_against_sum": 0})
+        overall_goals_against_sum = 0
+        overall_goals_against_count = 0
 
         for data in match_data_list:
             date = calculate_time_difference(data['matchDate'])
@@ -530,6 +557,36 @@ def result(character_name=None, match_type_name=None):
             # 슈팅 선수(spId)별로 누적한다. 추가 API 호출 없음(이미 받아온 my_data 재사용).
             accumulate_shot_xg(player_stat_acc, my_data)
 
+            # ✅ 포메이션별 승률 분석(신규) — 이미 계산해둔 appearances(내 선수단)와
+            # 상대 선수단(collect_player_appearances(your_data))의 spPosition
+            # 분포로 이번 매치의 포메이션을 추정해 누적한다. 추가 API 호출 없음.
+            my_formation = derive_formation(appearances)
+            if my_formation:
+                mf_stat = my_formation_stats[my_formation]
+                mf_stat["count"] += 1
+                if w_l == "승":
+                    mf_stat["wins"] += 1
+                elif w_l == "무":
+                    mf_stat["draws"] += 1
+                elif w_l == "패":
+                    mf_stat["losses"] += 1
+
+            opp_appearances = collect_player_appearances(your_data)
+            opp_formation = derive_formation(opp_appearances)
+            if opp_formation:
+                of_stat = opp_formation_stats[opp_formation]
+                of_stat["count"] += 1
+                if w_l == "승":
+                    of_stat["wins"] += 1
+                elif w_l == "무":
+                    of_stat["draws"] += 1
+                elif w_l == "패":
+                    of_stat["losses"] += 1
+                of_stat["goals_against_sum"] += your_goal_total
+
+            overall_goals_against_sum += your_goal_total
+            overall_goals_against_count += 1
+
             # ✅ 매치 MVP (신규) — 평점 필드를 못 찾으면 None → result.html에서 자동으로 숨김
             match_mvp = compute_match_mvp(my_data, your_data, spid_name_map)
             # ✅ 매치 상세 박스스코어 (신규) — 이미 받아온 my_data/your_data를 그대로 재사용,
@@ -583,7 +640,7 @@ def result(character_name=None, match_type_name=None):
 
         most_common_controller = max(controller_stats, key=controller_stats.get)
         if len(imp_data) == 0:
-            return render_template('result.html', level_data=level_data, no_recent_matches=True)
+            return render_template('result.html', level_data=level_data, no_recent_matches=True, match_count=match_count)
         
         filtered_imp_data = [[value for value in row if isinstance(value, (int, float))] for row in imp_data]
         filtered_imp_data = np.array(filtered_imp_data, dtype=float)
@@ -633,11 +690,23 @@ def result(character_name=None, match_type_name=None):
         # 루프에서 이미 누적해둔 player_stat_acc를 화면 표시용으로 변환한다.
         player_detail_stats = build_player_detail_stats(player_stat_acc, spid_name_map, season_meta_map)
 
-        return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type=match_type,
+        # ✅ 포메이션별 승률 분석 (신규) — 루프에서 누적해둔 my_formation_stats/
+        # opp_formation_stats를 화면 표시용으로 변환한다. 최소 표본(2경기)을
+        # 못 채우면 각 리스트가 빈 채로 와서 화면에서는 섹션이 조용히 생략된다.
+        overall_goals_against_avg = (
+            overall_goals_against_sum / overall_goals_against_count
+            if overall_goals_against_count else None
+        )
+        formation_analysis = build_formation_analysis(
+            my_formation_stats, opp_formation_stats, overall_goals_against_avg=overall_goals_against_avg
+        )
+
+        return render_template('result.html', my_data=my_data, match_data=result_list, level_data=level_data, match_type=match_type, match_count=match_count,
                                max_data=max_data, min_data=min_data, data_label=data_label, jp_num=jp_num,
                                play_style=play_style, most_common_controller=most_common_controller, players=df_final.to_dict(orient="records"),
                                top_players=top_players, representative_player=representative_player,
-                               shot_type_stats=shot_type_stats, player_detail_stats=player_detail_stats)
+                               shot_type_stats=shot_type_stats, player_detail_stats=player_detail_stats,
+                               formation_analysis=formation_analysis)
     except Exception:
         # ⚠️ 진단용(신규): 이 except가 원래 어떤 예외든 조용히 삼키고 "최근 전적이
         # 존재하지 않습니다"로 뭉뚱그려 보여주고 있어서, 진짜 원인이 뭔지 콘솔에서
@@ -650,7 +719,7 @@ def result(character_name=None, match_type_name=None):
             url_recent_matches = f"https://open.api.nexon.com/fconline/v1/user/match?ouid={characterName}&matchtype={match_type}&limit=1"
             recent_matches = requests.get(url_recent_matches, headers=headers).json()
             if not recent_matches:
-                return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+                return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type, match_count=match_count,
                                        max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
                                        players=df_final.to_dict(orient="records"))
             recent_match_id = recent_matches[0]
@@ -673,7 +742,7 @@ def result(character_name=None, match_type_name=None):
             df_final = df_match_players.merge(df_player, on="spId", how="left") if not df_match_players.empty else pd.DataFrame()
             if not df_final.empty:
                 df_final["sd_image"] = df_final["spId"].apply(lambda spId: f"https://fco.dn.nexoncdn.co.kr/live/externalAssets/common/playersAction/p{spId}.png")
-            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type,
+            return render_template('result.html', my_data={}, match_data=[], level_data=level_data, match_type=match_type, match_count=match_count,
                                    max_data=[], min_data=[], data_label=[], jp_num=0, play_style={}, no_recent_matches=True,
                                    players=[[df_final.to_dict(orient="records")]])
         except Exception:
@@ -976,6 +1045,14 @@ ALL_CREATOR_ENTRIES = TOTS_GG_ROSTER + SUPPLEMENTARY_INFLUENCER_ENTRIES
 PRO_GAMER_NICKNAMES = list(dict.fromkeys(e["handle"] for e in ALL_CREATOR_ENTRIES if e["category"] == "progamer" and e["handle"]))
 INFLUENCER_NICKNAMES = list(dict.fromkeys(e["handle"] for e in ALL_CREATOR_ENTRIES if e["category"] == "influencer" and e["handle"]))
 
+# ✅ 상대 전적 검색(신규, 2026-09-16 피드백) — 입력한 닉네임이 등록된 프로/
+# 인플루언서면 그 사람 프로필 사진을 보여주기 위한 조회용. handle(게임 닉네임)
+# 기준으로 찾으므로, 같은 handle을 여러 항목이 공유하면 먼저 나온 항목이 남는다.
+CREATOR_ENTRY_BY_HANDLE = {}
+for _entry in ALL_CREATOR_ENTRIES:
+    if _entry.get("handle") and _entry["handle"] not in CREATOR_ENTRY_BY_HANDLE:
+        CREATOR_ENTRY_BY_HANDLE[_entry["handle"]] = _entry
+
 
 def creator_label_for_nickname(nickname):
     """✅ 신규(2026-09-13) — "실시간 인기 구단주" 위젯 등에서 닉네임이 프로게이머/
@@ -1099,6 +1176,164 @@ def influencer_list():
 @app.route('/influencer.html', methods=['GET'])
 def influencer_list_redirect():
     return redirect(url_for('influencer_list'), code=301)
+
+
+# ============================================================================
+# ✅ 상대 전적 검색 (신규, 2026-09-16 피드백) — 인플루언서/프로게이머 페이지의
+# 광고 아래, 64명 카드 목록 위에 "닉네임 vs 닉네임" 검색 UI를 추가해달라는
+# 요청. Nexon API에는 "두 유저가 서로 붙은 매치만" 조회하는 엔드포인트가
+# 없어서, nick1의 최근 매치(최대 100경기, matchtype 기준)를 순회하며 상대가
+# nick2인 경기만 걸러내는 방식으로 구현했다 — 즉 최근 100경기 안에서 둘이
+# 만난 적이 없으면 "아직 만난 적 없음"으로 나온다(그 이전 과거 대전은 알 수
+# 없음, Nexon API 자체의 한계).
+# ⚠️ 2026-09-16 3차 피드백 — 이 기능은 "커스텀 매치" 기준이라는 안내를 받아
+# 기본 matchtype을 40(커스텀매치)으로 바꿨다. 커스텀 매치는 공식경기와 달리
+# 티어(division) 정보가 없는 경우가 많아 "맞밸이 아니신데요?" 트리거는 그럴 때
+# 조용히 생략된다(기존에도 rank1/rank2가 None이면 생략하도록 짜여 있어 별도
+# 처리 불필요). 또한 "포메이션은 딱히 안보여줘도 된다"는 요청으로 포메이션
+# 계산/응답을 뺐고, 대신 "장단점 분석"(잘했던 지표/아쉬웠던 지표)을 추가했다
+# — build_match_boxscore()로 이미 만들어둔 박스스코어를 맞대결 매치들에서만
+# 누적해 평균 골/유효슈팅률/패스성공률/태클성공률/드리블을 비교한다.
+# ⚠️ 2026-09-16 8차 피드백 — "최근 100경기 다 찾아본거 맞아? 사실 이 사람과
+# 만난 경기를 최대한 많이 찾아야 하는거 아니야?"라는 지적. nick1의 최근
+# 매치를 앞에서부터 훑으며 상대가 nick2인 것만 골라내는 방식이라, 100경기만
+# 보면 표본이 너무 적을 수 있다(둘이 자주 붙는 사이가 아니면 8~10경기 안팎).
+# Nexon API가 한 번 호출당 최대 100경기까지만 주기 때문에(match_count
+# 선택지가 25/50/100까지인 것과 동일한 제약), offset을 옮겨가며 여러 번
+# 호출해 최근 HEAD_TO_HEAD_SEARCH_PAGES x HEAD_TO_HEAD_SEARCH_DEPTH경기까지
+# 훑는다. 마지막 페이지가 꽉 채워지지 않으면(더 과거 기록이 없다는 뜻) 그
+# 자리에서 멈춘다.
+# ============================================================================
+HEAD_TO_HEAD_SEARCH_DEPTH = 100
+HEAD_TO_HEAD_SEARCH_PAGES = 2  # 100경기 x 2페이지 = 최근 최대 200경기까지 탐색
+
+
+def _fetch_recent_match_ids(ouid, match_type, headers, page_size=HEAD_TO_HEAD_SEARCH_DEPTH,
+                             max_pages=HEAD_TO_HEAD_SEARCH_PAGES):
+    """nick1의 매치 ID 목록을 offset을 옮겨가며 최대 max_pages번 조회해 이어붙인다.
+    한 페이지가 page_size보다 적게 오면(더 과거 기록이 없다는 뜻) 그 자리에서 멈춘다."""
+    all_ids = []
+    for page in range(max_pages):
+        offset = page * page_size
+        try:
+            resp = requests.get(
+                f"https://open.api.nexon.com/fconline/v1/user/match"
+                f"?ouid={ouid}&matchtype={match_type}&offset={offset}&limit={page_size}",
+                headers=headers,
+            )
+            page_ids = resp.json() if resp.ok else []
+        except Exception:
+            page_ids = []
+        if not isinstance(page_ids, list) or not page_ids:
+            break
+        all_ids.extend(page_ids)
+        if len(page_ids) < page_size:
+            break
+    return all_ids
+
+
+@app.route('/api/head_to_head', methods=['GET'])
+def head_to_head_search():
+    nick1 = (request.args.get('nick1') or '').strip()
+    nick2 = (request.args.get('nick2') or '').strip()
+    match_type = request.args.get('match_type', '40')  # 기본값: 커스텀매치
+
+    if not nick1 or not nick2:
+        return jsonify({"error": "두 닉네임을 모두 입력해주세요."}), 400
+    if nick1.lower() == nick2.lower():
+        return jsonify({"error": "서로 다른 두 닉네임을 입력해주세요."}), 400
+
+    headers = {"x-nxopen-api-key": f"{app.config['API_KEY']}"}
+
+    def photo_for(nickname):
+        entry = CREATOR_ENTRY_BY_HANDLE.get(nickname)
+        return entry.get("photo_url") if entry else None
+
+    try:
+        ouid1_json = requests.get(f"https://open.api.nexon.com/fconline/v1/id?nickname={nick1}", headers=headers).json()
+        ouid1 = ouid1_json.get("ouid") if isinstance(ouid1_json, dict) else None
+    except Exception:
+        ouid1 = None
+    if not ouid1:
+        return jsonify({"error": f"'{nick1}' 닉네임을 찾을 수 없습니다.", "photo1": photo_for(nick1), "photo2": photo_for(nick2)}), 404
+
+    try:
+        match_ids = _fetch_recent_match_ids(ouid1, match_type, headers)
+    except Exception:
+        match_ids = []
+    if not match_ids:
+        return jsonify({
+            "error": f"'{nick1}'님의 최근 경기 기록을 찾을 수 없습니다.",
+            "photo1": photo_for(nick1), "photo2": photo_for(nick2),
+        }), 404
+
+    try:
+        match_data_list = get_match_data(match_ids, headers)
+    except Exception:
+        traceback.print_exc()
+        match_data_list = []
+
+    match_results = []
+    box_acc1 = {}
+    box_acc2 = {}
+    for data in match_data_list:
+        try:
+            my_data = me(data, nick1)
+            your_data = you(data, nick1)
+        except Exception:
+            continue
+        opp_nickname = (your_data.get('nickname') or '').strip().lower()
+        if opp_nickname != nick2.lower():
+            continue
+        w_l = (my_data.get('matchDetail') or {}).get('matchResult')
+        if w_l not in ('승', '무', '패'):
+            continue
+        my_goal = (my_data.get('shoot') or {}).get('goalTotal') or 0
+        opp_goal = (your_data.get('shoot') or {}).get('goalTotal') or 0
+        match_results.append({"result": w_l, "my_goal": my_goal, "opp_goal": opp_goal})
+
+        # ✅ 플레이 스타일 분석용 누적 — 이 매치가 두 사람의 맞대결이 맞다고
+        # 이미 확인된 뒤이므로, 각자 자기 시점의 박스스코어(my_data=nick1,
+        # your_data=nick2)를 그대로 누적하면 된다.
+        accumulate_h2h_box_stats(box_acc1, build_match_boxscore(my_data))
+        accumulate_h2h_box_stats(box_acc2, build_match_boxscore(your_data))
+
+    photo1 = photo_for(nick1)
+    photo2 = photo_for(nick2)
+
+    if not match_results:
+        return jsonify({
+            "found": False,
+            "nick1": nick1, "nick2": nick2,
+            "photo1": photo1, "photo2": photo2,
+            "searched_matches": len(match_ids),
+            "message": f"최근 {len(match_ids)}경기 안에서는 아직 두 분이 만난 적이 없네요!",
+        })
+
+    # ✅ 트리거 멘트용 티어 격차 — 실패해도 그 멘트만 조용히 생략(전적 결과 자체엔 영향 없음).
+    # 커스텀매치는 티어(division) 정보가 아예 없는 계정이 많아 rank1/rank2가 그냥
+    # None으로 남는 경우가 흔한데, 그럴 땐 이 트리거만 자연스럽게 생략된다.
+    rank1 = rank2 = None
+    try:
+        div1 = requests.get(f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid1}", headers=headers).json()
+        rank1 = division_rank(div1, match_type)
+        ouid2_json = requests.get(f"https://open.api.nexon.com/fconline/v1/id?nickname={nick2}", headers=headers).json()
+        ouid2 = ouid2_json.get("ouid") if isinstance(ouid2_json, dict) else None
+        if ouid2:
+            div2 = requests.get(f"https://open.api.nexon.com/fconline/v1/user/maxdivision?ouid={ouid2}", headers=headers).json()
+            rank2 = division_rank(div2, match_type)
+    except Exception:
+        pass
+
+    summary = build_head_to_head_summary(match_results, rank1=rank1, rank2=rank2, nick1=nick1, nick2=nick2)
+    summary.update({
+        "found": True,
+        "nick1": nick1, "nick2": nick2,
+        "photo1": photo1, "photo2": photo2,
+        "searched_matches": len(match_ids),
+        "analysis": build_head_to_head_analysis(box_acc1, box_acc2, nick1=nick1, nick2=nick2),
+    })
+    return jsonify(summary)
 
 
 # ============================================================================
