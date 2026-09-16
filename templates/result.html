@@ -265,6 +265,96 @@
 </div>
 {% endif %}
 
+{% if formation_analysis and (formation_analysis.main_formation or formation_analysis.weak_formations) %}
+<!-- ✅ 2026-09-16 피드백 — "내가 어떤 포메이션일 때 승률이 좋은지" / "어떤
+     포메이션 상대로 약한지"를 TOP5와 슛 타입 분포 사이에 추가. 약한 포메이션은
+     최대 3개까지, 클릭하면 실제 전적(+평균 실점 비교)과 큐레이션 공략 팁을
+     같이 보여주는 미니 팝업이 뜬다. 표본이 부족한 경기 수(2경기 미만)에서는
+     각 리스트가 비어 있을 수 있어 섹션 전체가 조용히 생략된다.
+     ⚠️ 2026-09-16 2차 피드백 — "그래도 너무 크다, TOP5 카드 정도 사이즈를
+     생각했다"는 피드백으로 레이아웃을 카드 2개짜리 그리드에서 한 줄짜리
+     "칩(chip)" 나열 형태로 완전히 다시 짰다. 미니 축구장(점 배치)은 주력
+     포메이션 하나만 작게(40px) 보여주고, 승률 좋은/약한 포메이션은 텍스트
+     칩으로만 표시해서 세로 높이를 TOP5 카드 수준으로 줄였다.
+     ⚠️ 2026-09-16 3차 피드백 — "약한 상대도 승률 좋음 오른쪽에 넣고, 약한
+     상대는 그냥 포메이션 이미지(미니 축구장) 보여주지 말자"는 피드백으로
+     ① 승률 좋음/약한 상대를 한 줄(formation-compact-row) 안에 같이 배치하고
+     ② 약한 상대 칩에서는 .formation-pitch-mini(점 배치)를 완전히 빼고 코드
+     텍스트만 남겼다. 클릭하면 뜨는 공략 팁 팝업은 그대로 유지된다.
+     ⚠️ 2026-09-16 4차 피드백 — ① "승률 좋음이 뭘 뜻하는지 직관적이지 않다"는
+     지적으로 라벨을 "승률 좋음"→"내 포메이션 승률"(내가 썼을 때 기준임을
+     명시), "약한 상대"→"상대 포메이션 약점"(상대가 썼을 때 기준임을 명시)으로
+     바꾸고, 주력 포메이션 쪽에도 "주력" 라벨을 붙여 세 그룹이 같은 방식(라벨+
+     내용)으로 읽히게 통일했다 ② "4-2-3-148경기"처럼 붙어 보이던 걸 "48경기"
+     대신 "48전"으로 바꾸고 줄바꿈을 유지해 코드/경기수가 명확히 분리되도록
+     했다 ③ 몇 번 만나서 승률이 몇인지 보이면 좋겠다는 요청으로 두 칩 모두
+     "(N전)"을 추가 ④ "승률 좋음도 클릭하면 상세 내용 나오게 해달라"는 요청으로
+     good 칩도 button+onclick으로 바꿔 같은 팝업(showFormationTip)을 띄우게
+     했다(data-kind로 good/weak을 구분해 팝업 문구를 다르게 채움).
+     ⚠️ 2026-09-16 8차 피드백 — ① "주력" 라벨을 코드("4-2-2-2") 위에 놓고
+     "주 포메이션"으로 이름을 바꿔달라는 요청으로 formation-compact-text 안으로
+     옮겼다 ② "내 포메이션 승률" 칩 그룹은 그냥 빼달라는 요청으로 통째로
+     제거했다(good 칩/팝업 관련 코드도 같이 정리) ③ "상대 포메이션 약점" →
+     "내가 약한 포메이션"으로 명칭 변경 ④ 팝업 공략 팁 문구가 "너무 길고
+     매번 비슷하다"는 지적으로 formation_counter_tip()을 한 문장으로 짧게
+     새로 짰다(utils/data_processing.py 참고).
+     ⚠️ 2026-09-16 9차 피드백 — ① "맨 오른쪽 공간이 빈다"는 지적으로 승률을
+     별도 블록(formation-compact-winrate)으로 빼서 더 크게, 박스 오른쪽 끝에
+     붙였다 ② "25전" 글자는 빼고 승률만 남겼다 ③ 약한 포메이션 공략 팁이
+     포메이션마다 겹치는 문제(예: 4-2-2-2와 4-2-3-1이 똑같은 문구)가 있어
+     formation_counter_tip()을 세 축(백라인/중원/최전방) 숫자를 전부 문장에
+     그대로 박아 넣는 방식으로 다시 짰다 — 코드가 다르면 숫자 중 하나는
+     반드시 다르므로 문구도 항상 달라진다.
+     ⚠️ 2026-09-16 10차 피드백 — ① "승률 텍스트가 숫자 아래 라벨로 있는데
+     위로 가면 좋겠다"는 요청으로 formation-compact-winrate 안의 라벨/값
+     순서를 바꿨다(라벨 "승률"이 위, 숫자가 아래) ② "내가 약한 포메이션"
+     칩에서 포메이션 코드(예: "4-4-2") 글자가 빨간 테두리 위에 빨간 글자라
+     잘 안 보인다는 지적으로 코드만 formation-chip-code로 감싸 별도 색을
+     줬다(퍼센트/횟수는 기존 빨강 유지, 코드만 밝은 색으로 대비). -->
+<div class="card-modern formation-analysis-card">
+    <div class="card-header-modern">
+        <h3 class="card-title-modern">최근 <span style="color: var(--primary-green);">{{ match_data|length }}</span>경기 포메이션 분석</h3>
+        <span class="top-players-criteria">내 주 포메이션 · 내가 약한 포메이션 TOP3</span>
+    </div>
+    <div class="card-body-modern">
+        <div class="formation-compact-row">
+            {% if formation_analysis.main_formation %}
+            <div class="formation-compact-item formation-compact-main">
+                <div class="formation-pitch-mini">
+                    {% for d in formation_analysis.main_formation.dots %}
+                    <span class="formation-dot{% if d.label == 'GK' %} gk{% endif %}" style="left: {{ d.x }}%; top: {{ d.y }}%;"></span>
+                    {% endfor %}
+                </div>
+                <div class="formation-compact-text">
+                    <span class="formation-compact-label">주 포메이션</span>
+                    <strong>{{ formation_analysis.main_formation.code }}</strong>
+                </div>
+                <div class="formation-compact-winrate">
+                    <span class="formation-compact-winrate-label">승률</span>
+                    <span class="formation-compact-winrate-value">{{ formation_analysis.main_formation.win_pct }}%</span>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if formation_analysis.weak_formations %}
+            <div class="formation-compact-item formation-compact-chips">
+                <span class="formation-compact-label">내가 약한 포메이션</span>
+                {% for f in formation_analysis.weak_formations %}
+                <button type="button" class="formation-chip weak" onclick="showFormationTip(this)"
+                        data-code="{{ f.code }}" data-win-pct="{{ f.win_pct }}" data-count="{{ f.count }}"
+                        data-wins="{{ f.wins }}" data-draws="{{ f.draws }}" data-losses="{{ f.losses }}"
+                        data-avg-against="{{ f.avg_goals_against }}"
+                        data-insight="{{ f.data_insight or '' }}" data-tip="{{ f.tip }}">
+                    <span class="formation-chip-code">{{ f.code }}</span> <span class="formation-chip-pct">{{ f.win_pct }}%</span> <span class="formation-chip-count">({{ f.count }}전)</span>
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if shot_type_stats %}
 <!-- 슛 타입 분포 (2026-09-13 수정) — 25경기 슛 데이터를 넥슨 공식
      match-detail 스키마의 shootDetail[].type(슛 종류) 기준으로 집계합니다.
@@ -321,6 +411,39 @@
     </div>
     <div class="card-body-modern">
         <div class="player-detail-controls">
+            <!-- ✅ 2026-09-16 피드백 — "선수 지표"가 항상 25경기 고정이라 아쉽다는
+                 요청으로 경기수 선택(25/50/100)을 추가. 이 값은 페이지 전체(선수
+                 지표뿐 아니라 승률 카드, 주력 선수 TOP5, 슛 타입 분포까지)가 같이
+                 쓰는 매치 조회 개수라서, 바꾸면 그 결과들도 다 같이 새 경기수
+                 기준으로 다시 계산된다(=페이지 새로고침). 왼쪽엔 그 경기수 기준
+                 승/무/패를 바로 보여준다(별도 계산 없이 위 승률 카드와 동일한
+                 match_data를 재사용).
+                 ⚠️ 2026-09-16 3차 피드백 — ① "100전 55승2무43패"만 뜨고 승률이
+                 안 보인다는 지적으로 승률(%)을 같이 표시 ② 경기수를 바꾸면
+                 로딩 표시 없이 그냥 훅 바뀌어서 어색하다는 지적으로, 페이지 맨
+                 위에 이미 쓰던 전체화면 로딩창(#loading-result)을 띄운 뒤
+                 이동하도록 changeMatchCount()로 변경했다.
+                 ⚠️ 2026-09-16 8차 피드백 — 한때 이동 직전 스크롤 위치를 저장해뒀다가
+                 새 페이지에서 그 위치로 되돌리는 기능도 넣었었는데, "중간으로
+                 스크롤 오게 하지 말고 그냥 맨 위로 있게 해달라"는 요청으로 다시
+                 뺐다 — 이제 경기수를 바꾸면 새 페이지가 항상 맨 위에서 시작한다. -->
+            {% set wdl_total = match_data|length %}
+            {% set wdl_wins = match_data|selectattr('결과', 'equalto', '승')|list|length %}
+            {% set wdl_draws = match_data|selectattr('결과', 'equalto', '무')|list|length %}
+            {% set wdl_losses = match_data|selectattr('결과', 'equalto', '패')|list|length %}
+            <span class="player-detail-wdl">
+                {{ wdl_total }}전
+                <strong class="wdl-win">{{ wdl_wins }}승</strong>
+                <strong class="wdl-draw">{{ wdl_draws }}무</strong>
+                <strong class="wdl-lose">{{ wdl_losses }}패</strong>
+                <span class="wdl-pct">(승률 {{ "%.1f"|format(wdl_wins / wdl_total * 100) if wdl_total else 0 }}%)</span>
+            </span>
+            <label for="player-detail-match-count">경기수</label>
+            <select id="player-detail-match-count" class="player-detail-sort-select" onchange="changeMatchCount(this);">
+                <option value="25" {% if match_count|default(25) == 25 %}selected{% endif %}>25경기</option>
+                <option value="50" {% if match_count|default(25) == 50 %}selected{% endif %}>50경기</option>
+                <option value="100" {% if match_count|default(25) == 100 %}selected{% endif %}>100경기</option>
+            </select>
             <label for="player-detail-sort">정렬 기준</label>
             <select id="player-detail-sort" class="player-detail-sort-select">
                 <option value="attack_score" selected>공격 지수 높은순</option>
@@ -484,9 +607,30 @@
             <span class="match-tier-badge" title="공식경기 1v1 최고 티어{% if t.tier_name %}: {{ t.tier_name }}{% endif %}">{% if t.tier_image %}<img src="{{ t.tier_image }}" class="match-tier-icon" alt="{{ t.tier_name or '티어' }}">{% else %}<span class="match-tier-text">{{ t.tier_name }}</span>{% endif %}</span>
             {% endif %}
             {% endmacro %}
-            {# ✅ 11v11 잔디밭 뷰 (신규) — 선수 한 명을 잔디밭 위 좌표(p.x/p.y, %)에 배치하는 마커 #}
+            {# ✅ 11v11 잔디밭 뷰 (신규) — 선수 한 명을 잔디밭 위 좌표(p.x/p.y, %)에 배치하는 마커.
+               ✅ 2026-09-16 피드백 — 선수를 마우스오버/클릭하면 fc-info.com 스타일의 미니 카드로
+               골/어시스트/슛/패스/태클/가로채기가 뜨게 해달라는 요청. 마커 22개(양팀 11명씩)마다
+               팝업을 따로 만들지 않고, data-* 속성에 값만 실어두고 showPitchPlayerPopup()이
+               클릭된 마커의 data-*를 읽어 페이지에 하나뿐인 공용 팝업(#pitch-player-popup)을
+               채워서 보여준다 — 매치가 100개로 늘어도 DOM이 불필요하게 커지지 않는다. #}
             {% macro pitch_player(p, side_class) %}
-            <div class="pitch-player {{ side_class }}{% if p.is_mvp %} mvp{% endif %}" style="left: {{ p.x }}%; top: {{ p.y }}%;" title="{{ p.name or ('선수#' ~ p.spId) }}{% if p.rating is not none %} · 평점 {{ p.rating }}{% endif %}">
+            <div class="pitch-player {{ side_class }}{% if p.is_mvp %} mvp{% endif %}" style="left: {{ p.x }}%; top: {{ p.y }}%;"
+                 title="{{ p.name or ('선수#' ~ p.spId) }}{% if p.rating is not none %} · 평점 {{ p.rating }}{% endif %}"
+                 onclick="showPitchPlayerPopup(this, event)"
+                 data-name="{{ p.name or ('선수#' ~ p.spId) }}"
+                 data-pos-desc="{{ p.pos_desc or '-' }}"
+                 data-rating="{{ p.rating if p.rating is not none else '' }}"
+                 data-image="{{ p.image or '' }}"
+                 data-image-fallback="{{ p.image_fallback or '' }}"
+                 data-goal="{{ p.goal if p.goal is not none else 0 }}"
+                 data-assist="{{ p.assist if p.assist is not none else 0 }}"
+                 data-shoot="{{ p.shoot if p.shoot is not none else 0 }}"
+                 data-effective-shoot="{{ p.effective_shoot if p.effective_shoot is not none else 0 }}"
+                 data-pass-try="{{ p.pass_try if p.pass_try is not none else 0 }}"
+                 data-pass-success="{{ p.pass_success if p.pass_success is not none else 0 }}"
+                 data-tackle-try="{{ p.tackle_try if p.tackle_try is not none else 0 }}"
+                 data-tackle-success="{{ p.tackle_success if p.tackle_success is not none else 0 }}"
+                 data-intercept="{{ p.intercept if p.intercept is not none else 0 }}">
                 {% if p.image %}<img src="{{ p.image }}" class="pitch-player-img" alt=""
                      data-fallback-src="{{ p.image_fallback }}" onerror="handlePlayerImgError(this)" onload="handlePlayerImgLoad(this)">{% endif %}
                 {% if p.is_mvp %}<span class="pitch-player-mvp-badge">★ MVP</span>{% endif %}
@@ -589,6 +733,41 @@
 <div id="vm-bottom-banner"
      style="width:100%; display:flex; justify-content:center; margin:32px 0;">
 </div>
+
+<!-- ✅ 2026-09-16 피드백 — 잔디밭 뷰 선수 마우스오버/클릭 미니 카드(신규). 매치가
+     몇 개든 페이지에 하나만 존재하고, showPitchPlayerPopup()이 클릭된 마커의
+     data-*로 내용을 채운 뒤 그 마커 근처로 위치만 옮겨서 보여준다. -->
+<div id="pitch-player-popup" class="pitch-player-popup" hidden>
+    <button type="button" class="pitch-player-popup-close" onclick="hidePitchPlayerPopup()" aria-label="닫기">✕</button>
+    <div class="pitch-player-popup-head">
+        <img id="pitch-player-popup-img" class="pitch-player-popup-img" alt="">
+        <div class="pitch-player-popup-headtext">
+            <div class="pitch-player-popup-name" id="pitch-player-popup-name"></div>
+            <div class="pitch-player-popup-sub">
+                <span class="pitch-player-popup-pos" id="pitch-player-popup-pos"></span>
+                <span class="pitch-player-popup-rating" id="pitch-player-popup-rating"></span>
+            </div>
+        </div>
+    </div>
+    <div class="pitch-player-popup-stats">
+        <div class="pitch-player-popup-stat"><span>골</span><strong id="pitch-player-popup-goal"></strong></div>
+        <div class="pitch-player-popup-stat"><span>어시스트</span><strong id="pitch-player-popup-assist"></strong></div>
+        <div class="pitch-player-popup-stat"><span>슛</span><strong id="pitch-player-popup-shoot"></strong></div>
+        <div class="pitch-player-popup-stat"><span>패스</span><strong id="pitch-player-popup-pass"></strong></div>
+        <div class="pitch-player-popup-stat"><span>태클</span><strong id="pitch-player-popup-tackle"></strong></div>
+        <div class="pitch-player-popup-stat"><span>가로채기</span><strong id="pitch-player-popup-intercept"></strong></div>
+    </div>
+</div>
+
+<!-- ✅ 2026-09-16 피드백 — 약한 상대 포메이션 카드를 클릭하면 뜨는 공략 팁 미니
+     팝업(신규). showFormationTip()이 클릭된 카드의 data-*로 내용을 채운다. -->
+<div id="formation-tip-popup" class="pitch-player-popup formation-tip-popup" hidden>
+    <button type="button" class="pitch-player-popup-close" onclick="hideFormationTip()" aria-label="닫기">✕</button>
+    <div class="formation-tip-code" id="formation-tip-code"></div>
+    <div class="formation-tip-record" id="formation-tip-record"></div>
+    <div class="formation-tip-insight" id="formation-tip-insight" hidden></div>
+    <div class="formation-tip-body" id="formation-tip-body"></div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -627,6 +806,126 @@
             event.preventDefault();
             searchOpponent(el.getAttribute('data-opponent-name'));
         });
+    });
+
+    // ✅ 잔디밭 뷰 선수 마우스오버/클릭 미니 카드(신규, 2026-09-16 피드백) —
+    // 페이지에 하나뿐인 #pitch-player-popup을 클릭된 마커의 data-*로 채운 뒤
+    // 그 마커 바로 위/아래로 옮겨서 보여준다. 매치 카드(.match-row)의
+    // onclick="toggleMatchDetail(...)"로 이벤트가 버블링되면 상세 패널이
+    // 접혔다 펼쳐지므로 stopPropagation으로 막는다.
+    function showPitchPlayerPopup(markerEl, event) {
+        if (event) event.stopPropagation();
+        const popup = document.getElementById('pitch-player-popup');
+        if (!popup) return;
+
+        const goal = markerEl.dataset.goal || '0';
+        const assist = markerEl.dataset.assist || '0';
+        const shoot = markerEl.dataset.shoot || '0';
+        const effectiveShoot = markerEl.dataset.effectiveShoot || '0';
+        const passTry = markerEl.dataset.passTry || '0';
+        const passSuccess = markerEl.dataset.passSuccess || '0';
+        const tackleTry = markerEl.dataset.tackleTry || '0';
+        const tackleSuccess = markerEl.dataset.tackleSuccess || '0';
+        const intercept = markerEl.dataset.intercept || '0';
+        const rating = markerEl.dataset.rating || '';
+
+        document.getElementById('pitch-player-popup-name').textContent = markerEl.dataset.name || '';
+        document.getElementById('pitch-player-popup-pos').textContent = markerEl.dataset.posDesc || '';
+        document.getElementById('pitch-player-popup-rating').textContent = rating ? ('평점 ' + rating) : '';
+        document.getElementById('pitch-player-popup-goal').textContent = goal;
+        document.getElementById('pitch-player-popup-assist').textContent = assist;
+        document.getElementById('pitch-player-popup-shoot').textContent = effectiveShoot + '/' + shoot;
+        document.getElementById('pitch-player-popup-pass').textContent = passSuccess + '/' + passTry;
+        document.getElementById('pitch-player-popup-tackle').textContent = tackleSuccess + '/' + tackleTry;
+        document.getElementById('pitch-player-popup-intercept').textContent = intercept;
+
+        const imgEl = document.getElementById('pitch-player-popup-img');
+        const imgUrl = markerEl.dataset.image;
+        if (imgUrl) {
+            delete imgEl.dataset.triedFallback; // 팝업 재사용 시 이전 선수의 폴백 시도 기록 초기화
+            imgEl.dataset.fallbackSrc = markerEl.dataset.imageFallback || '';
+            imgEl.onerror = function() { handlePlayerImgError(imgEl); };
+            imgEl.src = imgUrl;
+            imgEl.hidden = false;
+        } else {
+            imgEl.hidden = true;
+        }
+
+        // 먼저 보이게 만들어야 popup의 실제 크기(offsetWidth/Height)를 잴 수 있다.
+        popup.hidden = false;
+        const markerRect = markerEl.getBoundingClientRect();
+        const popupWidth = popup.offsetWidth;
+        const popupHeight = popup.offsetHeight;
+        let left = markerRect.left + markerRect.width / 2 - popupWidth / 2;
+        let top = markerRect.top - popupHeight - 10;
+        if (top < 8) top = markerRect.bottom + 10; // 화면 위쪽 밖으로 나가면 마커 아래에 표시
+        left = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
+        popup.style.left = left + 'px';
+        popup.style.top = top + 'px';
+        popup._currentMarker = markerEl;
+    }
+
+    function hidePitchPlayerPopup() {
+        const popup = document.getElementById('pitch-player-popup');
+        if (popup) { popup.hidden = true; popup._currentMarker = null; }
+    }
+
+    document.addEventListener('click', function(event) {
+        const popup = document.getElementById('pitch-player-popup');
+        if (!popup || popup.hidden) return;
+        if (popup.contains(event.target) || event.target.closest('.pitch-player')) return;
+        hidePitchPlayerPopup();
+    });
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') { hidePitchPlayerPopup(); hideFormationTip(); }
+    });
+    window.addEventListener('resize', function() { hidePitchPlayerPopup(); hideFormationTip(); });
+
+    // ✅ 포메이션 칩 클릭 시 상세 팝업(2026-09-16 피드백) —
+    // pitch-player-popup과 같은 "화면에 하나뿐인 팝업 + 클릭된 요소 data-* 읽기"
+    // 패턴을 재사용한다.
+    // ⚠️ 2026-09-16 8차 피드백 — "내 포메이션 승률(good)" 칩 그룹 자체를 UI에서
+    // 뺐기 때문에 이제 이 팝업은 "내가 약한 포메이션(weak)" 칩만 띄운다.
+    // good/weak 분기(data-kind)는 더 이상 쓰이지 않아 정리했다.
+    function showFormationTip(cardEl) {
+        const popup = document.getElementById('formation-tip-popup');
+        if (!popup) return;
+
+        document.getElementById('formation-tip-code').textContent = cardEl.dataset.code || '';
+        document.getElementById('formation-tip-record').textContent =
+            `내 승률 ${cardEl.dataset.winPct}% · ${cardEl.dataset.count}전 ${cardEl.dataset.wins}승${cardEl.dataset.draws}무${cardEl.dataset.losses}패`;
+
+        const insightEl = document.getElementById('formation-tip-insight');
+        if (cardEl.dataset.insight) {
+            insightEl.textContent = '📊 ' + cardEl.dataset.insight;
+            insightEl.hidden = false;
+        } else {
+            insightEl.hidden = true;
+        }
+        document.getElementById('formation-tip-body').textContent = '💡 ' + (cardEl.dataset.tip || '');
+
+        popup.hidden = false;
+        const rect = cardEl.getBoundingClientRect();
+        const popupWidth = popup.offsetWidth;
+        const popupHeight = popup.offsetHeight;
+        let left = rect.left + rect.width / 2 - popupWidth / 2;
+        let top = rect.top - popupHeight - 10;
+        if (top < 8) top = rect.bottom + 10;
+        left = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
+        popup.style.left = left + 'px';
+        popup.style.top = top + 'px';
+    }
+
+    function hideFormationTip() {
+        const popup = document.getElementById('formation-tip-popup');
+        if (popup) popup.hidden = true;
+    }
+
+    document.addEventListener('click', function(event) {
+        const popup = document.getElementById('formation-tip-popup');
+        if (!popup || popup.hidden) return;
+        if (popup.contains(event.target) || event.target.closest('.formation-chip')) return;
+        hideFormationTip();
     });
 
     // ✅ 선수별 상세 지표 정렬 컨트롤(신규, 2026-09-13 피드백) — 서버 재요청 없이
@@ -846,6 +1145,21 @@
 
     function resultLoading() {
         document.getElementById('loading-result').style.display = 'flex';
+    }
+
+    // ✅ 경기수(25/50/100) 변경(신규, 2026-09-16 3차 피드백) — select onchange에서
+    // 바로 location.href로 이동하면 로딩 표시 없이 화면이 훅 바뀌어서,
+    // resultLoading()으로 기존 전체화면 로딩창을 먼저 띄운 뒤 이동한다.
+    // ⚠️ 2026-09-16 3차 피드백 — 한때 이동 직전 스크롤 위치를 저장했다가 새
+    // 페이지에서 그대로 복원해주는 기능을 넣었었는데,
+    // ⚠️ 2026-09-16 8차 피드백 — "중간으로 스크롤 오게 하지 말고 그냥 맨
+    // 위로 있게 해달라"는 요청으로 그 복원 로직을 다시 뺐다. 이제 페이지
+    // 이동 시 브라우저 기본 동작대로 맨 위에서 시작한다.
+    function changeMatchCount(selectEl) {
+        resultLoading();
+        setTimeout(function() {
+            location.href = location.pathname + '?match_count=' + selectEl.value;
+        }, 10);
     }
 
     // Win Rate Chart
